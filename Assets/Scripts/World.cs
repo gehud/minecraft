@@ -50,14 +50,25 @@ namespace Minecraft
 
         public Chunk GetChunk(Vector3Int coordinate)
         {
-            return chunks.GetValueOrDefault(coordinate);
+            if (chunks.ContainsKey(coordinate))
+                return chunks[coordinate];
+
+            return null;
+        }
+
+        public Chunk GetOrCreateChunk(Vector3Int coordinate)
+        {
+            if (chunks.ContainsKey(coordinate))
+                return chunks[coordinate];
+
+            return CreateChunk(coordinate);
         }
 
         public bool DestroyChunk(Vector3Int coordinate)
         {
             if (chunks.Remove(coordinate, out Chunk chunk))
             {
-                Destroy(chunk);
+                Destroy(chunk.gameObject);
                 return true;
             }
 
@@ -84,33 +95,10 @@ namespace Minecraft
                 voxels.Add(item.Type, item.Data);
         }
 
-        private void Start()
-        {
-            for (int y = 0; y < HEIGHT; y++)
-            {
-                for (int x = -1; x < 1; x++)
-                {
-                    for (int z = -1; z < 1; z++)
-                    {
-                        Vector3Int chunkCoordinate = new(x, y, z);
-                        var chunk = CreateChunk(chunkCoordinate);
-                        ChunkUtility.ForEachVoxel((x, y, z) => 
-                        {
-                            if (chunkCoordinate.y * Chunk.SIZE + y < 32)
-                                chunk.VoxelMap[x, y, z] = VoxelType.Stone;
-                        });
-                    }
-                }
-            }
-        }
-
         private void Update()
         {
-            foreach (var item in chunks)
-            {
-                if (item.Value.IsDirty)
-                    item.Value.UpdateMesh();
-            }
+            foreach (var chunk in chunks.Values)
+                chunk.Handle();
         }
     }
 }
