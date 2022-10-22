@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -21,8 +22,7 @@ namespace Minecraft
             }
         }
 
-        public VoxelMap VoxelMap { get; set; } = new();
-
+        public VoxelMap VoxelMap;
 
         private bool isDirty = true;
         public bool IsDirty => isDirty;
@@ -119,10 +119,16 @@ namespace Minecraft
 
         private void Awake()
         {
+            VoxelMap = new VoxelMap(Allocator.Persistent);
             renderMesh = new();
             meshFilter.mesh = renderMesh;
             colliderMesh = new();
             world = World.Instance;
+        }
+
+        private void OnDestroy()
+        {
+            VoxelMap.Dispose();
         }
     }
 }

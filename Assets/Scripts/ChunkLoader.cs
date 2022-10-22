@@ -1,5 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Transactions;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -84,10 +87,7 @@ namespace Minecraft
         {
             World world = World.Instance;
 
-            double start = Time.timeAsDouble;
             yield return StartCoroutine(GenerateLoadData(world));
-            double stop = Time.timeAsDouble;
-            Debug.Log(stop - start);
 
             foreach (var item in unloadedChunksCoordinates)
             {
