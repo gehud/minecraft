@@ -218,6 +218,36 @@ MonoBehaviour:
         R: 0
         G: 0
         B: 0
+  - Type: 4
+    Data:
+      RightAtlasCoordinate: {x: 2, y: 14}
+      LeftAtlasCoordinate: {x: 2, y: 14}
+      TopAtlasCoordinate: {x: 2, y: 14}
+      BottomAtlasCoordinate: {x: 2, y: 14}
+      FrontAtlasCoordinate: {x: 2, y: 14}
+      BackAtlasCoordinate: {x: 2, y: 14}
+      MaterialType: 0
+      IsSolid: 1
+      IsTransparent: 0
+      Emission:
+        R: 0
+        G: 0
+        B: 0
+  - Type: 5
+    Data:
+      RightAtlasCoordinate: {x: 13, y: 3}
+      LeftAtlasCoordinate: {x: 13, y: 3}
+      TopAtlasCoordinate: {x: 13, y: 3}
+      BottomAtlasCoordinate: {x: 13, y: 3}
+      FrontAtlasCoordinate: {x: 13, y: 3}
+      BackAtlasCoordinate: {x: 13, y: 3}
+      MaterialType: 1
+      IsSolid: 0
+      IsTransparent: 1
+      Emission:
+        R: 0
+        G: 0
+        B: 0
   chunk: {fileID: 3682535211841024476, guid: 64a4a310bdabce14aabccd5228774dc3, type: 3}
 --- !u!4 &162616925
 Transform:

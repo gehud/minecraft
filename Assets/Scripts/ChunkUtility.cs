@@ -87,7 +87,7 @@ namespace Minecraft
                     }
 
                     // Right face.
-                    if (IsVoxelTransparent(x + 1, y, z))
+                    if (IsVoxelTransparent(x + 1, y, z) && GetVoxel(x + 1, y, z) != voxelType)
                     {
                         Vector2 rightAtlasPosition = (Vector2)world.Voxels[voxelType].RightAtlasCoordinate * atlasStep;
 
@@ -173,7 +173,7 @@ namespace Minecraft
                     }
 
                     // Left face.
-                    if (IsVoxelTransparent(x - 1, y, z))
+                    if (IsVoxelTransparent(x - 1, y, z) && GetVoxel(x - 1, y, z) != voxelType)
                     {
                         Vector2 leftAtlasPosition = (Vector2)world.Voxels[voxelType].LeftAtlasCoordinate * atlasStep;
 
@@ -259,7 +259,7 @@ namespace Minecraft
                     }
 
                     // Top face.
-                    if (IsVoxelTransparent(x, y + 1, z))
+                    if (IsVoxelTransparent(x, y + 1, z) && GetVoxel(x, y + 1, z) != voxelType)
                     {
                         Vector2 topAtlasPosition = (Vector2)world.Voxels[voxelType].TopAtlasCoordinate * atlasStep;
 
@@ -345,7 +345,7 @@ namespace Minecraft
                     }
 
                     // Bottom face.
-                    if (IsVoxelTransparent(x, y - 1, z))
+                    if (IsVoxelTransparent(x, y - 1, z) && GetVoxel(x, y - 1, z) != voxelType)
                     {
                         Vector2 bottomAtlasPosition = (Vector2)world.Voxels[voxelType].BottomAtlasCoordinate * atlasStep;
 
@@ -431,7 +431,7 @@ namespace Minecraft
                     }
 
                     // Front face.
-                    if (IsVoxelTransparent(x, y, z + 1))
+                    if (IsVoxelTransparent(x, y, z + 1) && GetVoxel(x, y, z + 1) != voxelType)
                     {
                         Vector2 backAtlasPosition = (Vector2)world.Voxels[voxelType].BackAtlasCoordinate * atlasStep;
 
@@ -517,7 +517,7 @@ namespace Minecraft
                     }
 
                     // Back face.
-                    if (IsVoxelTransparent(x, y, z - 1))
+                    if (IsVoxelTransparent(x, y, z - 1) && GetVoxel(x, y, z - 1) != voxelType)
                     {
                         Vector2 frontAtlasPosition = (Vector2)world.Voxels[voxelType].FrontAtlasCoordinate * atlasStep;
 
