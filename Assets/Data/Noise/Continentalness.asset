@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f158c4268bf7646a857e257a8b0377, type: 3}
+  m_Name: Continentalness
+  m_EditorClassIdentifier: 
+  Scale: 0.02
+  Offset: {x: 15316, y: 7765}
+  Octaves: 3
+  Lacunarity: 2
+  Persistance: 0.5
+  Modification:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 1.3369486
+      outSlope: 1.3369486
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.23251227
+      value: 0.31085697
+      inSlope: 0.17064042
+      outSlope: 0.17064042
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.26449096
+    - serializedVersion: 3
+      time: 0.6837553
+      value: 0.49836463
+      inSlope: 2.442018
+      outSlope: 2.442018
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.3880193
+    - serializedVersion: 3
+      time: 0.7925099
+      value: 0.9929133
+      inSlope: 0.06592938
+      outSlope: 0.06592938
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.31585506
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0.034154374
+      outSlope: 0.034154374
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4

@@ -90,7 +90,7 @@ namespace Minecraft
             }
         }
 
-        private IEnumerator GenerateChunks(World world, ChunkDataGenerator chunkGenerator, ConcurrentDictionary<Vector3Int, Dictionary<MaterialType, MeshData>> meshDatas)
+        private IEnumerator GenerateChunks(World world, ConcurrentDictionary<Vector3Int, IDictionary<MaterialType, MeshData>> meshDatas)
         {
             generateChunks = true;
 
@@ -140,14 +140,14 @@ namespace Minecraft
                 world.LightMapCalculatorSun.Calculate();
             });
 
-            ConcurrentDictionary<Vector3Int, Dictionary<MaterialType, MeshData>> generatedMeshDatas = new();
+            ConcurrentDictionary<Vector3Int, IDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => 
             {
                 foreach (var item in chunkToCreateCoordinates)
                     generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.ChunkDatas[item]));
             });
 
-            StartCoroutine(GenerateChunks(world, chunkDataGenerator, generatedMeshDatas));
+            StartCoroutine(GenerateChunks(world, generatedMeshDatas));
         }
 
         private IEnumerator CheckLoadRequirement() 

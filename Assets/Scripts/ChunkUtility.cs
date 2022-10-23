@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Threading;
 using UnityEngine;
-using static UnityEditor.PlayerSettings;
+using System.Linq;
 
 namespace Minecraft
 {
@@ -31,6 +33,11 @@ namespace Minecraft
                 return world.GetVoxel(globalVoxelCoordinate);
             }
 
+            int GetLight(int x, int y, int z, LightMap.Chanel chanel)
+            {
+                return world.GetLight(CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z)), chanel);
+            }
+
             bool IsVoxelSolid(int x, int y, int z)
             {
                 return world.Voxels[GetVoxel(x, y, z)].IsSolid;
@@ -50,7 +57,7 @@ namespace Minecraft
                 {
                     MaterialType materialType = world.Voxels[voxelType].MaterialType;
                     if (!meshDatas.ContainsKey(materialType))
-                        meshDatas.Add(materialType, new MeshData());
+                        meshDatas.TryAdd(materialType, new MeshData());
 
                     float atlasStep = 16.0f / 256.0f;
                     float uvOffset = 0.0f;
@@ -79,11 +86,6 @@ namespace Minecraft
                         meshData.ColliderIndices.Add((ushort)(3 + vertexCount));
                     }
 
-                    int Light(int x, int y, int z, LightMap.Chanel chanel)
-                    {
-                        return world.GetLight(CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z)), chanel);
-                    }
-
                     // Right face.
                     if (IsVoxelTransparent(x + 1, y, z))
                     {
@@ -94,60 +96,60 @@ namespace Minecraft
                         bool t180 = !IsVoxelTransparent(x + 1, y + 0, z - 1);
                         bool t270 = !IsVoxelTransparent(x + 1, y - 1, z + 0);
 
-                        int lr = Light(x + 1, y + 0, z + 0, LightMap.Chanel.Red);
-                        int lr0 = Light(x + 1, y + 0, z + 1, LightMap.Chanel.Red);
-                        int lr45 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Red);
-                        int lr90 = Light(x + 1, y + 1, z + 0, LightMap.Chanel.Red);
-                        int lr135 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Red);
-                        int lr180 = Light(x + 1, y + 0, z - 1, LightMap.Chanel.Red);
-                        int lr225 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Red);
-                        int lr270 = Light(x + 1, y - 1, z + 0, LightMap.Chanel.Red);
-                        int lr315 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Red);
+                        int lr = GetLight(x + 1, y + 0, z + 0, LightMap.Chanel.Red);
+                        int lr0 = GetLight(x + 1, y + 0, z + 1, LightMap.Chanel.Red);
+                        int lr45 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Red);
+                        int lr90 = GetLight(x + 1, y + 1, z + 0, LightMap.Chanel.Red);
+                        int lr135 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Red);
+                        int lr180 = GetLight(x + 1, y + 0, z - 1, LightMap.Chanel.Red);
+                        int lr225 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Red);
+                        int lr270 = GetLight(x + 1, y - 1, z + 0, LightMap.Chanel.Red);
+                        int lr315 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Red);
 
                         float lr1 = (t180 && t270 ? lr : lr + lr180 + lr225 + lr270) / 4.0f / 15.0f;
                         float lr2 = (t90 && t180 ? lr : lr + lr90 + lr135 + lr180) / 4.0f / 15.0f;
                         float lr3 = (t0 && t90 ? lr : lr + lr0 + lr45 + lr90) / 4.0f / 15.0f;
                         float lr4 = (t0 && t270 ? lr : lr + lr0 + lr270 + lr315) / 4.0f / 15.0f;
 
-                        int lg = Light(x + 1, y + 0, z + 0, LightMap.Chanel.Green);
-                        int lg0 = Light(x + 1, y + 0, z + 1, LightMap.Chanel.Green);
-                        int lg45 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Green);
-                        int lg90 = Light(x + 1, y + 1, z + 0, LightMap.Chanel.Green);
-                        int lg135 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Green);
-                        int lg180 = Light(x + 1, y + 0, z - 1, LightMap.Chanel.Green);
-                        int lg225 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Green);
-                        int lg270 = Light(x + 1, y - 1, z + 0, LightMap.Chanel.Green);
-                        int lg315 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Green);
+                        int lg = GetLight(x + 1, y + 0, z + 0, LightMap.Chanel.Green);
+                        int lg0 = GetLight(x + 1, y + 0, z + 1, LightMap.Chanel.Green);
+                        int lg45 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Green);
+                        int lg90 = GetLight(x + 1, y + 1, z + 0, LightMap.Chanel.Green);
+                        int lg135 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Green);
+                        int lg180 = GetLight(x + 1, y + 0, z - 1, LightMap.Chanel.Green);
+                        int lg225 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Green);
+                        int lg270 = GetLight(x + 1, y - 1, z + 0, LightMap.Chanel.Green);
+                        int lg315 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Green);
 
                         float lg1 = (t180 && t270 ? lg : lg + lg180 + lg225 + lg270) / 4.0f / 15.0f;
                         float lg2 = (t90 && t180 ? lg : lg + lg90 + lg135 + lg180) / 4.0f / 15.0f;
                         float lg3 = (t0 && t90 ? lg : lg + lg0 + lg45 + lg90) / 4.0f / 15.0f;
                         float lg4 = (t0 && t270 ? lg : lg + lg0 + lg270 + lg315) / 4.0f / 15.0f;
 
-                        int lb = Light(x + 1, y + 0, z + 0, LightMap.Chanel.Blue);
-                        int lb0 = Light(x + 1, y + 0, z + 1, LightMap.Chanel.Blue);
-                        int lb45 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Blue);
-                        int lb90 = Light(x + 1, y + 1, z + 0, LightMap.Chanel.Blue);
-                        int lb135 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Blue);
-                        int lb180 = Light(x + 1, y + 0, z - 1, LightMap.Chanel.Blue);
-                        int lb225 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Blue);
-                        int lb270 = Light(x + 1, y - 1, z + 0, LightMap.Chanel.Blue);
-                        int lb315 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Blue);
+                        int lb = GetLight(x + 1, y + 0, z + 0, LightMap.Chanel.Blue);
+                        int lb0 = GetLight(x + 1, y + 0, z + 1, LightMap.Chanel.Blue);
+                        int lb45 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Blue);
+                        int lb90 = GetLight(x + 1, y + 1, z + 0, LightMap.Chanel.Blue);
+                        int lb135 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Blue);
+                        int lb180 = GetLight(x + 1, y + 0, z - 1, LightMap.Chanel.Blue);
+                        int lb225 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Blue);
+                        int lb270 = GetLight(x + 1, y - 1, z + 0, LightMap.Chanel.Blue);
+                        int lb315 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Blue);
 
                         float lb1 = (t180 && t270 ? lb : lb + lb180 + lb225 + lb270) / 4.0f / 15.0f;
                         float lb2 = (t90 && t180 ? lb : lb + lb90 + lb135 + lb180) / 4.0f / 15.0f;
                         float lb3 = (t0 && t90 ? lb : lb + lb0 + lb45 + lb90) / 4.0f / 15.0f;
                         float lb4 = (t0 && t270 ? lb : lb + lb0 + lb270 + lb315) / 4.0f / 15.0f;
 
-                        int ls = Light(x + 1, y + 0, z + 0, LightMap.Chanel.Sun);
-                        int ls0 = Light(x + 1, y + 0, z + 1, LightMap.Chanel.Sun);
-                        int ls45 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Sun);
-                        int ls90 = Light(x + 1, y + 1, z + 0, LightMap.Chanel.Sun);
-                        int ls135 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Sun);
-                        int ls180 = Light(x + 1, y + 0, z - 1, LightMap.Chanel.Sun);
-                        int ls225 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Sun);
-                        int ls270 = Light(x + 1, y - 1, z + 0, LightMap.Chanel.Sun);
-                        int ls315 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Sun);
+                        int ls = GetLight(x + 1, y + 0, z + 0, LightMap.Chanel.Sun);
+                        int ls0 = GetLight(x + 1, y + 0, z + 1, LightMap.Chanel.Sun);
+                        int ls45 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Sun);
+                        int ls90 = GetLight(x + 1, y + 1, z + 0, LightMap.Chanel.Sun);
+                        int ls135 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Sun);
+                        int ls180 = GetLight(x + 1, y + 0, z - 1, LightMap.Chanel.Sun);
+                        int ls225 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Sun);
+                        int ls270 = GetLight(x + 1, y - 1, z + 0, LightMap.Chanel.Sun);
+                        int ls315 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Sun);
 
                         float ls1 = (t180 && t270 ? ls : ls + ls180 + ls225 + ls270) / 4.0f / 15.0f;
                         float ls2 = (t90 && t180 ? ls : ls + ls90 + ls135 + ls180) / 4.0f / 15.0f;
@@ -180,60 +182,60 @@ namespace Minecraft
                         bool t180 = !IsVoxelTransparent(x - 1, y + 0, z + 1);
                         bool t270 = !IsVoxelTransparent(x - 1, y - 1, z + 0);
 
-                        int lr = Light(x - 1, y + 0, z + 0, LightMap.Chanel.Red);
-                        int lr0 = Light(x - 1, y + 0, z - 1, LightMap.Chanel.Red);
-                        int lr45 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Red);
-                        int lr90 = Light(x - 1, y + 1, z + 0, LightMap.Chanel.Red);
-                        int lr135 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Red);
-                        int lr180 = Light(x - 1, y + 0, z + 1, LightMap.Chanel.Red);
-                        int lr225 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Red);
-                        int lr270 = Light(x - 1, y - 1, z + 0, LightMap.Chanel.Red);
-                        int lr315 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Red);
+                        int lr = GetLight(x - 1, y + 0, z + 0, LightMap.Chanel.Red);
+                        int lr0 = GetLight(x - 1, y + 0, z - 1, LightMap.Chanel.Red);
+                        int lr45 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Red);
+                        int lr90 = GetLight(x - 1, y + 1, z + 0, LightMap.Chanel.Red);
+                        int lr135 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Red);
+                        int lr180 = GetLight(x - 1, y + 0, z + 1, LightMap.Chanel.Red);
+                        int lr225 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Red);
+                        int lr270 = GetLight(x - 1, y - 1, z + 0, LightMap.Chanel.Red);
+                        int lr315 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Red);
 
                         float lr1 = (t180 && t270 ? lr : lr + lr180 + lr225 + lr270) / 4.0f / 15.0f;
                         float lr2 = (t90 && t180 ? lr : lr + lr90 + lr135 + lr180) / 4.0f / 15.0f;
                         float lr3 = (t0 && t90 ? lr : lr + lr0 + lr45 + lr90) / 4.0f / 15.0f;
                         float lr4 = (t0 && t270 ? lr : lr + lr0 + lr270 + lr315) / 4.0f / 15.0f;
 
-                        int lg = Light(x - 1, y + 0, z + 0, LightMap.Chanel.Green);
-                        int lg0 = Light(x - 1, y + 0, z - 1, LightMap.Chanel.Green);
-                        int lg45 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Green);
-                        int lg90 = Light(x - 1, y + 1, z + 0, LightMap.Chanel.Green);
-                        int lg135 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Green);
-                        int lg180 = Light(x - 1, y + 0, z + 1, LightMap.Chanel.Green);
-                        int lg225 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Green);
-                        int lg270 = Light(x - 1, y - 1, z + 0, LightMap.Chanel.Green);
-                        int lg315 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Green);
+                        int lg = GetLight(x - 1, y + 0, z + 0, LightMap.Chanel.Green);
+                        int lg0 = GetLight(x - 1, y + 0, z - 1, LightMap.Chanel.Green);
+                        int lg45 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Green);
+                        int lg90 = GetLight(x - 1, y + 1, z + 0, LightMap.Chanel.Green);
+                        int lg135 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Green);
+                        int lg180 = GetLight(x - 1, y + 0, z + 1, LightMap.Chanel.Green);
+                        int lg225 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Green);
+                        int lg270 = GetLight(x - 1, y - 1, z + 0, LightMap.Chanel.Green);
+                        int lg315 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Green);
 
                         float lg1 = (t180 && t270 ? lg : lg + lg180 + lg225 + lg270) / 4.0f / 15.0f;
                         float lg2 = (t90 && t180 ? lg : lg + lg90 + lg135 + lg180) / 4.0f / 15.0f;
                         float lg3 = (t0 && t90 ? lg : lg + lg0 + lg45 + lg90) / 4.0f / 15.0f;
                         float lg4 = (t0 && t270 ? lg : lg + lg0 + lg270 + lg315) / 4.0f / 15.0f;
 
-                        int lb = Light(x - 1, y + 0, z + 0, LightMap.Chanel.Blue);
-                        int lb0 = Light(x - 1, y + 0, z - 1, LightMap.Chanel.Blue);
-                        int lb45 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Blue);
-                        int lb90 = Light(x - 1, y + 1, z + 0, LightMap.Chanel.Blue);
-                        int lb135 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Blue);
-                        int lb180 = Light(x - 1, y + 0, z + 1, LightMap.Chanel.Blue);
-                        int lb225 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Blue);
-                        int lb270 = Light(x - 1, y - 1, z + 0, LightMap.Chanel.Blue);
-                        int lb315 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Blue);
+                        int lb = GetLight(x - 1, y + 0, z + 0, LightMap.Chanel.Blue);
+                        int lb0 = GetLight(x - 1, y + 0, z - 1, LightMap.Chanel.Blue);
+                        int lb45 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Blue);
+                        int lb90 = GetLight(x - 1, y + 1, z + 0, LightMap.Chanel.Blue);
+                        int lb135 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Blue);
+                        int lb180 = GetLight(x - 1, y + 0, z + 1, LightMap.Chanel.Blue);
+                        int lb225 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Blue);
+                        int lb270 = GetLight(x - 1, y - 1, z + 0, LightMap.Chanel.Blue);
+                        int lb315 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Blue);
 
                         float lb1 = (t180 && t270 ? lb : lb + lb180 + lb225 + lb270) / 4.0f / 15.0f;
                         float lb2 = (t90 && t180 ? lb : lb + lb90 + lb135 + lb180) / 4.0f / 15.0f;
                         float lb3 = (t0 && t90 ? lb : lb + lb0 + lb45 + lb90) / 4.0f / 15.0f;
                         float lb4 = (t0 && t270 ? lb : lb + lb0 + lb270 + lb315) / 4.0f / 15.0f;
 
-                        int ls = Light(x - 1, y + 0, z + 0, LightMap.Chanel.Sun);
-                        int ls0 = Light(x - 1, y + 0, z - 1, LightMap.Chanel.Sun);
-                        int ls45 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Sun);
-                        int ls90 = Light(x - 1, y + 1, z + 0, LightMap.Chanel.Sun);
-                        int ls135 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Sun);
-                        int ls180 = Light(x - 1, y + 0, z + 1, LightMap.Chanel.Sun);
-                        int ls225 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Sun);
-                        int ls270 = Light(x - 1, y - 1, z + 0, LightMap.Chanel.Sun);
-                        int ls315 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Sun);
+                        int ls = GetLight(x - 1, y + 0, z + 0, LightMap.Chanel.Sun);
+                        int ls0 = GetLight(x - 1, y + 0, z - 1, LightMap.Chanel.Sun);
+                        int ls45 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Sun);
+                        int ls90 = GetLight(x - 1, y + 1, z + 0, LightMap.Chanel.Sun);
+                        int ls135 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Sun);
+                        int ls180 = GetLight(x - 1, y + 0, z + 1, LightMap.Chanel.Sun);
+                        int ls225 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Sun);
+                        int ls270 = GetLight(x - 1, y - 1, z + 0, LightMap.Chanel.Sun);
+                        int ls315 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Sun);
 
                         float ls1 = (t180 && t270 ? ls : ls + ls180 + ls225 + ls270) / 4.0f / 15.0f;
                         float ls2 = (t90 && t180 ? ls : ls + ls90 + ls135 + ls180) / 4.0f / 15.0f;
@@ -266,60 +268,60 @@ namespace Minecraft
                         bool t180 = !IsVoxelTransparent(x - 1, y + 1, z + 0);
                         bool t270 = !IsVoxelTransparent(x + 0, y + 1, z - 1);
 
-                        int lr = Light(x + 0, y + 1, z + 0, LightMap.Chanel.Red);
-                        int lr0 = Light(x + 1, y + 1, z + 0, LightMap.Chanel.Red);
-                        int lr45 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Red);
-                        int lr90 = Light(x + 0, y + 1, z + 1, LightMap.Chanel.Red);
-                        int lr135 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Red);
-                        int lr180 = Light(x - 1, y + 1, z + 0, LightMap.Chanel.Red);
-                        int lr225 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Red);
-                        int lr270 = Light(x + 0, y + 1, z - 1, LightMap.Chanel.Red);
-                        int lr315 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Red);
+                        int lr = GetLight(x + 0, y + 1, z + 0, LightMap.Chanel.Red);
+                        int lr0 = GetLight(x + 1, y + 1, z + 0, LightMap.Chanel.Red);
+                        int lr45 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Red);
+                        int lr90 = GetLight(x + 0, y + 1, z + 1, LightMap.Chanel.Red);
+                        int lr135 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Red);
+                        int lr180 = GetLight(x - 1, y + 1, z + 0, LightMap.Chanel.Red);
+                        int lr225 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Red);
+                        int lr270 = GetLight(x + 0, y + 1, z - 1, LightMap.Chanel.Red);
+                        int lr315 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Red);
 
                         float lr1 = (t180 && t270 ? lr : lr + lr180 + lr225 + lr270) / 4.0f / 15.0f;
                         float lr2 = (t90 && t180 ? lr : lr + lr90 + lr135 + lr180) / 4.0f / 15.0f;
                         float lr3 = (t0 && t90 ? lr : lr + lr0 + lr45 + lr90) / 4.0f / 15.0f;
                         float lr4 = (t0 && t270 ? lr : lr + lr0 + lr270 + lr315) / 4.0f / 15.0f;
 
-                        int lg = Light(x + 0, y + 1, z + 0, LightMap.Chanel.Green);
-                        int lg0 = Light(x + 1, y + 1, z + 0, LightMap.Chanel.Green);
-                        int lg45 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Green);
-                        int lg90 = Light(x + 0, y + 1, z + 1, LightMap.Chanel.Green);
-                        int lg135 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Green);
-                        int lg180 = Light(x - 1, y + 1, z + 0, LightMap.Chanel.Green);
-                        int lg225 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Green);
-                        int lg270 = Light(x + 0, y + 1, z - 1, LightMap.Chanel.Green);
-                        int lg315 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Green);
+                        int lg = GetLight(x + 0, y + 1, z + 0, LightMap.Chanel.Green);
+                        int lg0 = GetLight(x + 1, y + 1, z + 0, LightMap.Chanel.Green);
+                        int lg45 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Green);
+                        int lg90 = GetLight(x + 0, y + 1, z + 1, LightMap.Chanel.Green);
+                        int lg135 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Green);
+                        int lg180 = GetLight(x - 1, y + 1, z + 0, LightMap.Chanel.Green);
+                        int lg225 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Green);
+                        int lg270 = GetLight(x + 0, y + 1, z - 1, LightMap.Chanel.Green);
+                        int lg315 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Green);
 
                         float lg1 = (t180 && t270 ? lg : lg + lg180 + lg225 + lg270) / 4.0f / 15.0f;
                         float lg2 = (t90 && t180 ? lg : lg + lg90 + lg135 + lg180) / 4.0f / 15.0f;
                         float lg3 = (t0 && t90 ? lg : lg + lg0 + lg45 + lg90) / 4.0f / 15.0f;
                         float lg4 = (t0 && t270 ? lg : lg + lg0 + lg270 + lg315) / 4.0f / 15.0f;
 
-                        int lb = Light(x + 0, y + 1, z + 0, LightMap.Chanel.Blue);
-                        int lb0 = Light(x + 1, y + 1, z + 0, LightMap.Chanel.Blue);
-                        int lb45 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Blue);
-                        int lb90 = Light(x + 0, y + 1, z + 1, LightMap.Chanel.Blue);
-                        int lb135 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Blue);
-                        int lb180 = Light(x - 1, y + 1, z + 0, LightMap.Chanel.Blue);
-                        int lb225 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Blue);
-                        int lb270 = Light(x + 0, y + 1, z - 1, LightMap.Chanel.Blue);
-                        int lb315 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Blue);
+                        int lb = GetLight(x + 0, y + 1, z + 0, LightMap.Chanel.Blue);
+                        int lb0 = GetLight(x + 1, y + 1, z + 0, LightMap.Chanel.Blue);
+                        int lb45 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Blue);
+                        int lb90 = GetLight(x + 0, y + 1, z + 1, LightMap.Chanel.Blue);
+                        int lb135 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Blue);
+                        int lb180 = GetLight(x - 1, y + 1, z + 0, LightMap.Chanel.Blue);
+                        int lb225 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Blue);
+                        int lb270 = GetLight(x + 0, y + 1, z - 1, LightMap.Chanel.Blue);
+                        int lb315 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Blue);
 
                         float lb1 = (t180 && t270 ? lb : lb + lb180 + lb225 + lb270) / 4.0f / 15.0f;
                         float lb2 = (t90 && t180 ? lb : lb + lb90 + lb135 + lb180) / 4.0f / 15.0f;
                         float lb3 = (t0 && t90 ? lb : lb + lb0 + lb45 + lb90) / 4.0f / 15.0f;
                         float lb4 = (t0 && t270 ? lb : lb + lb0 + lb270 + lb315) / 4.0f / 15.0f;
 
-                        int ls = Light(x + 0, y + 1, z + 0, LightMap.Chanel.Sun);
-                        int ls0 = Light(x + 1, y + 1, z + 0, LightMap.Chanel.Sun);
-                        int ls45 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Sun);
-                        int ls90 = Light(x + 0, y + 1, z + 1, LightMap.Chanel.Sun);
-                        int ls135 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Sun);
-                        int ls180 = Light(x - 1, y + 1, z + 0, LightMap.Chanel.Sun);
-                        int ls225 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Sun);
-                        int ls270 = Light(x + 0, y + 1, z - 1, LightMap.Chanel.Sun);
-                        int ls315 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Sun);
+                        int ls = GetLight(x + 0, y + 1, z + 0, LightMap.Chanel.Sun);
+                        int ls0 = GetLight(x + 1, y + 1, z + 0, LightMap.Chanel.Sun);
+                        int ls45 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Sun);
+                        int ls90 = GetLight(x + 0, y + 1, z + 1, LightMap.Chanel.Sun);
+                        int ls135 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Sun);
+                        int ls180 = GetLight(x - 1, y + 1, z + 0, LightMap.Chanel.Sun);
+                        int ls225 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Sun);
+                        int ls270 = GetLight(x + 0, y + 1, z - 1, LightMap.Chanel.Sun);
+                        int ls315 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Sun);
 
                         float ls1 = (t180 && t270 ? ls : ls + ls180 + ls225 + ls270) / 4.0f / 15.0f;
                         float ls2 = (t90 && t180 ? ls : ls + ls90 + ls135 + ls180) / 4.0f / 15.0f;
@@ -352,60 +354,60 @@ namespace Minecraft
                         bool t180 = !IsVoxelTransparent(x + 1, y - 1, z + 0);
                         bool t270 = !IsVoxelTransparent(x + 0, y - 1, z - 1);
 
-                        int lr = Light(x + 0, y - 1, z + 0, LightMap.Chanel.Red);
-                        int lr0 = Light(x - 1, y - 1, z + 0, LightMap.Chanel.Red);
-                        int lr45 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Red);
-                        int lr90 = Light(x + 0, y - 1, z + 1, LightMap.Chanel.Red);
-                        int lr135 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Red);
-                        int lr180 = Light(x + 1, y - 1, z + 0, LightMap.Chanel.Red);
-                        int lr225 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Red);
-                        int lr270 = Light(x + 0, y - 1, z - 1, LightMap.Chanel.Red);
-                        int lr315 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Red);
+                        int lr = GetLight(x + 0, y - 1, z + 0, LightMap.Chanel.Red);
+                        int lr0 = GetLight(x - 1, y - 1, z + 0, LightMap.Chanel.Red);
+                        int lr45 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Red);
+                        int lr90 = GetLight(x + 0, y - 1, z + 1, LightMap.Chanel.Red);
+                        int lr135 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Red);
+                        int lr180 = GetLight(x + 1, y - 1, z + 0, LightMap.Chanel.Red);
+                        int lr225 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Red);
+                        int lr270 = GetLight(x + 0, y - 1, z - 1, LightMap.Chanel.Red);
+                        int lr315 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Red);
 
                         float lr1 = (t180 && t270 ? lr : lr + lr180 + lr225 + lr270) / 4.0f / 15.0f;
                         float lr2 = (t90 && t180 ? lr : lr + lr90 + lr135 + lr180) / 4.0f / 15.0f;
                         float lr3 = (t0 && t90 ? lr : lr + lr0 + lr45 + lr90) / 4.0f / 15.0f;
                         float lr4 = (t0 && t270 ? lr : lr + lr0 + lr270 + lr315) / 4.0f / 15.0f;
 
-                        int lg = Light(x + 0, y - 1, z + 0, LightMap.Chanel.Green);
-                        int lg0 = Light(x - 1, y - 1, z + 0, LightMap.Chanel.Green);
-                        int lg45 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Green);
-                        int lg90 = Light(x + 0, y - 1, z + 1, LightMap.Chanel.Green);
-                        int lg135 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Green);
-                        int lg180 = Light(x + 1, y - 1, z + 0, LightMap.Chanel.Green);
-                        int lg225 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Green);
-                        int lg270 = Light(x + 0, y - 1, z - 1, LightMap.Chanel.Green);
-                        int lg315 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Green);
+                        int lg = GetLight(x + 0, y - 1, z + 0, LightMap.Chanel.Green);
+                        int lg0 = GetLight(x - 1, y - 1, z + 0, LightMap.Chanel.Green);
+                        int lg45 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Green);
+                        int lg90 = GetLight(x + 0, y - 1, z + 1, LightMap.Chanel.Green);
+                        int lg135 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Green);
+                        int lg180 = GetLight(x + 1, y - 1, z + 0, LightMap.Chanel.Green);
+                        int lg225 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Green);
+                        int lg270 = GetLight(x + 0, y - 1, z - 1, LightMap.Chanel.Green);
+                        int lg315 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Green);
 
                         float lg1 = (t180 && t270 ? lg : lg + lg180 + lg225 + lg270) / 4.0f / 15.0f;
                         float lg2 = (t90 && t180 ? lg : lg + lg90 + lg135 + lg180) / 4.0f / 15.0f;
                         float lg3 = (t0 && t90 ? lg : lg + lg0 + lg45 + lg90) / 4.0f / 15.0f;
                         float lg4 = (t0 && t270 ? lg : lg + lg0 + lg270 + lg315) / 4.0f / 15.0f;
 
-                        int lb = Light(x + 0, y - 1, z + 0, LightMap.Chanel.Blue);
-                        int lb0 = Light(x - 1, y - 1, z + 0, LightMap.Chanel.Blue);
-                        int lb45 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Blue);
-                        int lb90 = Light(x + 0, y - 1, z + 1, LightMap.Chanel.Blue);
-                        int lb135 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Blue);
-                        int lb180 = Light(x + 1, y - 1, z + 0, LightMap.Chanel.Blue);
-                        int lb225 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Blue);
-                        int lb270 = Light(x + 0, y - 1, z - 1, LightMap.Chanel.Blue);
-                        int lb315 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Blue);
+                        int lb = GetLight(x + 0, y - 1, z + 0, LightMap.Chanel.Blue);
+                        int lb0 = GetLight(x - 1, y - 1, z + 0, LightMap.Chanel.Blue);
+                        int lb45 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Blue);
+                        int lb90 = GetLight(x + 0, y - 1, z + 1, LightMap.Chanel.Blue);
+                        int lb135 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Blue);
+                        int lb180 = GetLight(x + 1, y - 1, z + 0, LightMap.Chanel.Blue);
+                        int lb225 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Blue);
+                        int lb270 = GetLight(x + 0, y - 1, z - 1, LightMap.Chanel.Blue);
+                        int lb315 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Blue);
 
                         float lb1 = (t180 && t270 ? lb : lb + lb180 + lb225 + lb270) / 4.0f / 15.0f;
                         float lb2 = (t90 && t180 ? lb : lb + lb90 + lb135 + lb180) / 4.0f / 15.0f;
                         float lb3 = (t0 && t90 ? lb : lb + lb0 + lb45 + lb90) / 4.0f / 15.0f;
                         float lb4 = (t0 && t270 ? lb : lb + lb0 + lb270 + lb315) / 4.0f / 15.0f;
 
-                        int ls = Light(x + 0, y - 1, z + 0, LightMap.Chanel.Sun);
-                        int ls0 = Light(x - 1, y - 1, z + 0, LightMap.Chanel.Sun);
-                        int ls45 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Sun);
-                        int ls90 = Light(x + 0, y - 1, z + 1, LightMap.Chanel.Sun);
-                        int ls135 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Sun);
-                        int ls180 = Light(x + 1, y - 1, z + 0, LightMap.Chanel.Sun);
-                        int ls225 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Sun);
-                        int ls270 = Light(x + 0, y - 1, z - 1, LightMap.Chanel.Sun);
-                        int ls315 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Sun);
+                        int ls = GetLight(x + 0, y - 1, z + 0, LightMap.Chanel.Sun);
+                        int ls0 = GetLight(x - 1, y - 1, z + 0, LightMap.Chanel.Sun);
+                        int ls45 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Sun);
+                        int ls90 = GetLight(x + 0, y - 1, z + 1, LightMap.Chanel.Sun);
+                        int ls135 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Sun);
+                        int ls180 = GetLight(x + 1, y - 1, z + 0, LightMap.Chanel.Sun);
+                        int ls225 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Sun);
+                        int ls270 = GetLight(x + 0, y - 1, z - 1, LightMap.Chanel.Sun);
+                        int ls315 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Sun);
 
                         float ls1 = (t180 && t270 ? ls : ls + ls180 + ls225 + ls270) / 4.0f / 15.0f;
                         float ls2 = (t90 && t180 ? ls : ls + ls90 + ls135 + ls180) / 4.0f / 15.0f;
@@ -438,60 +440,60 @@ namespace Minecraft
                         bool t180 = !IsVoxelTransparent(x + 1, y + 0, z + 1);
                         bool t270 = !IsVoxelTransparent(x + 0, y - 1, z + 1);
 
-                        int lr = Light(x + 0, y + 0, z + 1, LightMap.Chanel.Red);
-                        int lr0 = Light(x - 1, y + 0, z + 1, LightMap.Chanel.Red);
-                        int lr45 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Red);
-                        int lr90 = Light(x + 0, y + 1, z + 1, LightMap.Chanel.Red);
-                        int lr135 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Red);
-                        int lr180 = Light(x + 1, y + 0, z + 1, LightMap.Chanel.Red);
-                        int lr225 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Red);
-                        int lr270 = Light(x + 0, y - 1, z + 1, LightMap.Chanel.Red);
-                        int lr315 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Red);
+                        int lr = GetLight(x + 0, y + 0, z + 1, LightMap.Chanel.Red);
+                        int lr0 = GetLight(x - 1, y + 0, z + 1, LightMap.Chanel.Red);
+                        int lr45 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Red);
+                        int lr90 = GetLight(x + 0, y + 1, z + 1, LightMap.Chanel.Red);
+                        int lr135 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Red);
+                        int lr180 = GetLight(x + 1, y + 0, z + 1, LightMap.Chanel.Red);
+                        int lr225 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Red);
+                        int lr270 = GetLight(x + 0, y - 1, z + 1, LightMap.Chanel.Red);
+                        int lr315 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Red);
 
                         float lr1 = (t180 && t270 ? lr : lr + lr180 + lr225 + lr270) / 4.0f / 15.0f;
                         float lr2 = (t90 && t180 ? lr : lr + lr90 + lr135 + lr180) / 4.0f / 15.0f;
                         float lr3 = (t0 && t90 ? lr : lr + lr0 + lr45 + lr90) / 4.0f / 15.0f;
                         float lr4 = (t0 && t270 ? lr : lr + lr0 + lr270 + lr315) / 4.0f / 15.0f;
 
-                        int lg = Light(x + 0, y + 0, z + 1, LightMap.Chanel.Green);
-                        int lg0 = Light(x - 1, y + 0, z + 1, LightMap.Chanel.Green);
-                        int lg45 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Green);
-                        int lg90 = Light(x + 0, y + 1, z + 1, LightMap.Chanel.Green);
-                        int lg135 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Green);
-                        int lg180 = Light(x + 1, y + 0, z + 1, LightMap.Chanel.Green);
-                        int lg225 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Green);
-                        int lg270 = Light(x + 0, y - 1, z + 1, LightMap.Chanel.Green);
-                        int lg315 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Green);
+                        int lg = GetLight(x + 0, y + 0, z + 1, LightMap.Chanel.Green);
+                        int lg0 = GetLight(x - 1, y + 0, z + 1, LightMap.Chanel.Green);
+                        int lg45 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Green);
+                        int lg90 = GetLight(x + 0, y + 1, z + 1, LightMap.Chanel.Green);
+                        int lg135 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Green);
+                        int lg180 = GetLight(x + 1, y + 0, z + 1, LightMap.Chanel.Green);
+                        int lg225 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Green);
+                        int lg270 = GetLight(x + 0, y - 1, z + 1, LightMap.Chanel.Green);
+                        int lg315 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Green);
 
                         float lg1 = (t180 && t270 ? lg : lg + lg180 + lg225 + lg270) / 4.0f / 15.0f;
                         float lg2 = (t90 && t180 ? lg : lg + lg90 + lg135 + lg180) / 4.0f / 15.0f;
                         float lg3 = (t0 && t90 ? lg : lg + lg0 + lg45 + lg90) / 4.0f / 15.0f;
                         float lg4 = (t0 && t270 ? lg : lg + lg0 + lg270 + lg315) / 4.0f / 15.0f;
 
-                        int lb = Light(x + 0, y + 0, z + 1, LightMap.Chanel.Blue);
-                        int lb0 = Light(x - 1, y + 0, z + 1, LightMap.Chanel.Blue);
-                        int lb45 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Blue);
-                        int lb90 = Light(x + 0, y + 1, z + 1, LightMap.Chanel.Blue);
-                        int lb135 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Blue);
-                        int lb180 = Light(x + 1, y + 0, z + 1, LightMap.Chanel.Blue);
-                        int lb225 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Blue);
-                        int lb270 = Light(x + 0, y - 1, z + 1, LightMap.Chanel.Blue);
-                        int lb315 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Blue);
+                        int lb = GetLight(x + 0, y + 0, z + 1, LightMap.Chanel.Blue);
+                        int lb0 = GetLight(x - 1, y + 0, z + 1, LightMap.Chanel.Blue);
+                        int lb45 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Blue);
+                        int lb90 = GetLight(x + 0, y + 1, z + 1, LightMap.Chanel.Blue);
+                        int lb135 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Blue);
+                        int lb180 = GetLight(x + 1, y + 0, z + 1, LightMap.Chanel.Blue);
+                        int lb225 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Blue);
+                        int lb270 = GetLight(x + 0, y - 1, z + 1, LightMap.Chanel.Blue);
+                        int lb315 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Blue);
 
                         float lb1 = (t180 && t270 ? lb : lb + lb180 + lb225 + lb270) / 4.0f / 15.0f;
                         float lb2 = (t90 && t180 ? lb : lb + lb90 + lb135 + lb180) / 4.0f / 15.0f;
                         float lb3 = (t0 && t90 ? lb : lb + lb0 + lb45 + lb90) / 4.0f / 15.0f;
                         float lb4 = (t0 && t270 ? lb : lb + lb0 + lb270 + lb315) / 4.0f / 15.0f;
 
-                        int ls = Light(x + 0, y + 0, z + 1, LightMap.Chanel.Sun);
-                        int ls0 = Light(x - 1, y + 0, z + 1, LightMap.Chanel.Sun);
-                        int ls45 = Light(x - 1, y + 1, z + 1, LightMap.Chanel.Sun);
-                        int ls90 = Light(x + 0, y + 1, z + 1, LightMap.Chanel.Sun);
-                        int ls135 = Light(x + 1, y + 1, z + 1, LightMap.Chanel.Sun);
-                        int ls180 = Light(x + 1, y + 0, z + 1, LightMap.Chanel.Sun);
-                        int ls225 = Light(x + 1, y - 1, z + 1, LightMap.Chanel.Sun);
-                        int ls270 = Light(x + 0, y - 1, z + 1, LightMap.Chanel.Sun);
-                        int ls315 = Light(x - 1, y - 1, z + 1, LightMap.Chanel.Sun);
+                        int ls = GetLight(x + 0, y + 0, z + 1, LightMap.Chanel.Sun);
+                        int ls0 = GetLight(x - 1, y + 0, z + 1, LightMap.Chanel.Sun);
+                        int ls45 = GetLight(x - 1, y + 1, z + 1, LightMap.Chanel.Sun);
+                        int ls90 = GetLight(x + 0, y + 1, z + 1, LightMap.Chanel.Sun);
+                        int ls135 = GetLight(x + 1, y + 1, z + 1, LightMap.Chanel.Sun);
+                        int ls180 = GetLight(x + 1, y + 0, z + 1, LightMap.Chanel.Sun);
+                        int ls225 = GetLight(x + 1, y - 1, z + 1, LightMap.Chanel.Sun);
+                        int ls270 = GetLight(x + 0, y - 1, z + 1, LightMap.Chanel.Sun);
+                        int ls315 = GetLight(x - 1, y - 1, z + 1, LightMap.Chanel.Sun);
 
                         float ls1 = (t180 && t270 ? ls : ls + ls180 + ls225 + ls270) / 4.0f / 15.0f;
                         float ls2 = (t90 && t180 ? ls : ls + ls90 + ls135 + ls180) / 4.0f / 15.0f;
@@ -524,60 +526,60 @@ namespace Minecraft
                         bool t180 = !IsVoxelTransparent(x - 1, y + 0, z - 1);
                         bool t270 = !IsVoxelTransparent(x + 0, y - 1, z - 1);
 
-                        int lr = Light(x + 0, y + 0, z - 1, LightMap.Chanel.Red);
-                        int lr0 = Light(x + 1, y + 0, z - 1, LightMap.Chanel.Red);
-                        int lr45 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Red);
-                        int lr90 = Light(x + 0, y + 1, z - 1, LightMap.Chanel.Red);
-                        int lr135 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Red);
-                        int lr180 = Light(x - 1, y + 0, z - 1, LightMap.Chanel.Red);
-                        int lr225 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Red);
-                        int lr270 = Light(x + 0, y - 1, z - 1, LightMap.Chanel.Red);
-                        int lr315 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Red);
+                        int lr = GetLight(x + 0, y + 0, z - 1, LightMap.Chanel.Red);
+                        int lr0 = GetLight(x + 1, y + 0, z - 1, LightMap.Chanel.Red);
+                        int lr45 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Red);
+                        int lr90 = GetLight(x + 0, y + 1, z - 1, LightMap.Chanel.Red);
+                        int lr135 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Red);
+                        int lr180 = GetLight(x - 1, y + 0, z - 1, LightMap.Chanel.Red);
+                        int lr225 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Red);
+                        int lr270 = GetLight(x + 0, y - 1, z - 1, LightMap.Chanel.Red);
+                        int lr315 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Red);
 
                         float lr1 = (t180 && t270 ? lr : lr + lr180 + lr225 + lr270) / 4.0f / 15.0f;
                         float lr2 = (t90 && t180 ? lr : lr + lr90 + lr135 + lr180) / 4.0f / 15.0f;
                         float lr3 = (t0 && t90 ? lr : lr + lr0 + lr45 + lr90) / 4.0f / 15.0f;
                         float lr4 = (t0 && t270 ? lr : lr + lr0 + lr270 + lr315) / 4.0f / 15.0f;
 
-                        int lg = Light(x + 0, y + 0, z - 1, LightMap.Chanel.Green);
-                        int lg0 = Light(x + 1, y + 0, z - 1, LightMap.Chanel.Green);
-                        int lg45 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Green);
-                        int lg90 = Light(x + 0, y + 1, z - 1, LightMap.Chanel.Green);
-                        int lg135 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Green);
-                        int lg180 = Light(x - 1, y + 0, z - 1, LightMap.Chanel.Green);
-                        int lg225 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Green);
-                        int lg270 = Light(x + 0, y - 1, z - 1, LightMap.Chanel.Green);
-                        int lg315 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Green);
+                        int lg = GetLight(x + 0, y + 0, z - 1, LightMap.Chanel.Green);
+                        int lg0 = GetLight(x + 1, y + 0, z - 1, LightMap.Chanel.Green);
+                        int lg45 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Green);
+                        int lg90 = GetLight(x + 0, y + 1, z - 1, LightMap.Chanel.Green);
+                        int lg135 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Green);
+                        int lg180 = GetLight(x - 1, y + 0, z - 1, LightMap.Chanel.Green);
+                        int lg225 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Green);
+                        int lg270 = GetLight(x + 0, y - 1, z - 1, LightMap.Chanel.Green);
+                        int lg315 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Green);
 
                         float lg1 = (t180 && t270 ? lg : lg + lg180 + lg225 + lg270) / 4.0f / 15.0f;
                         float lg2 = (t90 && t180 ? lg : lg + lg90 + lg135 + lg180) / 4.0f / 15.0f;
                         float lg3 = (t0 && t90 ? lg : lg + lg0 + lg45 + lg90) / 4.0f / 15.0f;
                         float lg4 = (t0 && t270 ? lg : lg + lg0 + lg270 + lg315) / 4.0f / 15.0f;
 
-                        int lb = Light(x + 0, y + 0, z - 1, LightMap.Chanel.Blue);
-                        int lb0 = Light(x + 1, y + 0, z - 1, LightMap.Chanel.Blue);
-                        int lb45 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Blue);
-                        int lb90 = Light(x + 0, y + 1, z - 1, LightMap.Chanel.Blue);
-                        int lb135 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Blue);
-                        int lb180 = Light(x - 1, y + 0, z - 1, LightMap.Chanel.Blue);
-                        int lb225 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Blue);
-                        int lb270 = Light(x + 0, y - 1, z - 1, LightMap.Chanel.Blue);
-                        int lb315 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Blue);
+                        int lb = GetLight(x + 0, y + 0, z - 1, LightMap.Chanel.Blue);
+                        int lb0 = GetLight(x + 1, y + 0, z - 1, LightMap.Chanel.Blue);
+                        int lb45 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Blue);
+                        int lb90 = GetLight(x + 0, y + 1, z - 1, LightMap.Chanel.Blue);
+                        int lb135 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Blue);
+                        int lb180 = GetLight(x - 1, y + 0, z - 1, LightMap.Chanel.Blue);
+                        int lb225 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Blue);
+                        int lb270 = GetLight(x + 0, y - 1, z - 1, LightMap.Chanel.Blue);
+                        int lb315 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Blue);
 
                         float lb1 = (t180 && t270 ? lb : lb + lb180 + lb225 + lb270) / 4.0f / 15.0f;
                         float lb2 = (t90 && t180 ? lb : lb + lb90 + lb135 + lb180) / 4.0f / 15.0f;
                         float lb3 = (t0 && t90 ? lb : lb + lb0 + lb45 + lb90) / 4.0f / 15.0f;
                         float lb4 = (t0 && t270 ? lb : lb + lb0 + lb270 + lb315) / 4.0f / 15.0f;
 
-                        int ls = Light(x + 0, y + 0, z - 1, LightMap.Chanel.Sun);
-                        int ls0 = Light(x + 1, y + 0, z - 1, LightMap.Chanel.Sun);
-                        int ls45 = Light(x + 1, y + 1, z - 1, LightMap.Chanel.Sun);
-                        int ls90 = Light(x + 0, y + 1, z - 1, LightMap.Chanel.Sun);
-                        int ls135 = Light(x - 1, y + 1, z - 1, LightMap.Chanel.Sun);
-                        int ls180 = Light(x - 1, y + 0, z - 1, LightMap.Chanel.Sun);
-                        int ls225 = Light(x - 1, y - 1, z - 1, LightMap.Chanel.Sun);
-                        int ls270 = Light(x + 0, y - 1, z - 1, LightMap.Chanel.Sun);
-                        int ls315 = Light(x + 1, y - 1, z - 1, LightMap.Chanel.Sun);
+                        int ls = GetLight(x + 0, y + 0, z - 1, LightMap.Chanel.Sun);
+                        int ls0 = GetLight(x + 1, y + 0, z - 1, LightMap.Chanel.Sun);
+                        int ls45 = GetLight(x + 1, y + 1, z - 1, LightMap.Chanel.Sun);
+                        int ls90 = GetLight(x + 0, y + 1, z - 1, LightMap.Chanel.Sun);
+                        int ls135 = GetLight(x - 1, y + 1, z - 1, LightMap.Chanel.Sun);
+                        int ls180 = GetLight(x - 1, y + 0, z - 1, LightMap.Chanel.Sun);
+                        int ls225 = GetLight(x - 1, y - 1, z - 1, LightMap.Chanel.Sun);
+                        int ls270 = GetLight(x + 0, y - 1, z - 1, LightMap.Chanel.Sun);
+                        int ls315 = GetLight(x + 1, y - 1, z - 1, LightMap.Chanel.Sun);
 
                         float ls1 = (t180 && t270 ? ls : ls + ls180 + ls225 + ls270) / 4.0f / 15.0f;
                         float ls2 = (t90 && t180 ? ls : ls + ls90 + ls135 + ls180) / 4.0f / 15.0f;

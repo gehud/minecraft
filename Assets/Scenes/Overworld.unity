@@ -629,6 +629,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a09412b2550d3c40ba7fede05b4ae44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  offset: {x: 0, y: 0}
+  surfaceOffset: 64
+  surfaceLevel: 64
+  waterLevel: 45
+  continentalnessNoise: {fileID: 11400000, guid: a1180c05c8e0630448dec81364957529, type: 2}
+  peaksAndValleysNoise: {fileID: 11400000, guid: 75e944f37edc3c74d9cfcad4ba28c859, type: 2}
+  erosionNoise: {fileID: 11400000, guid: 1fcdc88d44f84974885d859d41491821, type: 2}
 --- !u!4 &978890319
 Transform:
   m_ObjectHideFlags: 0
@@ -791,7 +798,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1316329367}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 64, z: 0}
+  m_LocalPosition: {x: 0, y: 128, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -921,7 +928,7 @@ MonoBehaviour:
           m_BoolArgument: 1
         m_CallState: 2
   player: {fileID: 1316329371}
-  drawDistance: 4
+  drawDistance: 2
   loadCountdown: 0.5
 --- !u!4 &1689205756
 Transform:

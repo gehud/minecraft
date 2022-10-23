@@ -30,7 +30,7 @@ namespace Minecraft
             transform.position = Data.Coordinate * SIZE;
         }
 
-        public void UpdateMesh(Dictionary<MaterialType, MeshData> meshDatas)
+        public void UpdateMesh(IDictionary<MaterialType, MeshData> meshDatas)
         {
             renderMesh.Clear();
             colliderMesh.Clear();
