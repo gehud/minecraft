@@ -1,5 +1,9 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -17,9 +21,9 @@ namespace Minecraft
         private float loadCountdown = 0.5f;
 
         private Vector3Int lastPlayerChunk;
-        private List<Vector3Int> loadedChunksCoordinates = new();
-        private List<Vector3Int> unloadedChunksCoordinates = new();
-        private List<Vector3Int> visibleChunksCoordinates = new();
+        private ConcurrentBag<Vector3Int> loadedChunksCoordinates = new();
+        private ConcurrentBag<Vector3Int> unloadedChunksCoordinates = new();
+        private ConcurrentBag<Vector3Int> visibleChunksCoordinates = new();
 
         bool generateChunks = false;
         bool worldGenerated = false;
@@ -30,7 +34,7 @@ namespace Minecraft
             return CoordinateUtility.ToChunk(globalVoxelCoordinate);
         }
 
-        private IEnumerator GenerateLoadData(World world)
+        private void GenerateLoadData(World world)
         {
             loadedChunksCoordinates.Clear();
             unloadedChunksCoordinates.Clear();
@@ -48,8 +52,6 @@ namespace Minecraft
                         loadedChunksCoordinates.Add(chunkCoordinate);
                         if (x != startX && x != endX && z != startZ && z != endZ)
                             visibleChunksCoordinates.Add(chunkCoordinate);
-
-                        yield return null;
                     }
                 }
 
@@ -57,18 +59,22 @@ namespace Minecraft
             {
                 if (!loadedChunksCoordinates.Contains(item.Key))
                     unloadedChunksCoordinates.Add(item.Key);
-
-                yield return null;
             }
         }
 
-        private IEnumerator GenerateChunks(World world, Dictionary<Vector3Int, Dictionary<MaterialType, MeshData>> meshDatas)
+        private IEnumerator GenerateChunks(World world, ConcurrentDictionary<Vector3Int, Dictionary<MaterialType, MeshData>> data)
         {
             generateChunks = true;
 
-            foreach (var item in meshDatas)
+            foreach (var item in unloadedChunksCoordinates)
             {
-                Chunk chunk = world.GetChunk(item.Key);
+                world.DestroyChunk(item);
+                yield return null;
+            }
+
+            foreach (var item in data)
+            {
+                Chunk chunk = world.GetOrCreateChunk(item.Key);
                 chunk.UpdateMesh(item.Value);
                 yield return null;
             }
@@ -80,41 +86,39 @@ namespace Minecraft
             worldGenerated = true;
         }
 
-        private IEnumerator LoadChunks()
+        private async void LoadChunks()
         {
             World world = World.Instance;
 
-            double start = Time.timeAsDouble;
-            yield return StartCoroutine(GenerateLoadData(world));
-            double stop = Time.timeAsDouble;
-            Debug.Log(stop - start);
-
-            foreach (var item in unloadedChunksCoordinates)
-            {
-                world.DestroyChunk(item);
-                yield return null;
-            }
+            await Task.Run(() => GenerateLoadData(world));
 
             foreach (var item in loadedChunksCoordinates)
+                world.GetOrCreateChunkData(item);
+
+            await Task.Run(() => 
             {
-                var chunk = world.GetOrCreateChunk(item);
-                ChunkUtility.ForEachVoxel((x, y, z) =>
+                foreach (var item in loadedChunksCoordinates)
                 {
-                    Vector3Int globalVoxelCoordinate = CoordinateUtility.ToGlobal(item, new Vector3Int(x, y, z));
-                    if (globalVoxelCoordinate.y < 32)
-                        chunk.VoxelMap[x, y, z] = VoxelType.Stone;
-                });
-                yield return null;
-            }
+                    ChunkUtility.ForEachVoxel((x, y, z) =>
+                    {
+                        Vector3Int globalVoxelCoordinate = CoordinateUtility.ToGlobal(item, new Vector3Int(x, y, z));
+                        if (globalVoxelCoordinate.y < 32)
+                            world.GetChunkData(item).VoxelMap[x, y, z] = VoxelType.Stone;
+                    });
+                }
+            });
 
-            var generatedMeshDatas = new Dictionary<Vector3Int, Dictionary<MaterialType, MeshData>>();
-            foreach (var item in visibleChunksCoordinates)
+            var data = new ConcurrentDictionary<Vector3Int, Dictionary<MaterialType, MeshData>>();
+            await Task.Run(() =>
             {
-                generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshDatas(world, world.GetChunk(item)));
-                yield return null;
-            }
+                foreach (var item in visibleChunksCoordinates)
+                {
+                    var meshData = ChunkUtility.GenerateMeshData(world, world.GetChunkData(item));
+                    data.TryAdd(item, meshData);
+                }
+            });
 
-            StartCoroutine(GenerateChunks(world, generatedMeshDatas));
+            StartCoroutine(GenerateChunks(world, data));
         }
 
         private IEnumerator CheckLoadRequirement()
@@ -125,7 +129,7 @@ namespace Minecraft
             if (!generateChunks && (playerChunk.x != lastPlayerChunk.x || playerChunk.z != lastPlayerChunk.z))
             {
                 lastPlayerChunk = playerChunk;
-                StartCoroutine(LoadChunks());
+                LoadChunks();
             }
             else
                 StartCoroutine(CheckLoadRequirement());
@@ -134,7 +138,7 @@ namespace Minecraft
         private IEnumerator WaitForWorldStartGeneration()
         {
             lastPlayerChunk = GetPlayerChunk();
-            StartCoroutine(LoadChunks());
+            LoadChunks();
             yield return new WaitUntil(() => worldGenerated);
             OnWorldCreate.Invoke();
         }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting.Dependencies.NCalc;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -10,19 +11,7 @@ namespace Minecraft
         public const int SIZE = 16;
         public const int VOLUME = SIZE * SIZE * SIZE;
 
-        private Vector3Int coordinate;
-        public Vector3Int Coordinate
-        {
-            get => coordinate;
-            set 
-            { 
-                coordinate = value;
-                transform.position = coordinate * SIZE;
-            }
-        }
-
-        public VoxelMap VoxelMap { get; set; } = new();
-
+        public ChunkData Data { get; set; }
 
         private bool isDirty = true;
         public bool IsDirty => isDirty;
@@ -47,6 +36,12 @@ namespace Minecraft
         private Mesh colliderMesh;
 
         private World world;
+
+        public void Initialize(ChunkData data)
+        {
+            Data = data;
+            transform.position = Data.Coordinate * SIZE;
+        }
 
         public void UpdateMesh(Dictionary<MaterialType, MeshData> meshDatas)
         {
@@ -98,7 +93,7 @@ namespace Minecraft
 
         public void UpdateMesh()
         {
-            UpdateMesh(ChunkUtility.GenerateMeshDatas(world, this));
+            UpdateMesh(ChunkUtility.GenerateMeshData(world, Data));
         }
 
         public void MarkDirty()

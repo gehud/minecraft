@@ -22,11 +22,11 @@ namespace Minecraft
                         action(new Vector3Int(x, y, z));
         }
 
-        public static Dictionary<MaterialType, MeshData> GenerateMeshDatas(World world, Chunk chunk)
+        public static Dictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData)
         {
             VoxelType GetVoxel(int x, int y, int z)
             {
-                Vector3Int globalVoxelCoordinate = CoordinateUtility.ToGlobal(chunk.Coordinate, new Vector3Int(x, y, z));
+                Vector3Int globalVoxelCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
                 return world.GetVoxel(globalVoxelCoordinate);
             }
 
@@ -44,7 +44,7 @@ namespace Minecraft
 
             ForEachVoxel((x, y, z) =>
             {
-                VoxelType voxelType = chunk.VoxelMap[x, y, z];
+                VoxelType voxelType = chunkData.VoxelMap[x, y, z];
                 if (voxelType != VoxelType.Air)
                 {
                     MaterialType materialType = world.Voxels[voxelType].MaterialType;
