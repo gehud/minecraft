@@ -17,28 +17,34 @@ namespace Minecraft
         private Transform player;
         [SerializeField, Min(2)] 
         private int drawDistance = 4;
-        [SerializeField, Min(0)]
+        [SerializeField]
         private float loadCountdown = 0.5f;
 
         private Vector3Int lastPlayerChunk;
-        private ConcurrentBag<Vector3Int> loadedChunksCoordinates = new();
-        private ConcurrentBag<Vector3Int> unloadedChunksCoordinates = new();
-        private ConcurrentBag<Vector3Int> visibleChunksCoordinates = new();
+        private ConcurrentStack<Vector3Int> chunkToRemoveCoordinates = new();
+        private ConcurrentStack<Vector3Int> chunkToCreateCoordinates = new();
+        private ConcurrentStack<Vector3Int> chunkDataToRemoveCoordinates = new();
+        private ConcurrentStack<Vector3Int> chunkDataToCreateCoordinates = new();
+        private ConcurrentStack<Vector2Int> sunlightCoordinatesToCalculate = new();
 
         bool generateChunks = false;
         bool worldGenerated = false;
 
         private Vector3Int GetPlayerChunk()
         {
-            Vector3Int globalVoxelCoordinate = CoordinateUtility.ToCoordinate(player.position);
-            return CoordinateUtility.ToChunk(globalVoxelCoordinate);
+            Vector3Int coordinate = CoordinateUtility.ToCoordinate(player.position);
+            return CoordinateUtility.ToChunk(coordinate);
         }
 
         private void GenerateLoadData(World world)
         {
-            loadedChunksCoordinates.Clear();
-            unloadedChunksCoordinates.Clear();
-            visibleChunksCoordinates.Clear();
+            chunkToRemoveCoordinates.Clear();
+            chunkToCreateCoordinates.Clear();
+            chunkDataToRemoveCoordinates.Clear();
+            chunkDataToCreateCoordinates.Clear();
+            sunlightCoordinatesToCalculate.Clear();
+            ConcurrentStack<Vector3Int> loadedCoordinates = new();
+            ConcurrentStack<Vector3Int> visibleCoordinates = new();
             int startX = lastPlayerChunk.x - (drawDistance + 1);
             int endX = lastPlayerChunk.x + drawDistance;
             int startZ = lastPlayerChunk.z - (drawDistance + 1);
@@ -46,33 +52,49 @@ namespace Minecraft
             for (int x = startX; x <= endX; x++)
                 for (int z = startZ; z <= endZ; z++)
                 {
+                    bool sunlight = false;
                     for (int y = 0; y < World.HEIGHT; y++)
                     {
-                        var chunkCoordinate = new Vector3Int(x, y, z);
-                        loadedChunksCoordinates.Add(chunkCoordinate);
+                        Vector3Int chunkCoordinate = new Vector3Int(x, y, z);
+                        loadedCoordinates.Push(chunkCoordinate);
                         if (x != startX && x != endX && z != startZ && z != endZ)
-                            visibleChunksCoordinates.Add(chunkCoordinate);
+                        {
+                            visibleCoordinates.Push(chunkCoordinate);
+                            if (!world.Chunks.ContainsKey(chunkCoordinate))
+                                chunkToCreateCoordinates.Push(chunkCoordinate);
+                        }
+
+                        if (!world.ChunkDatas.ContainsKey(chunkCoordinate))
+                        {
+                            chunkDataToCreateCoordinates.Push(chunkCoordinate);
+                            sunlight = true;
+                        }
+                    }
+
+                    if (sunlight)
+                    {
+                        sunlightCoordinatesToCalculate.Push(new Vector2Int(x, z));
                     }
                 }
 
-            foreach (var item in world.Chunks)
+            foreach (var item in world.ChunkDatas.Keys)
             {
-                if (!loadedChunksCoordinates.Contains(item.Key))
-                    unloadedChunksCoordinates.Add(item.Key);
+                if (!loadedCoordinates.Contains(item))
+                    chunkDataToRemoveCoordinates.Push(item);
+            }
+
+            foreach (var item in world.Chunks.Keys)
+            {
+                if (!visibleCoordinates.Contains(item))
+                    chunkToRemoveCoordinates.Push(item);
             }
         }
 
-        private IEnumerator GenerateChunks(World world, ConcurrentDictionary<Vector3Int, Dictionary<MaterialType, MeshData>> data)
+        private IEnumerator GenerateChunks(World world, ChunkDataGenerator chunkGenerator, ConcurrentDictionary<Vector3Int, Dictionary<MaterialType, MeshData>> meshDatas)
         {
             generateChunks = true;
 
-            foreach (var item in unloadedChunksCoordinates)
-            {
-                world.DestroyChunk(item);
-                yield return null;
-            }
-
-            foreach (var item in data)
+            foreach (var item in meshDatas)
             {
                 Chunk chunk = world.GetOrCreateChunk(item.Key);
                 chunk.UpdateMesh(item.Value);
@@ -89,39 +111,46 @@ namespace Minecraft
         private async void LoadChunks()
         {
             World world = World.Instance;
+            ChunkDataGenerator chunkDataGenerator = ChunkDataGenerator.Instance;
 
             await Task.Run(() => GenerateLoadData(world));
 
-            foreach (var item in loadedChunksCoordinates)
-                world.GetOrCreateChunkData(item);
+            foreach (var item in chunkDataToRemoveCoordinates)
+                world.ChunkDatas.Remove(item);
+
+            foreach (var item in chunkToRemoveCoordinates)
+            {
+                world.Chunks.Remove(item, out Chunk chunk);
+                Destroy(chunk.gameObject);
+            }
+
+            ConcurrentDictionary<Vector3Int, ChunkData> generatedData = new();
+            await Task.Run(() => 
+            {
+                foreach (var item in chunkDataToCreateCoordinates)
+                    generatedData.TryAdd(item, chunkDataGenerator.GenerateChunkData(item));
+            });
+            foreach (var item in generatedData)
+                world.ChunkDatas.Add(item.Key, item.Value);
 
             await Task.Run(() => 
             {
-                foreach (var item in loadedChunksCoordinates)
-                {
-                    ChunkUtility.ForEachVoxel((x, y, z) =>
-                    {
-                        Vector3Int globalVoxelCoordinate = CoordinateUtility.ToGlobal(item, new Vector3Int(x, y, z));
-                        if (globalVoxelCoordinate.y < 32)
-                            world.GetChunkData(item).VoxelMap[x, y, z] = VoxelType.Stone;
-                    });
-                }
+                foreach (var item in sunlightCoordinatesToCalculate)
+                    LightMapCalculator.AddSunlight(world, item);
+                world.LightMapCalculatorSun.Calculate();
             });
 
-            var data = new ConcurrentDictionary<Vector3Int, Dictionary<MaterialType, MeshData>>();
-            await Task.Run(() =>
+            ConcurrentDictionary<Vector3Int, Dictionary<MaterialType, MeshData>> generatedMeshDatas = new();
+            await Task.Run(() => 
             {
-                foreach (var item in visibleChunksCoordinates)
-                {
-                    var meshData = ChunkUtility.GenerateMeshData(world, world.GetChunkData(item));
-                    data.TryAdd(item, meshData);
-                }
+                foreach (var item in chunkToCreateCoordinates)
+                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.ChunkDatas[item]));
             });
 
-            StartCoroutine(GenerateChunks(world, data));
+            StartCoroutine(GenerateChunks(world, chunkDataGenerator, generatedMeshDatas));
         }
 
-        private IEnumerator CheckLoadRequirement()
+        private IEnumerator CheckLoadRequirement() 
         {
             yield return new WaitForSeconds(loadCountdown);
 
@@ -140,7 +169,7 @@ namespace Minecraft
             lastPlayerChunk = GetPlayerChunk();
             LoadChunks();
             yield return new WaitUntil(() => worldGenerated);
-            OnWorldCreate.Invoke();
+            OnWorldCreate?.Invoke();
         }
 
         private void Start()

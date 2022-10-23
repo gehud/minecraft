@@ -15,5 +15,6 @@ namespace Minecraft
         public MaterialType MaterialType;
         public bool IsSolid = true;
         public bool IsTransparent = false;
+        public LightColor Emission;
     }
 }

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting.Dependencies.NCalc;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -12,18 +11,6 @@ namespace Minecraft
         public const int VOLUME = SIZE * SIZE * SIZE;
 
         public ChunkData Data { get; set; }
-
-        private bool isDirty = true;
-        public bool IsDirty => isDirty;
-
-        private bool isComplete = false;
-        public bool IsComplete => isComplete;
-
-        public bool IsVisible
-        {
-            get => meshRenderer.enabled;
-            set => meshRenderer.enabled = value;
-        }
 
         [SerializeField] 
         private MeshFilter meshFilter;
@@ -68,7 +55,8 @@ namespace Minecraft
 
             renderMesh.SetVertexBufferParams(vertices.Count, 
                 new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
-                new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2));
+                new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2),
+                new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 4));
             renderMesh.SetVertexBufferData(vertices, 0, 0, vertices.Count);
             renderMesh.SetIndexBufferParams(indices.Count, IndexFormat.UInt16);
             renderMesh.SetIndexBufferData(indices, 0, 0, indices.Count);
@@ -87,8 +75,8 @@ namespace Minecraft
 
             colliderMesh.RecalculateNormals();
 
-            isDirty = false;
-            isComplete = true;
+            Data.IsDirty = false;
+            Data.IsComplete = true;
         }
 
         public void UpdateMesh()
@@ -96,19 +84,9 @@ namespace Minecraft
             UpdateMesh(ChunkUtility.GenerateMeshData(world, Data));
         }
 
-        public void MarkDirty()
-        {
-            isDirty = true;
-        }
-
-        public void MarkComplete()
-        {
-            isComplete = true;
-        }
-
         public void Handle()
         {
-            if (IsComplete && IsDirty)
+            if (Data.IsComplete && Data.IsDirty)
                 UpdateMesh();
         }
 

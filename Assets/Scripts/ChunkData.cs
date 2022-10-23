@@ -4,25 +4,10 @@ namespace Minecraft
 {
     public class ChunkData
     {
-        public Vector3Int Coordinate;
-        public VoxelMap VoxelMap;
-
-        public ChunkData()
-        {
-            Coordinate = Vector3Int.zero;
-            VoxelMap = new();
-        }
-
-        public ChunkData(Vector3Int coordinate)
-        {
-            Coordinate = coordinate;
-            VoxelMap = new();
-        }
-
-        public ChunkData(Vector3Int coordinate, VoxelMap voxelMap)
-        {
-            Coordinate = coordinate;
-            VoxelMap = voxelMap;
-        }
+        public Vector3Int Coordinate { get; set; } = Vector3Int.zero;
+        public VoxelMap VoxelMap { get; set; } = new();
+        public LightMap LightMap { get; set; } = new();
+        public bool IsDirty { get; set; } = true;
+        public bool IsComplete { get; set; } = false;
     }
 }

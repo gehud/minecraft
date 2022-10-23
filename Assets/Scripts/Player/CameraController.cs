@@ -11,6 +11,8 @@ namespace Minecraft.Player
         private Transform body;
         [SerializeField, Min(0)] 
         private float sencitivity = 5;
+        [SerializeField]
+        private LayerMask raycastMask = ~0;
 
         private float roatationX = 0;
 
@@ -27,6 +29,38 @@ namespace Minecraft.Player
             roatationX = Mathf.Clamp(roatationX - mouseY * sencitivity, -90, 90);
             transform.localEulerAngles = new Vector3(roatationX, 0, 0);
             body.Rotate(Vector3.up, mouseX * sencitivity);
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                if (Physics.Raycast(camera.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo, 5, raycastMask))
+                {
+                    Vector3Int globalVoxelCooridnate = Vector3Int.FloorToInt(hitInfo.point);
+                    if (hitInfo.normal.x > 0)
+                        globalVoxelCooridnate.x--;
+                    if (hitInfo.normal.y > 0)
+                        globalVoxelCooridnate.y--;
+                    if (hitInfo.normal.z > 0)
+                        globalVoxelCooridnate.z--;
+                    World.Instance.DestroyVoxel(globalVoxelCooridnate);
+                }
+            }
+            else if (Input.GetMouseButtonDown(1))
+            {
+                if (Physics.Raycast(camera.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo, 5, raycastMask))
+                {
+                    Vector3Int globalVoxelCooridnate = Vector3Int.FloorToInt(hitInfo.point);
+                    if (hitInfo.normal.x < 0)
+                        globalVoxelCooridnate.x--;
+                    if (hitInfo.normal.y < 0)
+                        globalVoxelCooridnate.y--;
+                    if (hitInfo.normal.z < 0)
+                        globalVoxelCooridnate.z--;
+                    bool overlapPlayer = globalVoxelCooridnate == Vector3Int.FloorToInt(transform.parent.position)
+                        || globalVoxelCooridnate == Vector3Int.FloorToInt(transform.parent.position + Vector3.up);
+                    if (!overlapPlayer)
+                        World.Instance.PlaceVoxel(globalVoxelCooridnate, VoxelType.Stone);
+                }
+            }
         }
     }
 }
