@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -44,6 +45,8 @@ namespace Minecraft
         public LightMapCalculator LightMapCalculatorRed { get; set; }
         public LightMapCalculator LightMapCalculatorGreen { get; set; }
         public LightMapCalculator LightMapCalculatorBlue { get; set; }
+
+        public LiquidMapCalculator LiquidMapCalculatorWater { get; set; }
 
         [SerializeField] 
         private Chunk chunk;
@@ -153,9 +156,24 @@ namespace Minecraft
             return LightMap.MAX;
         }
 
+        public byte GetLiquid(Vector3Int coordinate, VoxelType type)
+        {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
+            if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+            {
+                Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
+                return chunkData.LiquidMap.Get(localVoxelCoordinate, type);
+            }
+
+            return LiquidMap.MIN;
+        }
+
         public void DestroyVoxel(Vector3Int coordinate)
         {
             SetVoxel(coordinate, VoxelType.Air);
+
+            LiquidMapCalculatorWater.Remove(coordinate);
+
             LightMapCalculatorRed.Remove(coordinate);
             LightMapCalculatorGreen.Remove(coordinate);
             LightMapCalculatorBlue.Remove(coordinate);
@@ -173,6 +191,13 @@ namespace Minecraft
                         break;
                 }
             }
+
+            LiquidMapCalculatorWater.Add(coordinate + Vector3Int.right);
+            LiquidMapCalculatorWater.Add(coordinate + Vector3Int.left);
+            LiquidMapCalculatorWater.Add(coordinate + Vector3Int.up);
+            LiquidMapCalculatorWater.Add(coordinate + Vector3Int.down);
+            LiquidMapCalculatorWater.Add(coordinate + Vector3Int.forward);
+            LiquidMapCalculatorWater.Add(coordinate + Vector3Int.back);
 
             LightMapCalculatorRed.Add(coordinate + Vector3Int.right);
             LightMapCalculatorRed.Add(coordinate + Vector3Int.left);
@@ -209,6 +234,8 @@ namespace Minecraft
 
         public void PlaceVoxel(Vector3Int coordinate, VoxelType voxelType)
         {
+            LiquidMapCalculatorWater.Remove(coordinate);
+
             SetVoxel(coordinate, voxelType);
 
             LightMapCalculatorRed.Remove(coordinate);
@@ -241,6 +268,11 @@ namespace Minecraft
                 LightMapCalculatorBlue.Add(coordinate, emission.B);
                 LightMapCalculatorBlue.Calculate();
             }
+
+            if (voxelType == VoxelType.Water)
+            {
+                LiquidMapCalculatorWater.Add(coordinate, LiquidMap.MAX);
+            }
         }
 
         private void Awake()
@@ -253,6 +285,21 @@ namespace Minecraft
             LightMapCalculatorGreen = new LightMapCalculator(this, LightMap.Chanel.Green);
             LightMapCalculatorBlue = new LightMapCalculator(this, LightMap.Chanel.Blue);
             LightMapCalculatorSun = new LightMapCalculator(this, LightMap.Chanel.Sun);
+            LiquidMapCalculatorWater = new LiquidMapCalculator(this, VoxelType.Water);
+        }
+
+        private IEnumerator LiquidCalculation()
+        {
+            while (true)
+            {
+                LiquidMapCalculatorWater.Calculate();
+                yield return new WaitForSeconds(0.25f);
+            }
+        }
+
+        private void Start()
+        {
+            StartCoroutine(LiquidCalculation());
         }
 
         private void Update()

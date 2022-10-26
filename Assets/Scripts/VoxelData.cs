@@ -13,6 +13,7 @@ namespace Minecraft
         public Vector2Int FrontAtlasCoordinate;
         public Vector2Int BackAtlasCoordinate;
         public MaterialType MaterialType;
+        public bool IsLiquid = false;
         public bool IsSolid = true;
         public bool IsTransparent = false;
         public LightColor Emission;

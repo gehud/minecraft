@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Threading;
 using UnityEngine;
-using System.Linq;
+using static Minecraft.LightMap;
 
 namespace Minecraft
 {
@@ -49,7 +47,6 @@ namespace Minecraft
             }
 
             Dictionary<MaterialType, MeshData> meshDatas = new();
-
             ForEachVoxel((x, y, z) =>
             {
                 VoxelType voxelType = chunkData.VoxelMap[x, y, z];

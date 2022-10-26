@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using TMPro;
+using UnityEngine;
 
 namespace Minecraft.Player
 {
@@ -13,12 +14,17 @@ namespace Minecraft.Player
         private float sencitivity = 5;
         [SerializeField]
         private LayerMask raycastMask = ~0;
+        [SerializeField]
+        private TMP_Text voxelTypeText;
 
         private float roatationX = 0;
+
+        private VoxelType currentVoxel = VoxelType.Stone;
 
         private void Start()
         {
             Cursor.lockState = CursorLockMode.Locked;
+            voxelTypeText.text = currentVoxel.ToString();
         }
 
         private void Update()
@@ -58,8 +64,18 @@ namespace Minecraft.Player
                     bool overlapPlayer = globalVoxelCooridnate == Vector3Int.FloorToInt(transform.parent.position)
                         || globalVoxelCooridnate == Vector3Int.FloorToInt(transform.parent.position + Vector3.up);
                     if (!overlapPlayer)
-                        World.Instance.PlaceVoxel(globalVoxelCooridnate, VoxelType.Stone);
+                        World.Instance.PlaceVoxel(globalVoxelCooridnate, currentVoxel);
                 }
+            }
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                currentVoxel = VoxelType.Stone;
+                voxelTypeText.text = currentVoxel.ToString();
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                currentVoxel = VoxelType.Water;
+                voxelTypeText.text = currentVoxel.ToString();
             }
         }
     }
