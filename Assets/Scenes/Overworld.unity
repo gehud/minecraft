@@ -167,6 +167,7 @@ MonoBehaviour:
       FrontAtlasCoordinate: {x: 0, y: 0}
       BackAtlasCoordinate: {x: 0, y: 0}
       MaterialType: 1
+      IsLiquid: 0
       IsSolid: 0
       IsTransparent: 1
       Emission:
@@ -182,6 +183,7 @@ MonoBehaviour:
       FrontAtlasCoordinate: {x: 1, y: 15}
       BackAtlasCoordinate: {x: 1, y: 15}
       MaterialType: 0
+      IsLiquid: 0
       IsSolid: 1
       IsTransparent: 0
       Emission:
@@ -197,6 +199,7 @@ MonoBehaviour:
       FrontAtlasCoordinate: {x: 2, y: 15}
       BackAtlasCoordinate: {x: 2, y: 15}
       MaterialType: 0
+      IsLiquid: 0
       IsSolid: 1
       IsTransparent: 0
       Emission:
@@ -212,6 +215,7 @@ MonoBehaviour:
       FrontAtlasCoordinate: {x: 3, y: 15}
       BackAtlasCoordinate: {x: 3, y: 15}
       MaterialType: 0
+      IsLiquid: 0
       IsSolid: 1
       IsTransparent: 0
       Emission:
@@ -227,6 +231,7 @@ MonoBehaviour:
       FrontAtlasCoordinate: {x: 2, y: 14}
       BackAtlasCoordinate: {x: 2, y: 14}
       MaterialType: 0
+      IsLiquid: 0
       IsSolid: 1
       IsTransparent: 0
       Emission:
@@ -242,6 +247,7 @@ MonoBehaviour:
       FrontAtlasCoordinate: {x: 13, y: 3}
       BackAtlasCoordinate: {x: 13, y: 3}
       MaterialType: 1
+      IsLiquid: 1
       IsSolid: 0
       IsTransparent: 1
       Emission:

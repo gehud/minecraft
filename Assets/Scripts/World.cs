@@ -51,6 +51,9 @@ namespace Minecraft
         [SerializeField] 
         private Chunk chunk;
 
+        [SerializeField, Min(0)]
+        private float tick = 0.25f;
+
         public ChunkData CreateChunkData(Vector3Int coordinate)
         {
             var chunkData = new ChunkData
@@ -121,6 +124,11 @@ namespace Minecraft
             return VoxelType.Air;
         }
 
+        public VoxelType GetVoxel(int x, int y, int z)
+        {
+            return GetVoxel(new Vector3Int(x, y, z));
+        }
+
         public void SetVoxel(Vector3Int globalVoxelCoordinate, VoxelType voxelType)
         {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
@@ -144,7 +152,7 @@ namespace Minecraft
                 chunkData.IsDirty = true;
         }
 
-        public int GetLight(Vector3Int coordinate, LightMap.Chanel chanel)
+        public int GetLight(Vector3Int coordinate, LightChanel chanel)
         {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
             if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
@@ -156,7 +164,36 @@ namespace Minecraft
             return LightMap.MAX;
         }
 
-        public byte GetLiquid(Vector3Int coordinate, VoxelType type)
+        public byte GetLiquidAmount(Vector3Int coordinate)
+        {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
+            if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+            {
+                Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
+                return chunkData.LiquidMap[localVoxelCoordinate].Amount;
+            }
+
+            return LiquidMap.MIN;
+        }
+
+        public Liquid GetLiquid(Vector3Int coordinate)
+        {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
+            if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+            {
+                Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
+                return chunkData.LiquidMap[localVoxelCoordinate];
+            }
+
+            return Liquid.Empty;
+        }
+
+        public Liquid GetLiquid(int x, int y, int z)
+        {
+            return GetLiquid(new Vector3Int(x, y, z));
+        }
+
+        public byte GetLiquidAmount(Vector3Int coordinate, VoxelType type)
         {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
             if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
@@ -182,7 +219,7 @@ namespace Minecraft
             LightMapCalculatorBlue.Calculate();
 
             if (Voxels[GetVoxel(coordinate + Vector3Int.up)].IsTransparent
-                && GetLight(coordinate + Vector3Int.up, LightMap.Chanel.Sun) == LightMap.MAX)
+                && GetLight(coordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX)
             {
                 for (int y = coordinate.y; y >= 0; y--)
                 {
@@ -281,10 +318,10 @@ namespace Minecraft
                 materials.Add(item.Type, item.Material);
             foreach (var item in voxelPairs)
                 voxels.Add(item.Type, item.Data);
-            LightMapCalculatorRed = new LightMapCalculator(this, LightMap.Chanel.Red);
-            LightMapCalculatorGreen = new LightMapCalculator(this, LightMap.Chanel.Green);
-            LightMapCalculatorBlue = new LightMapCalculator(this, LightMap.Chanel.Blue);
-            LightMapCalculatorSun = new LightMapCalculator(this, LightMap.Chanel.Sun);
+            LightMapCalculatorRed = new LightMapCalculator(this, LightChanel.Red);
+            LightMapCalculatorGreen = new LightMapCalculator(this, LightChanel.Green);
+            LightMapCalculatorBlue = new LightMapCalculator(this, LightChanel.Blue);
+            LightMapCalculatorSun = new LightMapCalculator(this, LightChanel.Sun);
             LiquidMapCalculatorWater = new LiquidMapCalculator(this, VoxelType.Water);
         }
 
@@ -293,7 +330,7 @@ namespace Minecraft
             while (true)
             {
                 LiquidMapCalculatorWater.Calculate();
-                yield return new WaitForSeconds(0.25f);
+                yield return new WaitForSeconds(tick);
             }
         }
 

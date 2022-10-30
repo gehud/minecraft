@@ -9,24 +9,21 @@ namespace Minecraft
         {
             public int X, Y, Z;
             public byte Amount;
-            public LiquidFlowDirection FlowDirection;
 
-            public LiquidData(int x, int y, int z, byte amount, LiquidFlowDirection flowDirection = LiquidFlowDirection.None)
+            public LiquidData(int x, int y, int z, byte amount)
             {
                 X = x;
                 Y = y;
                 Z = z;
                 Amount = amount;
-                FlowDirection = flowDirection;
             }
 
-            public LiquidData(Vector3Int coordinate, byte amount, LiquidFlowDirection flowDirection = LiquidFlowDirection.None)
+            public LiquidData(Vector3Int coordinate, byte amount)
             {
                 X = coordinate.x;
                 Y = coordinate.y;
                 Z = coordinate.z;
                 Amount = amount;
-                FlowDirection = flowDirection;
             }
 
         }
@@ -60,7 +57,7 @@ namespace Minecraft
             this.liquidType = liquidType;
         }
 
-        public void Add(int x, int y, int z, byte amount, LiquidFlowDirection flowDirection = LiquidFlowDirection.None)
+        public void Add(int x, int y, int z, byte amount)
         {
             if (amount < 1)
                 return;
@@ -71,20 +68,20 @@ namespace Minecraft
                 return;
 
             Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-            chunkData.LiquidMap[localVoxelCoordinate] = new Liquid(liquidType, amount, flowDirection);
+            chunkData.LiquidMap[localVoxelCoordinate] = new Liquid(liquidType, amount);
             chunkData.VoxelMap[localVoxelCoordinate] = liquidType;
             chunkData.IsDirty = true;
 
-            LiquidData liquidData = new(x, y, z, amount, flowDirection);
+            LiquidData liquidData = new(x, y, z, amount);
             addQueue.Enqueue(liquidData);
         }
 
-        public void Add(Vector3Int vector, byte amount, LiquidFlowDirection flowDirection = LiquidFlowDirection.None)
+        public void Add(Vector3Int vector, byte amount)
         {
-            Add(vector.x, vector.y, vector.z, amount, flowDirection);
+            Add(vector.x, vector.y, vector.z, amount);
         }
 
-        public void Add(int x, int y, int z, LiquidFlowDirection flowDirection = LiquidFlowDirection.None)
+        public void Add(int x, int y, int z)
         {
             Vector3Int globalVoxelCoordinate = new(x, y, z);
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
@@ -100,13 +97,13 @@ namespace Minecraft
 
             chunkData.VoxelMap[localVoxelCoordinate] = liquidType;
 
-            LiquidData liquidData = new(x, y, z, amount, flowDirection);
+            LiquidData liquidData = new(x, y, z, amount);
             addQueue.Enqueue(liquidData);
         }
 
-        public void Add(Vector3Int vector, LiquidFlowDirection flowDirection = LiquidFlowDirection.None)
+        public void Add(Vector3Int vector)
         {
-            Add(vector.x, vector.y, vector.z, flowDirection);
+            Add(vector.x, vector.y, vector.z);
         }
 
         public void Remove(int x, int y, int z)
@@ -153,7 +150,7 @@ namespace Minecraft
                         Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
                         chunkData.IsDirty = true;
                         byte amount = chunkData.LiquidMap.Get(localVoxelCoordinate, liquidType);
-                        if (amount != 0 && amount == entryLiquidData.Amount - 1)
+                        if (amount != 0 && (amount == entryLiquidData.Amount - 1 || (side.y == -1 && entryLiquidData.Amount == LiquidMap.MAX)))
                         {
                             LiquidData removeLiquidData = new(x, y, z, amount);
                             toRemove.Enqueue(removeLiquidData);
@@ -174,20 +171,46 @@ namespace Minecraft
 
             while (addQueue.TryDequeue(out LiquidData entryLiquidData))
             {
+                int x, y, z;
+                Vector3Int globalVoxelCoordinate;
+                Vector3Int chunkCoordinate;
+
                 if (entryLiquidData.Amount < 1)
                     continue;
 
-                bool emptyBottom = true;
-                int x = entryLiquidData.X;
-                int y = entryLiquidData.Y - 1;
-                int z = entryLiquidData.Z;
-                Vector3Int globalVoxelCoordinate = new(x, y, z);
-                Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
+                x = entryLiquidData.X;
+                y = entryLiquidData.Y - 1;
+                z = entryLiquidData.Z;
+                globalVoxelCoordinate = new(x, y, z);
+                chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
                 if (world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
                 {
                     Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-                    if (chunkData.VoxelMap[localVoxelCoordinate] != VoxelType.Air)
-                        emptyBottom = false;
+                    if (world.Voxels[chunkData.VoxelMap[localVoxelCoordinate]].IsSolid)
+                    {
+                        foreach (var side in flowSides)
+                        {
+                            x = entryLiquidData.X + side.x;
+                            y = entryLiquidData.Y + side.y;
+                            z = entryLiquidData.Z + side.z;
+                            globalVoxelCoordinate = new(x, y, z);
+                            chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
+                            if (world.ChunkDatas.TryGetValue(chunkCoordinate, out chunkData))
+                            {
+                                localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
+                                chunkData.IsDirty = true;
+                                VoxelType voxelType = chunkData.VoxelMap[localVoxelCoordinate];
+                                byte amount = chunkData.LiquidMap.Get(localVoxelCoordinate, liquidType);
+                                if (!world.Voxels[voxelType].IsSolid && amount + 2 <= entryLiquidData.Amount)
+                                {
+                                    chunkData.LiquidMap.Set(localVoxelCoordinate, liquidType, (byte)(entryLiquidData.Amount - 1));
+                                    chunkData.VoxelMap[localVoxelCoordinate] = liquidType;
+                                    LiquidData addLiquidData = new(x, y, z, (byte)(entryLiquidData.Amount - 1));
+                                    toAdd.Enqueue(addLiquidData);
+                                }
+                            }
+                        }
+                    }
                     else
                     {
                         chunkData.IsDirty = true;
@@ -195,32 +218,6 @@ namespace Minecraft
                         chunkData.VoxelMap[localVoxelCoordinate] = liquidType;
                         LiquidData addLiquidData = new(x, y, z, LiquidMap.MAX);
                         toAdd.Enqueue(addLiquidData);
-                    }
-                }
-
-                if (!emptyBottom)
-                {
-                    foreach (var side in flowSides)
-                    {
-                        x = entryLiquidData.X + side.x;
-                        y = entryLiquidData.Y + side.y;
-                        z = entryLiquidData.Z + side.z;
-                        globalVoxelCoordinate = new(x, y, z);
-                        chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-                        if (world.ChunkDatas.TryGetValue(chunkCoordinate, out chunkData))
-                        {
-                            Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-                            chunkData.IsDirty = true;
-                            VoxelType voxelType = chunkData.VoxelMap[localVoxelCoordinate];
-                            byte amount = chunkData.LiquidMap.Get(localVoxelCoordinate, liquidType);
-                            if (voxelType == VoxelType.Air && amount + 2 <= entryLiquidData.Amount)
-                            {
-                                chunkData.LiquidMap.Set(localVoxelCoordinate, liquidType, (byte)(entryLiquidData.Amount - 1));
-                                chunkData.VoxelMap[localVoxelCoordinate] = liquidType;
-                                LiquidData addLiquidData = new(x, y, z, (byte)(entryLiquidData.Amount - 1));
-                                toAdd.Enqueue(addLiquidData);
-                            }
-                        }
                     }
                 }
             }

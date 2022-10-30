@@ -2,37 +2,37 @@
 
 namespace Minecraft
 {
+    public enum LightChanel
+    {
+        Red,
+        Green,
+        Blue,
+        Sun,
+    }
+
     public class LightMap : Array3D<ushort>
     {
-        public enum Chanel
-        {
-            Red,
-            Green,
-            Blue,
-            Sun,
-        }
-
         public const int MIN = 0;
         public const int MAX = 15;
 
         public LightMap() : base(Chunk.SIZE, Chunk.SIZE, Chunk.SIZE) { }
 
-        public int Get(int x, int y, int z, Chanel chanel)
+        public int Get(int x, int y, int z, LightChanel chanel)
         {
             return (this[x, y, z] >> ((int)chanel << 2)) & 0xF;
         }
 
-        public int Get(Vector3Int coordinate, Chanel chanel)
+        public int Get(Vector3Int coordinate, LightChanel chanel)
         {
             return Get(coordinate.x, coordinate.y, coordinate.z, chanel);
         }
 
-        public void Set(int x, int y, int z, Chanel chanel, int value)
+        public void Set(int x, int y, int z, LightChanel chanel, int value)
         {
             this[x, y, z] = (ushort)((this[x, y, z] & (0xFFFF & (~(0xF << ((int)chanel * 4))))) | (value << ((int)chanel << 2)));
         }
 
-        public void Set(Vector3Int coordinate, Chanel chanel, int value)
+        public void Set(Vector3Int coordinate, LightChanel chanel, int value)
         {
             Set(coordinate.x, coordinate.y, coordinate.z, chanel, value);
         }

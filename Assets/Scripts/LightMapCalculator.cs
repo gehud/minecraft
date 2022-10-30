@@ -28,11 +28,11 @@ namespace Minecraft
         }
 
         private World world;
-        private LightMap.Chanel chanel;
+        private LightChanel chanel;
         private Queue<LightData> addQueue = new();
         private Queue<LightData> removeQueue = new();
 
-        public LightMapCalculator(World world, LightMap.Chanel chanel)
+        public LightMapCalculator(World world, LightChanel chanel)
         {
             this.world = world;
             this.chanel = chanel;
@@ -151,16 +151,16 @@ namespace Minecraft
                                 if (!world.Voxels[world.GetVoxel(globalVoxelCoordinate)].IsTransparent)
                                     continue;
                                 if (world.ChunkDatas.ContainsKey(chunkCoordinate + Vector3Int.right)
-                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.right, LightMap.Chanel.Sun) == LightMap.MAX)
+                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.right, LightChanel.Sun) == LightMap.MAX)
                                     world.LightMapCalculatorSun.Add(globalVoxelCoordinate + Vector3Int.right);
                                 if (world.ChunkDatas.ContainsKey(chunkCoordinate + Vector3Int.left)
-                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.left, LightMap.Chanel.Sun) == LightMap.MAX)
+                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.left, LightChanel.Sun) == LightMap.MAX)
                                     world.LightMapCalculatorSun.Add(globalVoxelCoordinate + Vector3Int.left);
                                 if (world.ChunkDatas.ContainsKey(chunkCoordinate + Vector3Int.forward)
-                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.forward, LightMap.Chanel.Sun) == LightMap.MAX)
+                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.forward, LightChanel.Sun) == LightMap.MAX)
                                     world.LightMapCalculatorSun.Add(globalVoxelCoordinate + Vector3Int.forward);
                                 if (world.ChunkDatas.ContainsKey(chunkCoordinate + Vector3Int.back)
-                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.back, LightMap.Chanel.Sun) == LightMap.MAX)
+                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.back, LightChanel.Sun) == LightMap.MAX)
                                     world.LightMapCalculatorSun.Add(globalVoxelCoordinate + Vector3Int.back);
                             }
                             break;

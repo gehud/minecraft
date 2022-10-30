@@ -8,20 +8,18 @@ namespace Minecraft
 
         public VoxelType Type;
         public byte Amount;
-        public LiquidFlowDirection FlowDirection;
 
-        public Liquid(VoxelType type, byte amount, LiquidFlowDirection flowDirection = LiquidFlowDirection.None)
+        public Liquid(VoxelType type, byte amount)
         {
             Type = type;
             Amount = amount;
-            FlowDirection = flowDirection;
         }
     }
 
     public class LiquidMap : Array3D<Liquid>
     {
         public const int MIN = 0;
-        public const int MAX = 7;
+        public const int MAX = 8;
 
         public LiquidMap() : base(Chunk.SIZE, Chunk.SIZE, Chunk.SIZE) { }
 
