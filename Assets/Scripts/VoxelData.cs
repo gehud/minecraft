@@ -1,11 +1,9 @@
 ﻿using System;
 using UnityEngine;
 
-namespace Minecraft
-{
+namespace Minecraft {
     [Serializable]
-    public class VoxelData
-    {
+    public class VoxelData {
         public Vector2Int RightAtlasCoordinate;
         public Vector2Int LeftAtlasCoordinate;
         public Vector2Int TopAtlasCoordinate;

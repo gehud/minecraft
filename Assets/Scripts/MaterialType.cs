@@ -1,7 +1,5 @@
-﻿namespace Minecraft
-{
-    public enum MaterialType
-    {
+﻿namespace Minecraft {
+    public enum MaterialType {
         Opaque,
         Transparent,
     }

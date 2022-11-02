@@ -2,58 +2,49 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Minecraft
-{
-    public static class ChunkUtility
-    {
-        public static void ForEachVoxel(Action<int, int, int> action)
-        {
+namespace Minecraft {
+    public static class ChunkUtility {
+        public static void ForEachVoxel(Action<int, int, int> action) {
             for (int y = 0; y < Chunk.SIZE; y++)
                 for (int x = 0; x < Chunk.SIZE; x++)
                     for (int z = 0; z < Chunk.SIZE; z++)
                         action(y, x, z);
         }
 
-        public static void ForEachVoxel(Action<Vector3Int> action)
-        {
+        public static void ForEachVoxel(Action<Vector3Int> action) {
             for (int y = 0; y < Chunk.SIZE; y++)
                 for (int x = 0; x < Chunk.SIZE; x++)
                     for (int z = 0; z < Chunk.SIZE; z++)
                         action(new Vector3Int(x, y, z));
         }
 
-        public static Dictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData)
-        {
-            VoxelType GetVoxel(int x, int y, int z)
-            {
+        public static Dictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData) {
+            var blockDataManager = BlockManager.Instance;
+
+            BlockType GetVoxel(int x, int y, int z) {
                 Vector3Int globalVoxelCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
                 return world.GetVoxel(globalVoxelCoordinate);
             }
 
-            int GetLight(int x, int y, int z, LightChanel chanel)
-            {
+            int GetLight(int x, int y, int z, LightChanel chanel) {
                 Vector3Int globalVoxelCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
                 return world.GetLight(globalVoxelCoordinate, chanel);
             }
 
-            byte GetLiquidAmount(int x, int y, int z, VoxelType liquidType)
-            {
+            byte GetLiquidAmount(int x, int y, int z, BlockType liquidType) {
                 Vector3Int globalVoxelCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
                 return world.GetLiquidAmount(globalVoxelCoordinate, liquidType);
             }
 
-            bool IsVoxelSolid(int x, int y, int z)
-            {
-                return world.Voxels[GetVoxel(x, y, z)].IsSolid;
+            bool IsVoxelSolid(int x, int y, int z) {
+                return blockDataManager.Blocks[GetVoxel(x, y, z)].IsSolid;
             }
 
-            bool IsVoxelTransparent(int x, int y, int z)
-            {
-                return world.Voxels[GetVoxel(x, y, z)].IsTransparent;
+            bool IsVoxelTransparent(int x, int y, int z) {
+                return blockDataManager.Blocks[GetVoxel(x, y, z)].IsTransparent;
             }
 
-            void AddFaceIndices(MeshData meshData)
-            {
+            void AddFaceIndices(MeshData meshData) {
                 int vertexCount = meshData.Vertices.Count;
                 meshData.Indices.Add((ushort)(0 + vertexCount));
                 meshData.Indices.Add((ushort)(1 + vertexCount));
@@ -63,8 +54,7 @@ namespace Minecraft
                 meshData.Indices.Add((ushort)(3 + vertexCount));
             }
 
-            void AddFaceColliderIndices(MeshData meshData)
-            {
+            void AddFaceColliderIndices(MeshData meshData) {
                 int vertexCount = meshData.ColliderVertices.Count;
                 meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
                 meshData.ColliderIndices.Add((ushort)(1 + vertexCount));
@@ -76,14 +66,12 @@ namespace Minecraft
 
             Dictionary<MaterialType, MeshData> result = new();
 
-            ForEachVoxel((x, y, z) =>
-            {
-                VoxelType voxelType = chunkData.VoxelMap[x, y, z];
+            ForEachVoxel((x, y, z) => {
+                BlockType voxelType = chunkData.BlockMap[x, y, z];
 
-                if (voxelType != VoxelType.Air)
-                {
+                if (voxelType != BlockType.Air) {
                     var localVoxelCoordinate = new Vector3Int(x, y, z);
-                    MaterialType materialType = world.Voxels[voxelType].MaterialType;
+                    MaterialType materialType = blockDataManager.Blocks[voxelType].MaterialType;
                     if (!result.ContainsKey(materialType))
                         result.Add(materialType, new MeshData());
 
@@ -91,8 +79,7 @@ namespace Minecraft
                     bool isSolid = IsVoxelSolid(x, y, z);
                     var meshData = result[materialType];
 
-                    if (world.Voxels[voxelType].IsLiquid) 
-                    {
+                    if (blockDataManager.Blocks[voxelType].IsLiquid) {
                         byte aown = GetLiquidAmount(x + 0, y + 0, z + 0, voxelType);
                         byte atop = GetLiquidAmount(x + 0, y + 1, z + 0, voxelType);
                         byte abot = GetLiquidAmount(x + 0, y - 1, z + 0, voxelType);
@@ -105,8 +92,7 @@ namespace Minecraft
                         byte a270 = GetLiquidAmount(x + 0, y + 0, z - 1, voxelType);
                         byte a315 = GetLiquidAmount(x + 1, y + 0, z - 1, voxelType);
 
-                        bool HasFace(int x, int y, int z)
-                        {
+                        bool HasFace(int x, int y, int z) {
                             var side = GetLiquidAmount(x, y, z, voxelType);
                             bool isTop = y - localVoxelCoordinate.y == 1;
                             if (isTop)
@@ -116,9 +102,8 @@ namespace Minecraft
                         }
 
                         // Right face.
-                        if (HasFace(x + 1, y, z))
-                        {
-                            Vector2 atlasPosition = (Vector2)world.Voxels[voxelType].RightAtlasCoordinate * atlasStep;
+                        if (HasFace(x + 1, y, z)) {
+                            Vector2 atlasPosition = (Vector2)blockDataManager.Blocks[voxelType].RightFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x + 1, y + 0, z + 1);
                             bool t090 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
@@ -185,18 +170,16 @@ namespace Minecraft
                             float ls3 = (t000 && t090 ? lstop : lstop + ls000 + ls045 + ls090) / 4.0f / 15.0f;
                             float ls4 = (t000 && t270 ? lstop : lstop + ls000 + ls270 + ls315) / 4.0f / 15.0f;
 
-                            float h1 = 0.0f; 
-                            float h2 = 1.0f; 
+                            float h1 = 0.0f;
+                            float h2 = 1.0f;
                             float h3 = 1.0f;
                             float h4 = 0.0f;
-                            
-                            if (atop < 1)
-                            {
+
+                            if (atop == 0 && aown != LiquidMap.MAX) {
                                 h2 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
                             }
-                            else
-                            {
+                            if (a000 != 0) {
                                 h1 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
                                 h4 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
                             }
@@ -207,8 +190,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
@@ -218,9 +200,8 @@ namespace Minecraft
                         }
 
                         // Left face.
-                        if (HasFace(x - 1, y, z))
-                        {
-                            Vector2 leftAtlasPosition = (Vector2)world.Voxels[voxelType].LeftAtlasCoordinate * atlasStep;
+                        if (HasFace(x - 1, y, z)) {
+                            Vector2 leftAtlasPosition = (Vector2)blockDataManager.Blocks[voxelType].LeftFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x - 1, y + 0, z - 1);
                             bool t090 = !IsVoxelTransparent(x - 1, y + 1, z + 0);
@@ -292,15 +273,13 @@ namespace Minecraft
                             float h3 = 1.0f;
                             float h4 = 0.0f;
 
-                            if (atop < 1)
-                            {
+                            if (atop == 0 && aown != LiquidMap.MAX) {
                                 h2 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown + a090 + a225 + a270) / 4.0f / LiquidMap.MAX;
+                                h3 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
                             }
-                            else
-                            {
+                            if (a180 != 0) {
                                 h1 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
-                                h4 = (aown + a090 + a225 + a270) / 4.0f / LiquidMap.MAX;
+                                h4 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
                             }
 
                             AddFaceIndices(meshData);
@@ -309,8 +288,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, leftAtlasPosition.x + 1 * atlasStep, leftAtlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, leftAtlasPosition.x + 1 * atlasStep, leftAtlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
@@ -320,9 +298,8 @@ namespace Minecraft
                         }
 
                         // Top face.
-                        if (HasFace(x, y + 1, z))
-                        {
-                            Vector2 topAtlasPosition = (Vector2)world.Voxels[voxelType].TopAtlasCoordinate * atlasStep;
+                        if (HasFace(x, y + 1, z)) {
+                            Vector2 topAtlasPosition = (Vector2)blockDataManager.Blocks[voxelType].TopFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
                             bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -394,8 +371,7 @@ namespace Minecraft
                             float h3 = 1.0f;
                             float h4 = 1.0f;
 
-                            if (atop < 1)
-                            {
+                            if (atop == 0 && aown != LiquidMap.MAX) {
                                 h1 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
                                 h2 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
@@ -408,8 +384,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, topAtlasPosition.x + 1 * atlasStep, topAtlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, topAtlasPosition.x + 1 * atlasStep, topAtlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
@@ -419,9 +394,8 @@ namespace Minecraft
                         }
 
                         // Bottom face.
-                        if (HasFace(x, y - 1, z))
-                        {
-                            Vector2 bottomAtlasPosition = (Vector2)world.Voxels[voxelType].BottomAtlasCoordinate * atlasStep;
+                        if (HasFace(x, y - 1, z)) {
+                            Vector2 bottomAtlasPosition = (Vector2)blockDataManager.Blocks[voxelType].BottomFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x - 1, y - 1, z + 0);
                             bool t090 = !IsVoxelTransparent(x + 0, y - 1, z + 1);
@@ -494,8 +468,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, bottomAtlasPosition.x + 1 * atlasStep, bottomAtlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, bottomAtlasPosition.x + 1 * atlasStep, bottomAtlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
@@ -505,9 +478,8 @@ namespace Minecraft
                         }
 
                         // Front face.
-                        if (HasFace(x, y, z + 1))
-                        {
-                            Vector2 atlasPosition = (Vector2)world.Voxels[voxelType].BackAtlasCoordinate * atlasStep;
+                        if (HasFace(x, y, z + 1)) {
+                            Vector2 atlasPosition = (Vector2)blockDataManager.Blocks[voxelType].BackFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x - 1, y + 0, z + 1);
                             bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -579,13 +551,11 @@ namespace Minecraft
                             float h3 = 1.0f;
                             float h4 = 0.0f;
 
-                            if (atop < 1)
-                            {
+                            if (atop == 0 && aown != LiquidMap.MAX) {
                                 h2 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
                             }
-                            else
-                            {
+                            if (a090 != 0) {
                                 h1 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
                                 h4 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
                             }
@@ -596,8 +566,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
@@ -607,9 +576,8 @@ namespace Minecraft
                         }
 
                         // Back face.
-                        if (HasFace(x, y, z - 1))
-                        {
-                            Vector2 atlasPosition = (Vector2)world.Voxels[voxelType].FrontAtlasCoordinate * atlasStep;
+                        if (HasFace(x, y, z - 1)) {
+                            Vector2 atlasPosition = (Vector2)blockDataManager.Blocks[voxelType].FrontFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x + 1, y + 0, z - 1);
                             bool t090 = !IsVoxelTransparent(x + 0, y + 1, z - 1);
@@ -681,13 +649,11 @@ namespace Minecraft
                             float h3 = 1.0f;
                             float h4 = 0.0f;
 
-                            if (atop < 1)
-                            {
+                            if (atop == 0 && aown != LiquidMap.MAX) {
                                 h2 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
                             }
-                            else
-                            {
+                            if (a270 != 0) {
                                 h1 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
                                 h4 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
                             }
@@ -698,8 +664,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
@@ -707,18 +672,14 @@ namespace Minecraft
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
                             }
                         }
-                    }
-                    else
-                    {
-                        bool HasFace(int x, int y, int z)
-                        {
+                    } else {
+                        bool HasFace(int x, int y, int z) {
                             return IsVoxelTransparent(x, y, z) && GetVoxel(x, y, z) != voxelType;
                         }
 
                         // Right face.
-                        if (HasFace(x + 1, y, z))
-                        {
-                            Vector2 atlasPosition = (Vector2)world.Voxels[voxelType].RightAtlasCoordinate * atlasStep;
+                        if (HasFace(x + 1, y, z)) {
+                            Vector2 atlasPosition = (Vector2)blockDataManager.Blocks[voxelType].RightFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x + 1, y + 0, z + 1);
                             bool t090 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
@@ -791,8 +752,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 1, y + 1, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
@@ -802,9 +762,8 @@ namespace Minecraft
                         }
 
                         // Left face.
-                        if (HasFace(x - 1, y, z))
-                        {
-                            Vector2 leftAtlasPosition = (Vector2)world.Voxels[voxelType].LeftAtlasCoordinate * atlasStep;
+                        if (HasFace(x - 1, y, z)) {
+                            Vector2 leftAtlasPosition = (Vector2)blockDataManager.Blocks[voxelType].LeftFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x - 1, y + 0, z - 1);
                             bool t090 = !IsVoxelTransparent(x - 1, y + 1, z + 0);
@@ -877,8 +836,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 0, y + 1, z + 0, leftAtlasPosition.x + 1 * atlasStep, leftAtlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, leftAtlasPosition.x + 1 * atlasStep, leftAtlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
@@ -888,9 +846,8 @@ namespace Minecraft
                         }
 
                         // Top face.
-                        if (HasFace(x, y + 1, z))
-                        {
-                            Vector2 topAtlasPosition = (Vector2)world.Voxels[voxelType].TopAtlasCoordinate * atlasStep;
+                        if (HasFace(x, y + 1, z)) {
+                            Vector2 topAtlasPosition = (Vector2)blockDataManager.Blocks[voxelType].TopFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
                             bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -963,8 +920,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 1, y + 1, z + 1, topAtlasPosition.x + 1 * atlasStep, topAtlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 1, y + 1, z + 0, topAtlasPosition.x + 1 * atlasStep, topAtlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
@@ -974,9 +930,8 @@ namespace Minecraft
                         }
 
                         // Bottom face.
-                        if (HasFace(x, y - 1, z))
-                        {
-                            Vector2 bottomAtlasPosition = (Vector2)world.Voxels[voxelType].BottomAtlasCoordinate * atlasStep;
+                        if (HasFace(x, y - 1, z)) {
+                            Vector2 bottomAtlasPosition = (Vector2)blockDataManager.Blocks[voxelType].BottomFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x - 1, y - 1, z + 0);
                             bool t090 = !IsVoxelTransparent(x + 0, y - 1, z + 1);
@@ -1049,8 +1004,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, bottomAtlasPosition.x + 1 * atlasStep, bottomAtlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, bottomAtlasPosition.x + 1 * atlasStep, bottomAtlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
@@ -1060,9 +1014,8 @@ namespace Minecraft
                         }
 
                         // Front face.
-                        if (HasFace(x, y, z + 1))
-                        {
-                            Vector2 backAtlasPosition = (Vector2)world.Voxels[voxelType].BackAtlasCoordinate * atlasStep;
+                        if (HasFace(x, y, z + 1)) {
+                            Vector2 backAtlasPosition = (Vector2)blockDataManager.Blocks[voxelType].BackFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x - 1, y + 0, z + 1);
                             bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -1135,8 +1088,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 0, y + 1, z + 1, backAtlasPosition.x + 1 * atlasStep, backAtlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, backAtlasPosition.x + 1 * atlasStep, backAtlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
                                 meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
@@ -1146,9 +1098,8 @@ namespace Minecraft
                         }
 
                         // Back face.
-                        if (HasFace(x, y, z - 1))
-                        {
-                            Vector2 frontAtlasPosition = (Vector2)world.Voxels[voxelType].FrontAtlasCoordinate * atlasStep;
+                        if (HasFace(x, y, z - 1)) {
+                            Vector2 frontAtlasPosition = (Vector2)blockDataManager.Blocks[voxelType].FrontFace * atlasStep;
 
                             bool t000 = !IsVoxelTransparent(x + 1, y + 0, z - 1);
                             bool t090 = !IsVoxelTransparent(x + 0, y + 1, z - 1);
@@ -1221,8 +1172,7 @@ namespace Minecraft
                             meshData.Vertices.Add(new Vertex(x + 1, y + 1, z + 0, frontAtlasPosition.x + 1 * atlasStep, frontAtlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
                             meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, frontAtlasPosition.x + 1 * atlasStep, frontAtlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                            if (isSolid)
-                            {
+                            if (isSolid) {
                                 AddFaceColliderIndices(meshData);
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
                                 meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));

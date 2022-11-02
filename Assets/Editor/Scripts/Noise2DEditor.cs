@@ -4,38 +4,30 @@ using Unity.Jobs;
 using UnityEditor;
 using UnityEngine;
 
-namespace Minecraft.Noise
-{
+namespace Minecraft.Noise {
     [CustomEditor(typeof(Noise2D), true)]
-    public class Noise2DEditor : Editor
-    {
-        struct PerlinNoise2DTextureJob : IJobFor, IDisposable
-        {
+    public class Noise2DEditor : Editor {
+        struct PerlinNoise2DTextureJob : IJobFor, IDisposable {
             public NativeArray<Color> Colors;
 
-            public static PerlinNoise2DTextureJob Create()
-            {
-                return new PerlinNoise2DTextureJob()
-                {
+            public static PerlinNoise2DTextureJob Create() {
+                return new PerlinNoise2DTextureJob() {
                     Colors = new NativeArray<Color>(PREVIEW_SIZE * PREVIEW_SIZE, Allocator.TempJob),
                 };
             }
 
-            public void Execute(int index)
-            {
+            public void Execute(int index) {
                 int x = index % PREVIEW_SIZE;
                 int y = index / PREVIEW_SIZE;
                 float value = noise.Sample(x, y);
                 Colors[index] = new Color(value, value, value);
             }
 
-            public JobHandle Schedule()
-            {
+            public JobHandle Schedule() {
                 return this.Schedule(PREVIEW_SIZE * PREVIEW_SIZE, default);
             }
 
-            public void Dispose()
-            {
+            public void Dispose() {
                 Colors.Dispose();
             }
         }
@@ -45,21 +37,18 @@ namespace Minecraft.Noise
         private static Noise2D noise;
         private Texture2D texture;
 
-        private void OnEnable()
-        {
+        private void OnEnable() {
             noise = (Noise2D)target;
             texture = new(PREVIEW_SIZE, PREVIEW_SIZE);
             UpdatePreviewTexture();
             Undo.undoRedoPerformed += UpdatePreviewTexture;
         }
 
-        private void OnDisable()
-        {
+        private void OnDisable() {
             Undo.undoRedoPerformed -= UpdatePreviewTexture;
         }
 
-        public override void OnInspectorGUI()
-        {
+        public override void OnInspectorGUI() {
             EditorGUI.BeginChangeCheck();
             base.OnInspectorGUI();
             if (EditorGUI.EndChangeCheck())
@@ -68,8 +57,7 @@ namespace Minecraft.Noise
             GUILayout.Box(texture);
         }
 
-        private void UpdatePreviewTexture()
-        {
+        private void UpdatePreviewTexture() {
             using PerlinNoise2DTextureJob job = PerlinNoise2DTextureJob.Create();
 
             job.Schedule().Complete();

@@ -1,16 +1,14 @@
 ﻿using TMPro;
 using UnityEngine;
 
-namespace Minecraft.Player
-{
+namespace Minecraft.Player {
     [RequireComponent(typeof(Camera))]
-    public class CameraController : MonoBehaviour
-    {
+    public class CameraController : MonoBehaviour {
         [SerializeField]
         private new Camera camera;
         [SerializeField]
         private Transform body;
-        [SerializeField, Min(0)] 
+        [SerializeField, Min(0)]
         private float sencitivity = 5;
         [SerializeField]
         private LayerMask raycastMask = ~0;
@@ -19,16 +17,14 @@ namespace Minecraft.Player
 
         private float roatationX = 0;
 
-        private VoxelType currentVoxel = VoxelType.Stone;
+        private BlockType currentVoxel = BlockType.Stone;
 
-        private void Start()
-        {
+        private void Start() {
             Cursor.lockState = CursorLockMode.Locked;
             voxelTypeText.text = currentVoxel.ToString();
         }
 
-        private void Update()
-        {
+        private void Update() {
             float mouseX = Input.GetAxis("Mouse X");
             float mouseY = Input.GetAxis("Mouse Y");
 
@@ -36,10 +32,8 @@ namespace Minecraft.Player
             transform.localEulerAngles = new Vector3(roatationX, 0, 0);
             body.Rotate(Vector3.up, mouseX * sencitivity);
 
-            if (Input.GetMouseButtonDown(0))
-            {
-                if (Physics.Raycast(camera.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo, 5, raycastMask))
-                {
+            if (Input.GetMouseButtonDown(0)) {
+                if (Physics.Raycast(camera.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo, 5, raycastMask)) {
                     Vector3Int globalVoxelCooridnate = Vector3Int.FloorToInt(hitInfo.point);
                     if (hitInfo.normal.x > 0)
                         globalVoxelCooridnate.x--;
@@ -49,11 +43,8 @@ namespace Minecraft.Player
                         globalVoxelCooridnate.z--;
                     World.Instance.DestroyVoxel(globalVoxelCooridnate);
                 }
-            }
-            else if (Input.GetMouseButtonDown(1))
-            {
-                if (Physics.Raycast(camera.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo, 5, raycastMask))
-                {
+            } else if (Input.GetMouseButtonDown(1)) {
+                if (Physics.Raycast(camera.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo, 5, raycastMask)) {
                     Vector3Int globalVoxelCooridnate = Vector3Int.FloorToInt(hitInfo.point);
                     if (hitInfo.normal.x < 0)
                         globalVoxelCooridnate.x--;
@@ -67,14 +58,11 @@ namespace Minecraft.Player
                         World.Instance.PlaceVoxel(globalVoxelCooridnate, currentVoxel);
                 }
             }
-            if (Input.GetKeyDown(KeyCode.Alpha1))
-            {
-                currentVoxel = VoxelType.Stone;
+            if (Input.GetKeyDown(KeyCode.Alpha1)) {
+                currentVoxel = BlockType.Stone;
                 voxelTypeText.text = currentVoxel.ToString();
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha2))
-            {
-                currentVoxel = VoxelType.Water;
+            } else if (Input.GetKeyDown(KeyCode.Alpha2)) {
+                currentVoxel = BlockType.Water;
                 voxelTypeText.text = currentVoxel.ToString();
             }
         }
