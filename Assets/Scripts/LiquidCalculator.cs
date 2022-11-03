@@ -154,7 +154,8 @@ namespace Minecraft {
                         Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
                         chunkData.IsDirty = true;
                         byte amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
-                        if (amount != 0 && (amount == entryLiquidData.Amount - 1 || (side.y == -1 && entryLiquidData.Amount == LiquidMap.MAX))) {
+                        if (amount != 0 && (amount == entryLiquidData.Amount - 1
+                            || (side.y == -1 && amount == LiquidMap.MAX))) {
                             LiquidData removeLiquidData = new(x, y, z, amount);
                             toRemove.Enqueue(removeLiquidData);
                             chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, LiquidMap.MIN);

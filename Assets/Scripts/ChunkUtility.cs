@@ -175,7 +175,7 @@ namespace Minecraft {
                             float h3 = 1.0f;
                             float h4 = 0.0f;
 
-                            if (atop == 0 && aown != LiquidMap.MAX) {
+                            if (atop == 0) {
                                 h2 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
                             }
@@ -273,7 +273,7 @@ namespace Minecraft {
                             float h3 = 1.0f;
                             float h4 = 0.0f;
 
-                            if (atop == 0 && aown != LiquidMap.MAX) {
+                            if (atop == 0) {
                                 h2 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
                             }
@@ -371,7 +371,7 @@ namespace Minecraft {
                             float h3 = 1.0f;
                             float h4 = 1.0f;
 
-                            if (atop == 0 && aown != LiquidMap.MAX) {
+                            if (atop == 0) {
                                 h1 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
                                 h2 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
@@ -551,7 +551,7 @@ namespace Minecraft {
                             float h3 = 1.0f;
                             float h4 = 0.0f;
 
-                            if (atop == 0 && aown != LiquidMap.MAX) {
+                            if (atop == 0) {
                                 h2 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
                             }
@@ -649,7 +649,7 @@ namespace Minecraft {
                             float h3 = 1.0f;
                             float h4 = 0.0f;
 
-                            if (atop == 0 && aown != LiquidMap.MAX) {
+                            if (atop == 0) {
                                 h2 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
                             }
