@@ -92,6 +92,15 @@ namespace Minecraft {
                         byte a270 = GetLiquidAmount(x + 0, y + 0, z - 1, voxelType);
                         byte a315 = GetLiquidAmount(x + 1, y + 0, z - 1, voxelType);
 
+                        bool s000 = IsVoxelSolid(x + 1, y + 0, z + 0);
+                        bool s045 = IsVoxelSolid(x + 1, y + 0, z + 1);
+                        bool s090 = IsVoxelSolid(x + 0, y + 0, z + 1);
+                        bool s135 = IsVoxelSolid(x - 1, y + 0, z + 1);
+                        bool s180 = IsVoxelSolid(x - 1, y + 0, z + 0);
+                        bool s225 = IsVoxelSolid(x - 1, y + 0, z - 1);
+                        bool s270 = IsVoxelSolid(x + 0, y + 0, z - 1);
+                        bool s315 = IsVoxelSolid(x + 1, y + 0, z - 1);
+
                         bool HasFace(int x, int y, int z) {
                             var side = GetLiquidAmount(x, y, z, voxelType);
                             bool isTop = y - localVoxelCoordinate.y == 1;
@@ -176,12 +185,24 @@ namespace Minecraft {
                             float h4 = 0.0f;
 
                             if (atop == 0) {
-                                h2 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
+                                h2 = (aown 
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s270 ? LiquidMap.MAX : a270) 
+                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
+                                h3 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s045 ? LiquidMap.MAX : a045)
+                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
                             }
                             if (a000 != 0) {
-                                h1 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
-                                h4 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
+                                h1 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s270 ? LiquidMap.MAX : a270)
+                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
+                                h4 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s045 ? LiquidMap.MAX : a045)
+                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
                             }
 
                             AddFaceIndices(meshData);
@@ -274,12 +295,24 @@ namespace Minecraft {
                             float h4 = 0.0f;
 
                             if (atop == 0) {
-                                h2 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
+                                h2 = (aown
+                                + (s090 ? LiquidMap.MAX : a090)
+                                + (s135 ? LiquidMap.MAX : a135)
+                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
+                                h3 = (aown
+                                + (s180 ? LiquidMap.MAX : a180)
+                                + (s225 ? LiquidMap.MAX : a225)
+                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
                             }
                             if (a180 != 0) {
-                                h1 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
-                                h4 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
+                                h1 = (aown
+                                + (s090 ? LiquidMap.MAX : a090)
+                                + (s135 ? LiquidMap.MAX : a135)
+                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
+                                h4 = (aown
+                                + (s180 ? LiquidMap.MAX : a180)
+                                + (s225 ? LiquidMap.MAX : a225)
+                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
                             }
 
                             AddFaceIndices(meshData);
@@ -372,10 +405,22 @@ namespace Minecraft {
                             float h4 = 1.0f;
 
                             if (atop == 0) {
-                                h1 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
-                                h2 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
-                                h4 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
+                                h1 = (aown
+                                + (s180 ? LiquidMap.MAX : a180)
+                                + (s225 ? LiquidMap.MAX : a225)
+                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
+                                h2 = (aown
+                                + (s090 ? LiquidMap.MAX : a090)
+                                + (s135 ? LiquidMap.MAX : a135)
+                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
+                                h3 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s045 ? LiquidMap.MAX : a045)
+                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
+                                h4 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s270 ? LiquidMap.MAX : a270)
+                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
                             }
 
                             AddFaceIndices(meshData);
@@ -552,12 +597,24 @@ namespace Minecraft {
                             float h4 = 0.0f;
 
                             if (atop == 0) {
-                                h2 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
+                                h2 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s045 ? LiquidMap.MAX : a045)
+                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
+                                h3 = (aown
+                                + (s090 ? LiquidMap.MAX : a090)
+                                + (s135 ? LiquidMap.MAX : a135)
+                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
                             }
                             if (a090 != 0) {
-                                h1 = (aown + a000 + a045 + a090) / 4.0f / LiquidMap.MAX;
-                                h4 = (aown + a090 + a135 + a180) / 4.0f / LiquidMap.MAX;
+                                h1 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s045 ? LiquidMap.MAX : a045)
+                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
+                                h4 = (aown
+                                + (s090 ? LiquidMap.MAX : a090)
+                                + (s135 ? LiquidMap.MAX : a135)
+                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
                             }
 
                             AddFaceIndices(meshData);
@@ -650,12 +707,24 @@ namespace Minecraft {
                             float h4 = 0.0f;
 
                             if (atop == 0) {
-                                h2 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
+                                h2 = (aown
+                                + (s180 ? LiquidMap.MAX : a180)
+                                + (s225 ? LiquidMap.MAX : a225)
+                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
+                                h3 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s270 ? LiquidMap.MAX : a270)
+                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
                             }
                             if (a270 != 0) {
-                                h1 = (aown + a180 + a225 + a270) / 4.0f / LiquidMap.MAX;
-                                h4 = (aown + a000 + a270 + a315) / 4.0f / LiquidMap.MAX;
+                                h1 = (aown
+                                + (s180 ? LiquidMap.MAX : a180)
+                                + (s225 ? LiquidMap.MAX : a225)
+                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
+                                h4 = (aown
+                                + (s000 ? LiquidMap.MAX : a000)
+                                + (s270 ? LiquidMap.MAX : a270)
+                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
                             }
 
                             AddFaceIndices(meshData);
