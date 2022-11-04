@@ -6,5 +6,6 @@
         Grass,
         Sand,
         Water,
+        JackOLantern,
     }
 }

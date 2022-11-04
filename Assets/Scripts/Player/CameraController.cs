@@ -64,6 +64,9 @@ namespace Minecraft.Player {
             } else if (Input.GetKeyDown(KeyCode.Alpha2)) {
                 currentVoxel = BlockType.Water;
                 voxelTypeText.text = currentVoxel.ToString();
+            } else if (Input.GetKeyDown(KeyCode.Alpha3)) {
+                currentVoxel = BlockType.JackOLantern;
+                voxelTypeText.text = currentVoxel.ToString();
             }
         }
     }
