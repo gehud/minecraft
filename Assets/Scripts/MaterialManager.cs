@@ -26,12 +26,12 @@ namespace Minecraft {
             var atlasManager = AtlasProvider.Instance;
             foreach (var item in Materials) {
                 if (atlasManager != null)
-                    SetupAtlas(item.Value, atlasManager);
+                    SetupAtlas(item.Key, item.Value, atlasManager);
             }
         }
 
-        private void SetupAtlas(Material material, IAtlasProvider atlasProvider) {
-            material.SetTexture("_Atlas", atlasProvider.Atlas);
+        private void SetupAtlas(MaterialType type, Material material, IAtlasProvider atlasProvider) {
+            material.SetTexture("_Atlas", atlasProvider.GetAtlas(type));
         }
     }
 }

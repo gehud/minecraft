@@ -15,7 +15,7 @@ MonoBehaviour:
   Scale: 0.02
   Offset: {x: 15316, y: 7765}
   Octaves: 3
-  Lacunarity: 2
+  Lacunarity: 2.37
   Persistance: 0.5
   Modification:
     serializedVersion: 2
@@ -23,15 +23,15 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0
       value: 0
-      inSlope: 1.3369486
-      outSlope: 1.3369486
+      inSlope: 1.7093091
+      outSlope: 1.7093091
       tangentMode: 34
       weightedMode: 0
       inWeight: 0
       outWeight: 0.33333334
     - serializedVersion: 3
       time: 0.23251227
-      value: 0.31085697
+      value: 0.39743534
       inSlope: 0.17064042
       outSlope: 0.17064042
       tangentMode: 0
@@ -59,11 +59,11 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 0.034154374
-      outSlope: 0.034154374
-      tangentMode: 34
+      inSlope: 0.07565034
+      outSlope: 0.07565034
+      tangentMode: 0
       weightedMode: 0
-      inWeight: 0.33333334
+      inWeight: 0.61649114
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2

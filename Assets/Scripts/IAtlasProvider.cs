@@ -2,6 +2,6 @@
 
 namespace Minecraft {
     public interface IAtlasProvider {
-        Texture2D Atlas { get; }
+        Texture2D GetAtlas(MaterialType materialType);
     }
 }

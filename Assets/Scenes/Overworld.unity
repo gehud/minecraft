@@ -614,7 +614,7 @@ MonoBehaviour:
   offset: {x: 0, y: 0}
   surfaceOffset: 64
   surfaceLevel: 64
-  waterLevel: 45
+  waterLevel: 69
   continentalnessNoise: {fileID: 11400000, guid: a1180c05c8e0630448dec81364957529, type: 2}
   peaksAndValleysNoise: {fileID: 11400000, guid: 75e944f37edc3c74d9cfcad4ba28c859, type: 2}
   erosionNoise: {fileID: 11400000, guid: 1fcdc88d44f84974885d859d41491821, type: 2}
@@ -749,7 +749,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e58aa3d5b0352b94c9a3857c6df4ed3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  offset: {x: 0, y: 0.25, z: 0}
+  offset: {x: 0, y: 0.35, z: 0}
   radius: 0.45
   groundLayers:
     serializedVersion: 2

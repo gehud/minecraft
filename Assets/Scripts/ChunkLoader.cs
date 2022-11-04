@@ -19,11 +19,11 @@ namespace Minecraft {
         private float loadCountdown = 0.5f;
 
         private Vector3Int lastPlayerChunk;
-        private ConcurrentStack<Vector3Int> chunkToRemoveCoordinates = new();
-        private ConcurrentStack<Vector3Int> chunkToCreateCoordinates = new();
-        private ConcurrentStack<Vector3Int> chunkDataToRemoveCoordinates = new();
-        private ConcurrentStack<Vector3Int> chunkDataToCreateCoordinates = new();
-        private ConcurrentStack<Vector2Int> sunlightCoordinatesToCalculate = new();
+        private readonly ConcurrentStack<Vector3Int> chunkToRemoveCoordinates = new();
+        private readonly ConcurrentStack<Vector3Int> chunkToCreateCoordinates = new();
+        private readonly ConcurrentStack<Vector3Int> chunkDataToRemoveCoordinates = new();
+        private readonly ConcurrentStack<Vector3Int> chunkDataToCreateCoordinates = new();
+        private readonly ConcurrentStack<Vector2Int> sunlightCoordinatesToCalculate = new();
 
         bool generateChunks = false;
         bool worldGenerated = false;
@@ -116,6 +116,17 @@ namespace Minecraft {
             });
             foreach (var item in generatedData)
                 world.ChunkDatas.Add(item.Key, item.Value);
+
+            await Task.Run(() => {
+                foreach (var item in generatedData) {
+                    ChunkUtility.ForEachVoxel((localBlockCoordinate) => {
+                        if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
+                            Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
+                            world.LiquidCalculatorWater.Add(blockCoordinate, LiquidMap.MAX);
+                        }
+                    });
+                }
+            });
 
             await Task.Run(() => {
                 foreach (var item in sunlightCoordinatesToCalculate)
