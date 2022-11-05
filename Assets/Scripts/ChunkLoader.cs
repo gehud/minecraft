@@ -125,6 +125,7 @@ namespace Minecraft {
                             world.LiquidCalculatorWater.Add(blockCoordinate, LiquidMap.MAX);
                         }
                     });
+                    world.LiquidCalculatorWater.Calculate();
                 }
             });
 
