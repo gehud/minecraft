@@ -1,21 +1,29 @@
 ﻿using UnityEngine;
 
 namespace Minecraft.Player {
-    [RequireComponent(typeof(CharacterController))]
+    [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(GroundChecker))]
-    public class PlayerController : MonoBehaviour {
-        [SerializeField]
-        private CharacterController characterController;
-        [SerializeField]
-        private GroundChecker groundChecker;
+    public class PlayerMovement : MonoBehaviour {
+        [SerializeField] 
+        private new Transform camera;
         [SerializeField, Min(0)]
         private float speed = 5;
         [SerializeField, Min(0)]
         private float jumpingHeight = 1.125f;
-        [SerializeField, Min(0)]
-        private float gravity = 15;
 
+        private new Rigidbody rigidbody;
+        private IGroundChecker groundChecker;
         private Vector3 velocity = Vector3.zero;
+
+        private void Awake() {
+            rigidbody = GetComponent<Rigidbody>();
+            groundChecker = GetComponent<GroundChecker>();
+        }
+
+        private void Jump() {
+            float velocity = Mathf.Sqrt(2 * Mathf.Abs(Physics.gravity.y) * jumpingHeight);
+            rigidbody.velocity += Vector3.up * velocity;
+        }
 
         private void Update() {
             if (groundChecker.IsGrounded && Input.GetKeyDown(KeyCode.Space))
@@ -23,7 +31,8 @@ namespace Minecraft.Player {
         }
 
         private void FixedUpdate() {
-            characterController.Move(velocity * Time.fixedDeltaTime);
+            float velocityY = rigidbody.velocity.y;
+            rigidbody.velocity = new Vector3(velocity.x, velocityY, velocity.z);
 
             float horizontalInput = Input.GetAxis("Horizontal");
             float verticalInput = Input.GetAxis("Vertical");
@@ -33,17 +42,7 @@ namespace Minecraft.Player {
             velocity.x = input.x * speed;
             velocity.z = input.y * speed;
 
-            if (groundChecker.IsGrounded) {
-                velocity.y = 0;
-            } else {
-                velocity.y -= gravity * Time.fixedDeltaTime;
-            }
-
-            velocity = transform.TransformDirection(velocity);
-        }
-
-        private void Jump() {
-            velocity.y += Mathf.Sqrt(2 * gravity * jumpingHeight);
+            velocity = Quaternion.Euler(0, camera.localEulerAngles.y, 0) * velocity;
         }
     }
 }

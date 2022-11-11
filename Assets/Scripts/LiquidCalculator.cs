@@ -1,35 +1,27 @@
-﻿using System.Collections.Generic;
+﻿using Minecraft.Utilities;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Minecraft {
     public class LiquidCalculator {
-        public struct LiquidData {
-            public int X, Y, Z;
+        private struct Entry {
+            public Vector3Int Coordinate;
             public byte Amount;
 
-            public LiquidData(int x, int y, int z, byte amount) {
-                X = x;
-                Y = y;
-                Z = z;
+            public Entry(Vector3Int coordinate, byte amount) {
+                Coordinate = coordinate;
                 Amount = amount;
             }
 
-            public LiquidData(Vector3Int coordinate, byte amount) {
-                X = coordinate.x;
-                Y = coordinate.y;
-                Z = coordinate.z;
-                Amount = amount;
-            }
-
+            public Entry(int x, int y, int z, byte amount) : this(new Vector3Int(x, y, z), amount) { }
         }
 
         private readonly World world;
         private readonly BlockType liquidType;
-        private readonly Queue<LiquidData> removeQueue = new();
-        private readonly Queue<LiquidData> addQueue = new();
+        private readonly Queue<Entry> removeQueue = new();
+        private readonly Queue<Entry> addQueue = new();
 
-        private static readonly Vector3Int[] sides =
-        {
+        private static readonly Vector3Int[] blockSides = {
             new Vector3Int( 0,  0,  1),
             new Vector3Int( 0,  0, -1),
             new Vector3Int( 0,  1,  0),
@@ -38,8 +30,7 @@ namespace Minecraft {
             new Vector3Int(-1,  0,  0)
         };
 
-        private static readonly Vector3Int[] flowSides =
-        {
+        private static readonly Vector3Int[] flowSides = {
             new Vector3Int( 0,  0,  1),
             new Vector3Int( 0,  0, -1),
             new Vector3Int( 1,  0,  0),
@@ -51,118 +42,123 @@ namespace Minecraft {
             this.liquidType = liquidType;
         }
 
-        public void Add(int x, int y, int z, byte amount) {
+        public void Add(Vector3Int blockCoordinate, byte amount) {
             if (amount < 1)
                 return;
 
-            Vector3Int globalVoxelCoordinate = new(x, y, z);
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
+            var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (!world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
                 return;
 
-            Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-            chunkData.LiquidMap[localVoxelCoordinate] = new Liquid(liquidType, amount);
-            chunkData.BlockMap[localVoxelCoordinate] = liquidType;
+            var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+            chunkData.LiquidMap[localBlockCoordinate] = new LiquidData(liquidType, amount);
+            chunkData.BlockMap[localBlockCoordinate] = liquidType;
             chunkData.IsDirty = true;
 
-            LiquidData liquidData = new(x, y, z, amount);
-            addQueue.Enqueue(liquidData);
+            var entry = new Entry(blockCoordinate, amount);
+            addQueue.Enqueue(entry);
         }
 
-        public void Add(Vector3Int vector, byte amount) {
-            Add(vector.x, vector.y, vector.z, amount);
-        }
-
-        public void Add(int x, int y, int z) {
-            Vector3Int globalVoxelCoordinate = new(x, y, z);
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
+        public void Add(Vector3Int blockCoordinate) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (!world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
                 return;
 
             chunkData.IsDirty = true;
 
-            Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-            byte amount = chunkData.LiquidMap.Get(localVoxelCoordinate, liquidType);
+            Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+            byte amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
             if (amount < 1)
                 return;
 
-            chunkData.BlockMap[localVoxelCoordinate] = liquidType;
+            chunkData.BlockMap[localBlockCoordinate] = liquidType;
 
-            LiquidData liquidData = new(x, y, z, amount);
-            addQueue.Enqueue(liquidData);
+            var entry = new Entry(blockCoordinate, amount);
+            addQueue.Enqueue(entry);
         }
 
-        public void Add(Vector3Int vector) {
-            Add(vector.x, vector.y, vector.z);
-        }
-
-        public void Remove(int x, int y, int z) {
-            Vector3Int globalVoxelCoordinate = new(x, y, z);
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
+        public void Remove(Vector3Int blockCoordinate) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (!world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
                 return;
 
-            Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-            byte amount = chunkData.LiquidMap.Get(localVoxelCoordinate, liquidType);
+            Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+            byte amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
             if (amount < 1)
                 return;
 
-            chunkData.LiquidMap[localVoxelCoordinate] = Liquid.Empty;
-            chunkData.BlockMap[localVoxelCoordinate] = BlockType.Air;
+            chunkData.LiquidMap[localBlockCoordinate] = LiquidData.Empty;
+            chunkData.BlockMap[localBlockCoordinate] = BlockType.Air;
             chunkData.IsDirty = true;
 
-            LiquidData liquidData = new(x, y, z, amount);
-            removeQueue.Enqueue(liquidData);
-        }
-
-        public void Remove(Vector3Int vector) {
-            Remove(vector.x, vector.y, vector.z);
+            Entry entry = new(blockCoordinate, amount);
+            removeQueue.Enqueue(entry);
         }
 
         private Vector3Int GetFlowDirection(Vector3Int origin) {
+            var blockManager = BlockManager.Instance;
             foreach (var side in flowSides)
                 for (int e = 1; e <= 5; e++) {
-                    int x = origin.x + side.x * e;
-                    int y = origin.y;
-                    int z = origin.z + side.z * e;
+                    var x = origin.x + side.x * e;
+                    var y = origin.y;
+                    var z = origin.z + side.z * e;
                     var blockCoordinate = new Vector3Int(x, y, z);
                     var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                     if (world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                        Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                        if (chunkData.BlockMap[localBlockCoordinate + Vector3Int.down] == BlockType.Air)
-                            return side;
+                        var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                        if (blockManager.Blocks[chunkData.BlockMap[localBlockCoordinate]].IsSolid)
+                            break;
+                        chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate + Vector3Int.down);
+                        if (world.ChunkDatas.TryGetValue(chunkCoordinate, out chunkData)) {
+                            localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate + Vector3Int.down);
+                            if (chunkData.BlockMap[localBlockCoordinate] == BlockType.Air)
+                                return side;
+                        }
                     }
                 }
 
             return Vector3Int.zero;
         }
 
+        private bool IsRenewable(Vector3Int blockCoordinate) {
+            var amount000 = world.GetLiquidAmount(blockCoordinate + Vector3Int.right);
+            var amount090 = world.GetLiquidAmount(blockCoordinate + Vector3Int.forward);
+            var amount180 = world.GetLiquidAmount(blockCoordinate + Vector3Int.left);
+            var amount270 = world.GetLiquidAmount(blockCoordinate + Vector3Int.back);
+            return (amount000 == LiquidMap.MAX && amount090 == LiquidMap.MAX)
+                || (amount000 == LiquidMap.MAX && amount180 == LiquidMap.MAX)
+                || (amount000 == LiquidMap.MAX && amount270 == LiquidMap.MAX)
+                || (amount090 == LiquidMap.MAX && amount180 == LiquidMap.MAX)
+                || (amount090 == LiquidMap.MAX && amount270 == LiquidMap.MAX)
+                || (amount180 == LiquidMap.MAX && amount270 == LiquidMap.MAX);
+        }
+
         public void Calculate() {
-            var blockDataManager = BlockManager.Instance;
+            var blockManager = BlockManager.Instance;
 
-            var toRemove = new Queue<LiquidData>();
-            var toAdd = new Queue<LiquidData>();
+            var toRemove = new Queue<Entry>();
+            var toAdd = new Queue<Entry>();
 
-            while (removeQueue.TryDequeue(out LiquidData entryLiquidData)) {
-                foreach (var side in sides) {
-                    int x = entryLiquidData.X + side.x;
-                    int y = entryLiquidData.Y + side.y;
-                    int z = entryLiquidData.Z + side.z;
-                    Vector3Int globalVoxelCoordinate = new(x, y, z);
-                    Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
+            while (removeQueue.TryDequeue(out Entry entry)) {
+                foreach (var side in blockSides) {
+                    var x = entry.Coordinate.x + side.x;
+                    var y = entry.Coordinate.y + side.y;
+                    var z = entry.Coordinate.z + side.z;
+                    var blockCoordinate = new Vector3Int(x, y, z);
+                    var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                     if (world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                        Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
+                        var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                         chunkData.IsDirty = true;
-                        byte amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
-                        if (amount != 0 && (amount == entryLiquidData.Amount - 1
-                            || (side.y == -1 && amount == LiquidMap.MAX))) {
-                            LiquidData removeLiquidData = new(x, y, z, amount);
-                            toRemove.Enqueue(removeLiquidData);
+                        var amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
+                        if (amount != 0 && (amount == entry.Amount - 1
+                            || (side.y == -1 && amount == LiquidMap.MAX)) && !IsRenewable(blockCoordinate)) {
+                            var removeEntry = new Entry(x, y, z, amount);
+                            toRemove.Enqueue(removeEntry);
                             chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, LiquidMap.MIN);
                             chunkData.BlockMap[localBlockCoordinate] = BlockType.Air;
-                        } else if (amount >= entryLiquidData.Amount) {
-                            LiquidData addLiquidData = new(x, y, z, amount);
-                            toAdd.Enqueue(addLiquidData);
+                        } else if (amount >= entry.Amount) {
+                            var addEntry = new Entry(x, y, z, amount);
+                            toAdd.Enqueue(addEntry);
                         }
                     }
                 }
@@ -171,51 +167,58 @@ namespace Minecraft {
             foreach (var item in toAdd)
                 addQueue.Enqueue(item);
 
-            while (addQueue.TryDequeue(out LiquidData entryLiquidData)) {
+            while (addQueue.TryDequeue(out Entry entry)) {
                 int x, y, z;
-                Vector3Int globalVoxelCoordinate;
+                Vector3Int blockCoordinate;
                 Vector3Int chunkCoordinate;
 
-                if (entryLiquidData.Amount < 1)
+                if (entry.Amount < 1)
                     continue;
 
-                x = entryLiquidData.X;
-                y = entryLiquidData.Y - 1;
-                z = entryLiquidData.Z;
-                globalVoxelCoordinate = new(x, y, z);
-                chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
+                x = entry.Coordinate.x;
+                y = entry.Coordinate.y - 1;
+                z = entry.Coordinate.z;
+                blockCoordinate = new(x, y, z);
+                chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                 if (world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                    Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-                    if (blockDataManager.Blocks[chunkData.BlockMap[localVoxelCoordinate]].IsSolid) {
-                        Vector3Int flowDirection = GetFlowDirection(new Vector3Int(entryLiquidData.X, entryLiquidData.Y, entryLiquidData.Z));
+                    Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                    if (blockManager.Blocks[chunkData.BlockMap[localBlockCoordinate]].IsSolid) {
+                        Vector3Int flowDirection = GetFlowDirection(entry.Coordinate);
                         foreach (var side in flowSides) {
                             if (flowDirection != Vector3Int.zero && side != flowDirection)
                                 continue;
 
-                            x = entryLiquidData.X + side.x;
-                            y = entryLiquidData.Y + side.y;
-                            z = entryLiquidData.Z + side.z;
-                            globalVoxelCoordinate = new(x, y, z);
-                            chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
+                            x = entry.Coordinate.x + side.x;
+                            y = entry.Coordinate.y + side.y;
+                            z = entry.Coordinate.z + side.z;
+                            blockCoordinate = new(x, y, z);
+                            chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                             if (world.ChunkDatas.TryGetValue(chunkCoordinate, out chunkData)) {
-                                localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
+                                localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                                 chunkData.IsDirty = true;
-                                BlockType voxelType = chunkData.BlockMap[localVoxelCoordinate];
-                                byte amount = chunkData.LiquidMap.Get(localVoxelCoordinate, liquidType);
-                                if (!blockDataManager.Blocks[voxelType].IsSolid && amount + 2 <= entryLiquidData.Amount) {
-                                    chunkData.LiquidMap.Set(localVoxelCoordinate, liquidType, (byte)(entryLiquidData.Amount - 1));
-                                    chunkData.BlockMap[localVoxelCoordinate] = liquidType;
-                                    LiquidData addLiquidData = new(x, y, z, (byte)(entryLiquidData.Amount - 1));
-                                    toAdd.Enqueue(addLiquidData);
+                                var blockType = chunkData.BlockMap[localBlockCoordinate];
+                                var amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
+                                if (!blockManager.Blocks[blockType].IsSolid) {
+                                    if (amount + 2 <= entry.Amount) {
+                                        chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, (byte)(entry.Amount - 1));
+                                        chunkData.BlockMap[localBlockCoordinate] = liquidType;
+                                        var addEntry = new Entry(x, y, z, (byte)(entry.Amount - 1));
+                                        toAdd.Enqueue(addEntry);
+                                    } else if (entry.Amount == LiquidMap.MAX && amount == entry.Amount - 1) {
+                                        chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, entry.Amount);
+                                        chunkData.BlockMap[localBlockCoordinate] = liquidType;
+                                        var addEntry = new Entry(x, y, z, entry.Amount);
+                                        toAdd.Enqueue(addEntry);
+                                    }
                                 }
                             }
                         }
                     } else {
                         chunkData.IsDirty = true;
-                        chunkData.LiquidMap.Set(localVoxelCoordinate, liquidType, LiquidMap.MAX);
-                        chunkData.BlockMap[localVoxelCoordinate] = liquidType;
-                        LiquidData addLiquidData = new(x, y, z, LiquidMap.MAX);
-                        toAdd.Enqueue(addLiquidData);
+                        chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, LiquidMap.MAX);
+                        chunkData.BlockMap[localBlockCoordinate] = liquidType;
+                        var addEntry = new Entry(x, y, z, LiquidMap.MAX);
+                        toAdd.Enqueue(addEntry);
                     }
                 }
             }

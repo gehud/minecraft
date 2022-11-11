@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Minecraft {
+namespace Minecraft.Utilities {
     public static class ChunkUtility {
         public static void ForEachVoxel(Action<int, int, int> action) {
             for (int y = 0; y < Chunk.SIZE; y++)
@@ -106,8 +106,8 @@ namespace Minecraft {
                             bool isTop = y - localVoxelCoordinate.y == 1;
                             if (isTop)
                                 return GetVoxel(x, y, z) != voxelType;
-                            return (IsVoxelTransparent(x, y, z) && GetVoxel(x, y, z) != voxelType)
-                            || (side != 0 && aown > side && atop != 0);
+                            return IsVoxelTransparent(x, y, z) && GetVoxel(x, y, z) != voxelType
+                            || side != 0 && aown > side && atop != 0;
                         }
 
                         // Right face.
@@ -185,9 +185,9 @@ namespace Minecraft {
                             float h4 = 0.0f;
 
                             if (atop == 0) {
-                                h2 = (aown 
+                                h2 = (aown
                                 + (s000 ? LiquidMap.MAX : a000)
-                                + (s270 ? LiquidMap.MAX : a270) 
+                                + (s270 ? LiquidMap.MAX : a270)
                                 + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown
                                 + (s000 ? LiquidMap.MAX : a000)

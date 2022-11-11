@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using Minecraft.Utilities;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -130,17 +131,17 @@ namespace Minecraft {
             return LiquidMap.MIN;
         }
 
-        public Liquid GetLiquid(Vector3Int coordinate) {
+        public LiquidData GetLiquid(Vector3Int coordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
             if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
                 return chunkData.LiquidMap[localVoxelCoordinate];
             }
 
-            return Liquid.Empty;
+            return LiquidData.Empty;
         }
 
-        public Liquid GetLiquid(int x, int y, int z) {
+        public LiquidData GetLiquid(int x, int y, int z) {
             return GetLiquid(new Vector3Int(x, y, z));
         }
 
@@ -264,15 +265,13 @@ namespace Minecraft {
             LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
         }
 
+        public void StartLiquidCalculation() => StartCoroutine(LiquidCalculation());
+
         private IEnumerator LiquidCalculation() {
             while (true) {
                 LiquidCalculatorWater.Calculate();
                 yield return new WaitForSeconds(tick);
             }
-        }
-
-        private void Start() {
-            StartCoroutine(LiquidCalculation());
         }
 
         private void Update() {

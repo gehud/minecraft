@@ -190,6 +190,9 @@
     "m_GroupDatas": [
         {
             "m_Id": "da3a9bf13af74ac7bcc0d0fa8973f759"
+        },
+        {
+            "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
         }
     ],
     "m_StickyNoteDatas": [],
@@ -1512,7 +1515,7 @@
     "m_Type": "UnityEditor.ShaderGraph.TilingAndOffsetNode",
     "m_ObjectId": "101f09723b3943179dbbc60e2645520f",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
     },
     "m_Name": "Tiling And Offset",
     "m_DrawState": {
@@ -1618,7 +1621,7 @@
     "m_Type": "UnityEditor.ShaderGraph.PowerNode",
     "m_ObjectId": "19735a1bd7fa44f28804a0e3e87d2492",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
     },
     "m_Name": "Power",
     "m_DrawState": {
@@ -2244,7 +2247,7 @@
     "m_Type": "UnityEditor.ShaderGraph.VoronoiNode",
     "m_ObjectId": "3892a8ead3ea49d6a1b6b9ccb5c4a8e3",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
     },
     "m_Name": "Voronoi",
     "m_DrawState": {
@@ -2484,8 +2487,8 @@
         "m_Expanded": true,
         "m_Position": {
             "serializedVersion": "2",
-            "x": -1484.0001220703125,
-            "y": 1879.33349609375,
+            "x": -1710.666748046875,
+            "y": 2080.0,
             "width": 125.3333740234375,
             "height": 174.66650390625
         }
@@ -2736,7 +2739,7 @@
     "m_Type": "UnityEditor.ShaderGraph.MultiplyNode",
     "m_ObjectId": "4ee65878ac264fe888e11148b6a8896f",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
     },
     "m_Name": "Multiply",
     "m_DrawState": {
@@ -3102,7 +3105,7 @@
     "m_Type": "UnityEditor.ShaderGraph.Vector2Node",
     "m_ObjectId": "600d573107884aac8d2e007ffa8d13bc",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
     },
     "m_Name": "Vector 2",
     "m_DrawState": {
@@ -3852,7 +3855,7 @@
     "m_Type": "UnityEditor.ShaderGraph.OneMinusNode",
     "m_ObjectId": "8a47d150b2404b95b30d2fcd9fb66b5f",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
     },
     "m_Name": "One Minus",
     "m_DrawState": {
@@ -3922,9 +3925,9 @@
         "m_Expanded": true,
         "m_Position": {
             "serializedVersion": "2",
-            "x": 605.333251953125,
+            "x": 876.6668090820313,
             "y": 212.66664123535157,
-            "width": 209.33343505859376,
+            "width": 209.33319091796876,
             "height": 328.0
         }
     },
@@ -5079,7 +5082,7 @@
     "m_Type": "UnityEditor.ShaderGraph.PropertyNode",
     "m_ObjectId": "be379bd935a449718f8632afa405ca1a",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
     },
     "m_Name": "Property",
     "m_DrawState": {
@@ -5114,7 +5117,7 @@
     "m_Type": "UnityEditor.ShaderGraph.SaturateNode",
     "m_ObjectId": "bfe971f347d3455e89ca2e5e7b3890fb",
     "m_Group": {
-        "m_Id": ""
+        "m_Id": "ce1d7f50e17d4ccfa092632be4b5677e"
     },
     "m_Name": "Saturate",
     "m_DrawState": {
@@ -5429,6 +5432,17 @@
         "z": 0.0
     },
     "m_Labels": []
+}
+
+{
+    "m_SGVersion": 0,
+    "m_Type": "UnityEditor.ShaderGraph.GroupData",
+    "m_ObjectId": "ce1d7f50e17d4ccfa092632be4b5677e",
+    "m_Title": "Stars",
+    "m_Position": {
+        "x": 10.0,
+        "y": 10.0
+    }
 }
 
 {
