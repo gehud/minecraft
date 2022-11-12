@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Minecraft.Utilities {
     public static class ChunkUtility {
-        public static void ForEachVoxel(Action<int, int, int> action) {
+        public static void For(Action<int, int, int> action) {
             for (int y = 0; y < Chunk.SIZE; y++)
                 for (int x = 0; x < Chunk.SIZE; x++)
                     for (int z = 0; z < Chunk.SIZE; z++)
                         action(y, x, z);
         }
 
-        public static void ForEachVoxel(Action<Vector3Int> action) {
+        public static void For(Action<Vector3Int> action) {
             for (int y = 0; y < Chunk.SIZE; y++)
                 for (int x = 0; x < Chunk.SIZE; x++)
                     for (int z = 0; z < Chunk.SIZE; z++)
@@ -22,10 +21,10 @@ namespace Minecraft.Utilities {
 
         private static readonly object lockObject = new();
 
-        private static void ParallelForEachVoxel(Action<int, int, int> action) {
+        public static void ParallelFor(Action<int, int, int> action) {
             Parallel.For(0, Chunk.VOLUME, (index, state) => {
                 int z = index / (Chunk.SIZE * Chunk.SIZE);
-                index -= (z * Chunk.SIZE * Chunk.SIZE);
+                index -= z * Chunk.SIZE * Chunk.SIZE;
                 int y = index / Chunk.SIZE;
                 int x = index % Chunk.SIZE;
                 action(x, y, z);
@@ -93,7 +92,7 @@ namespace Minecraft.Utilities {
 
             ConcurrentDictionary<MaterialType, MeshData> result = new();
 
-            ParallelForEachVoxel((x, y, z) => {
+            ParallelFor((x, y, z) => {
                 BlockType voxelType = chunkData.BlockMap[x, y, z];
 
                 if (voxelType != BlockType.Air) {

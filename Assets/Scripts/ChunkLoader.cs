@@ -120,7 +120,7 @@ namespace Minecraft {
 
             await Task.Run(() => {
                 foreach (var item in generatedData) {
-                    ChunkUtility.ForEachVoxel((localBlockCoordinate) => {
+                    ChunkUtility.For((localBlockCoordinate) => {
                         if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
                             Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
                             world.LiquidCalculatorWater.Add(blockCoordinate, LiquidMap.MAX);
