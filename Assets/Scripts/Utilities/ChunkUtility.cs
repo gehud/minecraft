@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Minecraft.Utilities {
@@ -18,7 +20,19 @@ namespace Minecraft.Utilities {
                         action(new Vector3Int(x, y, z));
         }
 
-        public static Dictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData) {
+        private static readonly object lockObject = new();
+
+        private static void ParallelForEachVoxel(Action<int, int, int> action) {
+            Parallel.For(0, Chunk.VOLUME, (index, state) => {
+                int z = index / (Chunk.SIZE * Chunk.SIZE);
+                index -= (z * Chunk.SIZE * Chunk.SIZE);
+                int y = index / Chunk.SIZE;
+                int x = index % Chunk.SIZE;
+                action(x, y, z);
+            });
+        }
+
+        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData) {
             var blockDataManager = BlockDataManager.Instance;
 
             BlockType GetVoxel(int x, int y, int z) {
@@ -67,24 +81,26 @@ namespace Minecraft.Utilities {
 
             void AddFaceColliderIndices(MeshData meshData) {
                 int vertexCount = meshData.ColliderVertices.Count;
-                meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(1 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(3 + vertexCount));
+                lock (lockObject) {
+                    meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
+                    meshData.ColliderIndices.Add((ushort)(1 + vertexCount));
+                    meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
+                    meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
+                    meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
+                    meshData.ColliderIndices.Add((ushort)(3 + vertexCount));
+                }
             }
 
-            Dictionary<MaterialType, MeshData> result = new();
+            ConcurrentDictionary<MaterialType, MeshData> result = new();
 
-            ForEachVoxel((x, y, z) => {
+            ParallelForEachVoxel((x, y, z) => {
                 BlockType voxelType = chunkData.BlockMap[x, y, z];
 
                 if (voxelType != BlockType.Air) {
                     var localVoxelCoordinate = new Vector3Int(x, y, z);
                     MaterialType materialType = blockDataManager.Data[voxelType].MaterialType;
                     if (!result.ContainsKey(materialType))
-                        result.Add(materialType, new MeshData());
+                        result.TryAdd(materialType, new MeshData());
 
                     float atlasStep = 16.0f / 256.0f;
                     bool isSolid = IsVoxelSolid(x, y, z);
@@ -231,18 +247,20 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
+                        lock (lockObject) {
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
 
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
+                            if (isSolid) {
+                                AddFaceColliderIndices(meshData);
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
+                            }
                         }
                     }
 
@@ -348,18 +366,20 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
+                        lock (lockObject) {
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
 
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+                            if (isSolid) {
+                                AddFaceColliderIndices(meshData);
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+                            }
                         }
                     }
 
@@ -463,18 +483,20 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep, lr1, lg1, lb1, ls1));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 1 * atlasStep, lr2, lg2, lb2, ls2));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
+                        lock (lockObject) {
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep, lr1, lg1, lb1, ls1));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 1 * atlasStep, lr2, lg2, lb2, ls2));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
+                            if (isSolid) {
+                                AddFaceColliderIndices(meshData);
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
+                            }
                         }
                     }
 
@@ -552,18 +574,20 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep, lr1, lg1, lb1, ls1));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 1 * atlasStep, lr2, lg2, lb2, ls2));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
+                        lock (lockObject) {
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep, lr1, lg1, lb1, ls1));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 1 * atlasStep, lr2, lg2, lb2, ls2));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
 
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+                            if (isSolid) {
+                                AddFaceColliderIndices(meshData);
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+                            }
                         }
                     }
 
@@ -669,18 +693,20 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
+                        lock (lockObject) {
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
 
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
+                            if (isSolid) {
+                                AddFaceColliderIndices(meshData);
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
+                            }
                         }
                     }
 
@@ -786,18 +812,20 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
+                        lock (lockObject) {
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
 
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
+                            if (isSolid) {
+                                AddFaceColliderIndices(meshData);
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
+                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
+                            }
                         }
                     }
                 }

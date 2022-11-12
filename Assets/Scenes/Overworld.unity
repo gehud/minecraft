@@ -838,6 +838,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   underWaterVolume: {fileID: 1981023386}
+  waterEffectHeight: 1.8
 --- !u!1 &1388594959
 GameObject:
   m_ObjectHideFlags: 0
