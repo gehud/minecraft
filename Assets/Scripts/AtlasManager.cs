@@ -1,7 +1,8 @@
 using UnityEngine;
 
 namespace Minecraft {
-    public class AtlasProvider : Singleton<AtlasProvider>, IAtlasProvider {
+    public class AtlasManager : Singleton<AtlasManager>, IAtlasProvider {
+        public float TileStep => 16.0f / 256.0f;
 
         [SerializeField]
         private Texture2D atlas;

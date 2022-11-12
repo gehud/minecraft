@@ -4,101 +4,100 @@ using UnityEngine;
 
 namespace Minecraft {
     public class LightCalculator {
-        public struct LightData {
-            public int X, Y, Z;
-            public byte Light;
+        private struct Entry {
+            public Vector3Int Coordinate;
+            public byte Level;
 
-            public LightData(int x, int y, int z, byte light) {
-                X = x;
-                Y = y;
-                Z = z;
-                Light = light;
+            public Entry(Vector3Int coordinate, byte level) {
+                Coordinate= coordinate;
+                Level = level;
             }
 
-            public LightData(Vector3Int coordinate, byte light) {
-                X = coordinate.x;
-                Y = coordinate.y;
-                Z = coordinate.z;
-                Light = light;
-            }
+            public Entry(int x, int y, int z, byte level) : this(new Vector3Int(x, y, z), level) { }
         }
 
-        private World world;
-        private LightChanel chanel;
-        private Queue<LightData> addQueue = new();
-        private Queue<LightData> removeQueue = new();
+        private readonly World world;
+        private readonly LightChanel chanel;
+        private readonly Queue<Entry> addQueue = new();
+        private readonly Queue<Entry> removeQueue = new();
+
+        private static readonly Vector3Int[] blockSides = {
+            new Vector3Int( 0,  0,  1),
+            new Vector3Int( 0,  0, -1),
+            new Vector3Int( 0,  1,  0),
+            new Vector3Int( 0, -1,  0),
+            new Vector3Int( 1,  0,  0),
+            new Vector3Int(-1,  0,  0),
+        };
 
         public LightCalculator(World world, LightChanel chanel) {
             this.world = world;
             this.chanel = chanel;
         }
 
-        public void Add(int x, int y, int z, int light) {
-            if (light <= 1)
+        public void Add(Vector3Int blockCoordinate, byte level) {
+            if (level <= 1)
                 return;
 
-            Vector3Int globalVoxelCoordinate = new(x, y, z);
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-            if (!world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+            if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
                 return;
 
-            Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-            chunkData.LightMap.Set(localVoxelCoordinate, chanel, light);
+            Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+            chunkData.LightMap.Set(localBlockCoordinate, chanel, level);
             chunkData.IsDirty = true;
 
-            LightData lightData = new(x, y, z, (byte)light);
-            addQueue.Enqueue(lightData);
+            Entry entry = new(blockCoordinate, level);
+            addQueue.Enqueue(entry);
         }
 
-        public void Add(Vector3Int vector, int light) {
-            Add(vector.x, vector.y, vector.z, light);
+        public void Add(int x, int y, int z, byte level) {
+            Add(new Vector3Int(x, y, z), level);
+        }
+
+        public void Add(Vector3Int blockCoordinate) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+            if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+                return;
+
+            chunkData.IsDirty = true;
+
+            Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+            byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
+            if (level <= 1)
+                return;
+
+            Entry entry = new(blockCoordinate, level);
+            addQueue.Enqueue(entry);
         }
 
         public void Add(int x, int y, int z) {
-            Vector3Int globalVoxelCoordinate = new(x, y, z);
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-            if (!world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
-                return;
-
-            chunkData.IsDirty = true;
-
-            Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-            int light = chunkData.LightMap.Get(localVoxelCoordinate, chanel);
-            if (light <= 1)
-                return;
-
-            LightData lightData = new(x, y, z, (byte)light);
-            addQueue.Enqueue(lightData);
+            Add(new Vector3Int(x, y, z));
         }
 
-        public void Add(Vector3Int vector) {
-            Add(vector.x, vector.y, vector.z);
+        public void Remove(Vector3Int blockCoordinate) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+            if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+                return;
+
+            Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+            byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
+            if (level <= 1)
+                return;
+
+            chunkData.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
+            chunkData.IsDirty = true;
+
+            Entry entry = new(blockCoordinate, level);
+            removeQueue.Enqueue(entry);
         }
 
         public void Remove(int x, int y, int z) {
-            Vector3Int globalVoxelCoordinate = new(x, y, z);
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-            if (!world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
-                return;
-
-            Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-            int light = chunkData.LightMap.Get(localVoxelCoordinate, chanel);
-            if (light <= 1)
-                return;
-
-            chunkData.LightMap.Set(localVoxelCoordinate, chanel, LightMap.MIN);
-            chunkData.IsDirty = true;
-
-            LightData lightData = new(x, y, z, (byte)light);
-            removeQueue.Enqueue(lightData);
-        }
-
-        public void Remove(Vector3Int vector) {
-            Remove(vector.x, vector.y, vector.z);
+            Remove(new Vector3Int(x, y, z));
         }
 
         public static void AddSunlight(World world, Vector2Int column) {
-            var blockDataManager = BlockManager.Instance;
+            var blockDataManager = BlockDataManager.Instance;
 
             int startX = column.x * Chunk.SIZE;
             int endX = column.x * Chunk.SIZE + Chunk.SIZE - 1;
@@ -109,14 +108,14 @@ namespace Minecraft {
             for (int x = startX; x <= endX; x++)
                 for (int z = startZ; z <= endZ; z++) {
                     for (int y = World.HEIGHT * Chunk.SIZE - 1; y >= 0; y--) {
-                        Vector3Int globalVoxelCoordinate = new(x, y, z);
-                        Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-                        if (!world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+                        Vector3Int blockCoordinate = new(x, y, z);
+                        Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+                        if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
                             break;
-                        Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-                        if (!blockDataManager.Blocks[chunkData.BlockMap[localVoxelCoordinate]].IsTransparent)
+                        Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                        if (!blockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsTransparent)
                             break;
-                        chunkData.LightMap.SetSun(localVoxelCoordinate, LightMap.MAX);
+                        chunkData.LightMap.SetSun(localBlockCoordinate, LightMap.MAX);
                     }
                 }
 
@@ -124,28 +123,28 @@ namespace Minecraft {
             for (int x = startX; x <= endX; x++)
                 for (int z = startZ; z <= endZ; z++) {
                     for (int y = World.HEIGHT * Chunk.SIZE - 1; y >= 0; y--) {
-                        Vector3Int globalVoxelCoordinate = new(x, y, z);
-                        Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-                        if (!world.ChunkDatas.ContainsKey(chunkCoordinate))
+                        Vector3Int blockCoordinate = new(x, y, z);
+                        Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+                        if (!world.ChunksData.ContainsKey(chunkCoordinate))
                             break;
-                        if (!blockDataManager.Blocks[world.GetVoxel(globalVoxelCoordinate)].IsTransparent) {
+                        if (!blockDataManager.Data[world.GetVoxel(blockCoordinate)].IsTransparent) {
                             for (int newY = y - 1; newY >= 0; newY--) {
-                                globalVoxelCoordinate = new Vector3Int(x, newY, z);
-                                chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-                                if (!blockDataManager.Blocks[world.GetVoxel(globalVoxelCoordinate)].IsTransparent)
+                                blockCoordinate = new Vector3Int(x, newY, z);
+                                chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+                                if (!blockDataManager.Data[world.GetVoxel(blockCoordinate)].IsTransparent)
                                     continue;
-                                if (world.ChunkDatas.ContainsKey(chunkCoordinate + Vector3Int.right)
-                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.right, LightChanel.Sun) == LightMap.MAX)
-                                    world.LightCalculatorSun.Add(globalVoxelCoordinate + Vector3Int.right);
-                                if (world.ChunkDatas.ContainsKey(chunkCoordinate + Vector3Int.left)
-                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.left, LightChanel.Sun) == LightMap.MAX)
-                                    world.LightCalculatorSun.Add(globalVoxelCoordinate + Vector3Int.left);
-                                if (world.ChunkDatas.ContainsKey(chunkCoordinate + Vector3Int.forward)
-                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.forward, LightChanel.Sun) == LightMap.MAX)
-                                    world.LightCalculatorSun.Add(globalVoxelCoordinate + Vector3Int.forward);
-                                if (world.ChunkDatas.ContainsKey(chunkCoordinate + Vector3Int.back)
-                                    && world.GetLight(globalVoxelCoordinate + Vector3Int.back, LightChanel.Sun) == LightMap.MAX)
-                                    world.LightCalculatorSun.Add(globalVoxelCoordinate + Vector3Int.back);
+                                if (world.ChunksData.ContainsKey(chunkCoordinate + Vector3Int.right)
+                                    && world.GetLightLevel(blockCoordinate + Vector3Int.right, LightChanel.Sun) == LightMap.MAX)
+                                    world.LightCalculatorSun.Add(blockCoordinate + Vector3Int.right);
+                                if (world.ChunksData.ContainsKey(chunkCoordinate + Vector3Int.left)
+                                    && world.GetLightLevel(blockCoordinate + Vector3Int.left, LightChanel.Sun) == LightMap.MAX)
+                                    world.LightCalculatorSun.Add(blockCoordinate + Vector3Int.left);
+                                if (world.ChunksData.ContainsKey(chunkCoordinate + Vector3Int.forward)
+                                    && world.GetLightLevel(blockCoordinate + Vector3Int.forward, LightChanel.Sun) == LightMap.MAX)
+                                    world.LightCalculatorSun.Add(blockCoordinate + Vector3Int.forward);
+                                if (world.ChunksData.ContainsKey(chunkCoordinate + Vector3Int.back)
+                                    && world.GetLightLevel(blockCoordinate + Vector3Int.back, LightChanel.Sun) == LightMap.MAX)
+                                    world.LightCalculatorSun.Add(blockCoordinate + Vector3Int.back);
                             }
                             break;
                         }
@@ -154,58 +153,50 @@ namespace Minecraft {
         }
 
         public void Calculate() {
-            Vector3Int[] sides =
-            {
-                 new Vector3Int( 0,  0,  1),
-                 new Vector3Int( 0,  0, -1),
-                 new Vector3Int( 0,  1,  0),
-                 new Vector3Int( 0, -1,  0),
-                 new Vector3Int( 1,  0,  0),
-                 new Vector3Int(-1,  0,  0)
-            };
+            BlockDataManager blockDataManager = BlockDataManager.Instance;
 
-            while (removeQueue.TryDequeue(out LightData entryLightData)) {
-                foreach (var side in sides) {
-                    int x = entryLightData.X + side.x;
-                    int y = entryLightData.Y + side.y;
-                    int z = entryLightData.Z + side.z;
-                    Vector3Int globalVoxelCoordinate = new(x, y, z);
-                    Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-                    Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-                    if (world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            while (removeQueue.TryDequeue(out Entry entry)) {
+                foreach (var side in blockSides) {
+                    int x = entry.Coordinate.x + side.x;
+                    int y = entry.Coordinate.y + side.y;
+                    int z = entry.Coordinate.z + side.z;
+                    Vector3Int blockCoordinate = new(x, y, z);
+                    Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+                    Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                    if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                         chunkData.IsDirty = true;
-                        int light = chunkData.LightMap.Get(localVoxelCoordinate, chanel);
-                        if (light != 0 && light == entryLightData.Light - 1) {
-                            LightData removeLightData = new(x, y, z, (byte)light);
-                            removeQueue.Enqueue(removeLightData);
-                            chunkData.LightMap.Set(localVoxelCoordinate, chanel, LightMap.MIN);
-                        } else if (light >= entryLightData.Light) {
-                            LightData addLightData = new(x, y, z, (byte)light);
-                            addQueue.Enqueue(addLightData);
+                        byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
+                        if (level != 0 && level == entry.Level - 1) {
+                            Entry removeEntry = new(x, y, z, level);
+                            removeQueue.Enqueue(removeEntry);
+                            chunkData.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
+                        } else if (level >= entry.Level) {
+                            Entry addEntry = new(x, y, z, level);
+                            addQueue.Enqueue(addEntry);
                         }
                     }
                 }
             }
 
-            while (addQueue.TryDequeue(out LightData entryLightData)) {
-                if (entryLightData.Light <= 1)
+            while (addQueue.TryDequeue(out Entry entry)) {
+                if (entry.Level <= 1)
                     continue;
 
-                foreach (var side in sides) {
-                    int x = entryLightData.X + side.x;
-                    int y = entryLightData.Y + side.y;
-                    int z = entryLightData.Z + side.z;
-                    Vector3Int globalVoxelCoordinate = new(x, y, z);
-                    Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-                    Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-                    if (world.ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+                foreach (var side in blockSides) {
+                    int x = entry.Coordinate.x + side.x;
+                    int y = entry.Coordinate.y + side.y;
+                    int z = entry.Coordinate.z + side.z;
+                    Vector3Int blockCoordinate = new(x, y, z);
+                    Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+                    Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                    if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                         chunkData.IsDirty = true;
-                        BlockType voxelType = chunkData.BlockMap[localVoxelCoordinate];
-                        int light = chunkData.LightMap.Get(localVoxelCoordinate, chanel);
-                        if (voxelType == BlockType.Air && light + 2 <= entryLightData.Light) {
-                            chunkData.LightMap.Set(localVoxelCoordinate, chanel, (byte)(entryLightData.Light - 1));
-                            LightData addLightData = new(x, y, z, (byte)(entryLightData.Light - 1));
-                            addQueue.Enqueue(addLightData);
+                        BlockType voxelType = chunkData.BlockMap[localBlockCoordinate];
+                        byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
+                        if (blockDataManager.Data[voxelType].IsTransparent && level + 2 <= entry.Level) {
+                            chunkData.LightMap.Set(localBlockCoordinate, chanel, (byte)(entry.Level - 1));
+                            Entry addEntry = new(x, y, z, (byte)(entry.Level - 1));
+                            addQueue.Enqueue(addEntry);
                         }
                     }
                 }

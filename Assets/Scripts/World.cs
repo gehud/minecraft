@@ -7,11 +7,11 @@ namespace Minecraft {
     public class World : Singleton<World> {
         public const int HEIGHT = 16;
 
-        private Dictionary<Vector3Int, ChunkData> chunkDatas = new();
-        public Dictionary<Vector3Int, ChunkData> ChunkDatas => chunkDatas;
+        private readonly Dictionary<Vector3Int, ChunkData> chunksData = new();
+        public IDictionary<Vector3Int, ChunkData> ChunksData => chunksData;
 
-        private Dictionary<Vector3Int, Chunk> chunks = new();
-        public Dictionary<Vector3Int, Chunk> Chunks => chunks;
+        private readonly Dictionary<Vector3Int, Chunk> chunks = new();
+        public IDictionary<Vector3Int, Chunk> Chunks => chunks;
 
         public LightCalculator LightCalculatorSun { get; set; }
         public LightCalculator LightCalculatorRed { get; set; }
@@ -30,7 +30,7 @@ namespace Minecraft {
             var chunkData = new ChunkData {
                 Coordinate = coordinate
             };
-            chunkDatas.Add(coordinate, chunkData);
+            chunksData.Add(coordinate, chunkData);
             return chunkData;
         }
 
@@ -43,8 +43,8 @@ namespace Minecraft {
         }
 
         public ChunkData GetChunkData(Vector3Int coordinate) {
-            if (chunkDatas.ContainsKey(coordinate))
-                return chunkDatas[coordinate];
+            if (chunksData.ContainsKey(coordinate))
+                return chunksData[coordinate];
 
             return null;
         }
@@ -57,8 +57,8 @@ namespace Minecraft {
         }
 
         public ChunkData GetOrCreateChunkData(Vector3Int coordinate) {
-            if (chunkDatas.ContainsKey(coordinate))
-                return chunkDatas[coordinate];
+            if (chunksData.ContainsKey(coordinate))
+                return chunksData[coordinate];
 
             return CreateChunkData(coordinate);
         }
@@ -71,14 +71,14 @@ namespace Minecraft {
         }
 
         public void DestroyChunk(Vector3Int coordinate) {
-            chunkDatas.Remove(coordinate);
+            chunksData.Remove(coordinate);
             chunks.Remove(coordinate, out Chunk chunk);
             Destroy(chunk.gameObject);
         }
 
         public BlockType GetVoxel(Vector3Int coordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
-            if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
                 return chunkData.BlockMap[localVoxelCoordinate];
             }
@@ -93,29 +93,29 @@ namespace Minecraft {
         public void SetVoxel(Vector3Int globalVoxelCoordinate, BlockType voxelType) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
             Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
-            if (ChunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 chunkData.BlockMap[localVoxelCoordinate] = voxelType;
                 chunkData.IsDirty = true;
             }
-            if (localVoxelCoordinate.x == 0 && ChunkDatas.TryGetValue(chunkCoordinate + Vector3Int.left, out chunkData))
+            if (localVoxelCoordinate.x == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.left, out chunkData))
                 chunkData.IsDirty = true;
-            if (localVoxelCoordinate.y == 0 && ChunkDatas.TryGetValue(chunkCoordinate + Vector3Int.down, out chunkData))
+            if (localVoxelCoordinate.y == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.down, out chunkData))
                 chunkData.IsDirty = true;
-            if (localVoxelCoordinate.z == 0 && ChunkDatas.TryGetValue(chunkCoordinate + Vector3Int.back, out chunkData))
+            if (localVoxelCoordinate.z == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.back, out chunkData))
                 chunkData.IsDirty = true;
-            if (localVoxelCoordinate.x == Chunk.SIZE - 1 && ChunkDatas.TryGetValue(chunkCoordinate + Vector3Int.right, out chunkData))
+            if (localVoxelCoordinate.x == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.right, out chunkData))
                 chunkData.IsDirty = true;
-            if (localVoxelCoordinate.y == Chunk.SIZE - 1 && ChunkDatas.TryGetValue(chunkCoordinate + Vector3Int.up, out chunkData))
+            if (localVoxelCoordinate.y == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.up, out chunkData))
                 chunkData.IsDirty = true;
-            if (localVoxelCoordinate.z == Chunk.SIZE - 1 && ChunkDatas.TryGetValue(chunkCoordinate + Vector3Int.forward, out chunkData))
+            if (localVoxelCoordinate.z == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.forward, out chunkData))
                 chunkData.IsDirty = true;
         }
 
-        public int GetLight(Vector3Int coordinate, LightChanel chanel) {
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
-            if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
-                return chunkData.LightMap.Get(localVoxelCoordinate, chanel);
+        public int GetLightLevel(Vector3Int blockCoordinate, LightChanel chanel) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+                Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                return chunkData.LightMap.Get(localBlockCoordinate, chanel);
             }
 
             return LightMap.MAX;
@@ -123,7 +123,7 @@ namespace Minecraft {
 
         public byte GetLiquidAmount(Vector3Int coordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
-            if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
                 return chunkData.LiquidMap[localVoxelCoordinate].Amount;
             }
@@ -133,7 +133,7 @@ namespace Minecraft {
 
         public LiquidData GetLiquid(Vector3Int coordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
-            if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
                 return chunkData.LiquidMap[localVoxelCoordinate];
             }
@@ -147,7 +147,7 @@ namespace Minecraft {
 
         public byte GetLiquidAmount(Vector3Int coordinate, BlockType type) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
-            if (chunkDatas.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
                 return chunkData.LiquidMap.Get(localVoxelCoordinate, type);
             }
@@ -156,7 +156,7 @@ namespace Minecraft {
         }
 
         public void DestroyVoxel(Vector3Int coordinate) {
-            var blockDataManager = BlockManager.Instance;
+            var blockDataManager = BlockDataManager.Instance;
 
             SetVoxel(coordinate, BlockType.Air);
 
@@ -169,11 +169,11 @@ namespace Minecraft {
             LightCalculatorGreen.Calculate();
             LightCalculatorBlue.Calculate();
 
-            if (blockDataManager.Blocks[GetVoxel(coordinate + Vector3Int.up)].IsTransparent
-                && GetLight(coordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX) {
+            if (blockDataManager.Data[GetVoxel(coordinate + Vector3Int.up)].IsTransparent
+                && GetLightLevel(coordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX) {
                 for (int y = coordinate.y; y >= 0; y--) {
                     LightCalculatorSun.Add(coordinate.x, y, coordinate.z, LightMap.MAX);
-                    if (!blockDataManager.Blocks[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
+                    if (!blockDataManager.Data[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
                         break;
                 }
             }
@@ -219,7 +219,7 @@ namespace Minecraft {
         }
 
         public void PlaceVoxel(Vector3Int coordinate, BlockType voxelType) {
-            var blockDataManager = BlockManager.Instance;
+            var blockDataManager = BlockDataManager.Instance;
 
             LiquidCalculatorWater.Remove(coordinate);
 
@@ -230,7 +230,7 @@ namespace Minecraft {
             LightCalculatorBlue.Remove(coordinate);
             for (int y = coordinate.y; y >= 0; y--) {
                 LightCalculatorSun.Remove(coordinate.x, y, coordinate.z);
-                if (!blockDataManager.Blocks[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
+                if (!blockDataManager.Data[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
                     break;
             }
             LightCalculatorRed.Calculate();
@@ -238,7 +238,7 @@ namespace Minecraft {
             LightCalculatorBlue.Calculate();
             LightCalculatorSun.Calculate();
 
-            LightColor emission = blockDataManager.Blocks[voxelType].Emission;
+            LightColor emission = blockDataManager.Data[voxelType].Emission;
             if (emission.R != 0) {
                 LightCalculatorRed.Add(coordinate, emission.R);
                 LightCalculatorRed.Calculate();

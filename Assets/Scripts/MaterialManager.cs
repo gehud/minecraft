@@ -23,7 +23,7 @@ namespace Minecraft {
         }
 
         private void Start() {
-            var atlasManager = AtlasProvider.Instance;
+            var atlasManager = AtlasManager.Instance;
             foreach (var item in Materials) {
                 if (atlasManager != null)
                     SetupAtlas(item.Key, item.Value, atlasManager);

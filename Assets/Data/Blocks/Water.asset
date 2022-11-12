@@ -9,15 +9,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b595fc6202172984ea5235e46587d4a9, type: 3}
+  m_Script: {fileID: 11500000, guid: ff48de936eba38b45902408f8a25c4e6, type: 3}
   m_Name: Water
   m_EditorClassIdentifier: 
-  rightFace: {x: 13, y: 3}
-  leftFace: {x: 13, y: 3}
-  topFace: {x: 13, y: 3}
-  bottomFace: {x: 13, y: 3}
-  frontFace: {x: 13, y: 3}
-  backFace: {x: 13, y: 3}
+  texturingData:
+    rightFace: {x: 13, y: 3}
+    leftFace: {x: 13, y: 3}
+    topFace: {x: 13, y: 3}
+    bottomFace: {x: 13, y: 3}
+    frontFace: {x: 13, y: 3}
+    backFace: {x: 13, y: 3}
   materialType: 1
   isSolid: 0
   isLiquid: 1

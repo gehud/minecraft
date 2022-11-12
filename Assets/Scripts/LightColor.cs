@@ -16,6 +16,12 @@ namespace Minecraft {
             B = b;
         }
 
+        public bool Equals(LightColor other) {
+            return R == other.R &&
+                   G == other.G &&
+                   B == other.B;
+        }
+
         public override bool Equals(object obj) {
             return obj is LightColor other &&
                    R == other.R &&
@@ -23,24 +29,8 @@ namespace Minecraft {
                    B == other.B;
         }
 
-        public bool Equals(LightColor other) {
-            return R == other.R &&
-                   G == other.G &&
-                   B == other.B;
-        }
-
         public override int GetHashCode() {
             return HashCode.Combine(R, G, B);
         }
-
-        /*        public static bool operator == (LightColor left, LightColor right)
-                {
-                    return left.Equals(right);
-                }
-
-                public static bool operator != (LightColor left, LightColor right)
-                {
-                    return !left.Equals(right);
-                }*/
     }
 }

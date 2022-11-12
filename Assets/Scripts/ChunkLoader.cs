@@ -58,7 +58,7 @@ namespace Minecraft {
                                 chunkToCreateCoordinates.Push(chunkCoordinate);
                         }
 
-                        if (!world.ChunkDatas.ContainsKey(chunkCoordinate)) {
+                        if (!world.ChunksData.ContainsKey(chunkCoordinate)) {
                             chunkDataToCreateCoordinates.Push(chunkCoordinate);
                             sunlight = true;
                         }
@@ -69,7 +69,7 @@ namespace Minecraft {
                     }
                 }
 
-            foreach (var item in world.ChunkDatas.Keys) {
+            foreach (var item in world.ChunksData.Keys) {
                 if (!loadedCoordinates.Contains(item))
                     chunkDataToRemoveCoordinates.Push(item);
             }
@@ -103,7 +103,7 @@ namespace Minecraft {
             await Task.Run(() => GenerateLoadData(world));
 
             foreach (var item in chunkDataToRemoveCoordinates)
-                world.ChunkDatas.Remove(item);
+                world.ChunksData.Remove(item);
 
             foreach (var item in chunkToRemoveCoordinates) {
                 world.Chunks.Remove(item, out Chunk chunk);
@@ -116,7 +116,7 @@ namespace Minecraft {
                     generatedData.TryAdd(item, chunkDataGenerator.GenerateChunkData(item));
             });
             foreach (var item in generatedData)
-                world.ChunkDatas.Add(item.Key, item.Value);
+                world.ChunksData.Add(item.Key, item.Value);
 
             await Task.Run(() => {
                 foreach (var item in generatedData) {
@@ -138,7 +138,7 @@ namespace Minecraft {
             ConcurrentDictionary<Vector3Int, IDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => {
                 foreach (var item in chunkToCreateCoordinates)
-                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.ChunkDatas[item]));
+                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.ChunksData[item]));
             });
 
             StartCoroutine(GenerateChunks(world, generatedMeshDatas));

@@ -1,8 +1,9 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace Minecraft {
-    [CreateAssetMenu]
-    public class Block : ScriptableObject {
+    [Serializable]
+    public struct BlockTexturingData {
         public Vector2Int RightFace => rightFace;
         [SerializeField] private Vector2Int rightFace;
 
@@ -20,20 +21,5 @@ namespace Minecraft {
 
         public Vector2Int BackFace => backFace;
         [SerializeField] private Vector2Int backFace;
-
-        public MaterialType MaterialType => materialType;
-        [SerializeField] private MaterialType materialType;
-
-        public bool IsSolid => isSolid;
-        [SerializeField] private bool isSolid = true;
-
-        public bool IsLiquid => isLiquid;
-        [SerializeField] private bool isLiquid = false;
-
-        public bool IsTransparent => isTransparent;
-        [SerializeField] private bool isTransparent = false;
-
-        public LightColor Emission => emission;
-        [SerializeField] private LightColor emission;
     }
 }
