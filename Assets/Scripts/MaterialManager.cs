@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Zenject;
 
 namespace Minecraft {
-    public class MaterialManager : Singleton<MaterialManager> {
+    public class MaterialManager : MonoBehaviour {
         public IReadOnlyDictionary<MaterialType, Material> Materials => materials;
         private readonly Dictionary<MaterialType, Material> materials = new();
 
@@ -16,6 +17,9 @@ namespace Minecraft {
         [SerializeField]
         private List<MaterialPair> materialPairs = new();
 
+        [Inject]
+        private AtlasManager AtlasManager { get; }
+
         private void Awake() {
             foreach (var item in materialPairs) {
                 materials.Add(item.Type, item.Material);
@@ -23,14 +27,12 @@ namespace Minecraft {
         }
 
         private void Start() {
-            var atlasManager = AtlasManager.Instance;
             foreach (var item in Materials) {
-                if (atlasManager != null)
-                    SetupAtlas(item.Key, item.Value, atlasManager);
+                SetupAtlas(item.Key, item.Value, AtlasManager);
             }
         }
 
-        private void SetupAtlas(MaterialType type, Material material, IAtlasProvider atlasProvider) {
+        private void SetupAtlas(MaterialType type, Material material, AtlasManager atlasProvider) {
             material.SetTexture("_Atlas", atlasProvider.GetAtlas(type));
         }
     }

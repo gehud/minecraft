@@ -3,7 +3,7 @@ using Minecraft.Utilities;
 using UnityEngine;
 
 namespace Minecraft {
-    public class ChunkDataGenerator : Singleton<ChunkDataGenerator> {
+    public class ChunkDataGenerator : MonoBehaviour {
         [SerializeField] private Vector2 offset;
         [SerializeField, Min(0)] private int surfaceOffset = 64;
         [SerializeField, Min(0)] private int waterLevel = 45;

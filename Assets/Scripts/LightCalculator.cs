@@ -21,6 +21,8 @@ namespace Minecraft {
         private readonly Queue<Entry> addQueue = new();
         private readonly Queue<Entry> removeQueue = new();
 
+        private static BlockDataManager BlockDataManager { get; set; }
+         
         private static readonly Vector3Int[] blockSides = {
             new Vector3Int( 0,  0,  1),
             new Vector3Int( 0,  0, -1),
@@ -29,6 +31,10 @@ namespace Minecraft {
             new Vector3Int( 1,  0,  0),
             new Vector3Int(-1,  0,  0),
         };
+
+        public static void SetBlockDataManager(BlockDataManager blockDataManager) {
+            BlockDataManager = blockDataManager;
+        }
 
         public LightCalculator(World world, LightChanel chanel) {
             this.world = world;
@@ -97,8 +103,6 @@ namespace Minecraft {
         }
 
         public static void AddSunlight(World world, Vector2Int column) {
-            var blockDataManager = BlockDataManager.Instance;
-
             int startX = column.x * Chunk.SIZE;
             int endX = column.x * Chunk.SIZE + Chunk.SIZE - 1;
             int startZ = column.y * Chunk.SIZE;
@@ -113,7 +117,7 @@ namespace Minecraft {
                         if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
                             break;
                         Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                        if (!blockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsTransparent)
+                        if (!BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsTransparent)
                             break;
                         chunkData.LightMap.SetSun(localBlockCoordinate, LightMap.MAX);
                     }
@@ -127,11 +131,11 @@ namespace Minecraft {
                         Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                         if (!world.ChunksData.ContainsKey(chunkCoordinate))
                             break;
-                        if (!blockDataManager.Data[world.GetVoxel(blockCoordinate)].IsTransparent) {
+                        if (!BlockDataManager.Data[world.GetVoxel(blockCoordinate)].IsTransparent) {
                             for (int newY = y - 1; newY >= 0; newY--) {
                                 blockCoordinate = new Vector3Int(x, newY, z);
                                 chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                                if (!blockDataManager.Data[world.GetVoxel(blockCoordinate)].IsTransparent)
+                                if (!BlockDataManager.Data[world.GetVoxel(blockCoordinate)].IsTransparent)
                                     continue;
                                 if (world.ChunksData.ContainsKey(chunkCoordinate + Vector3Int.right)
                                     && world.GetLightLevel(blockCoordinate + Vector3Int.right, LightChanel.Sun) == LightMap.MAX)
@@ -153,8 +157,6 @@ namespace Minecraft {
         }
 
         public void Calculate() {
-            BlockDataManager blockDataManager = BlockDataManager.Instance;
-
             while (removeQueue.TryDequeue(out Entry entry)) {
                 foreach (var side in blockSides) {
                     int x = entry.Coordinate.x + side.x;
@@ -193,7 +195,7 @@ namespace Minecraft {
                         chunkData.IsDirty = true;
                         BlockType voxelType = chunkData.BlockMap[localBlockCoordinate];
                         byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
-                        if (blockDataManager.Data[voxelType].IsTransparent && level + 2 <= entry.Level) {
+                        if (BlockDataManager.Data[voxelType].IsTransparent && level + 2 <= entry.Level) {
                             chunkData.LightMap.Set(localBlockCoordinate, chanel, (byte)(entry.Level - 1));
                             Entry addEntry = new(x, y, z, (byte)(entry.Level - 1));
                             addQueue.Enqueue(addEntry);

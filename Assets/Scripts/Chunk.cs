@@ -20,8 +20,8 @@ namespace Minecraft {
             transform.position = data.Coordinate * SIZE;
         }
 
-        public void UpdateMesh(IDictionary<MaterialType, MeshData> meshDatas) {
-            renderer.UpdateMesh(meshDatas);
+        public void UpdateMesh(IDictionary<MaterialType, MeshData> meshDatas, MaterialManager materialManager) {
+            renderer.UpdateMesh(meshDatas, materialManager);
             collider.UpdateMesh(meshDatas);
             Data.IsDirty = false;
             Data.IsComplete = true;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace Minecraft {
-    public class BlockDataManager : Singleton<BlockDataManager> {
+    public class BlockDataManager : MonoBehaviour {
         public IReadOnlyDictionary<BlockType, BlockData> Data => data;
         private readonly Dictionary<BlockType, BlockData> data = new();
 

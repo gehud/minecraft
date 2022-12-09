@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Zenject;
 
 namespace Minecraft {
     [RequireComponent(typeof(MeshFilter))]
@@ -14,9 +15,7 @@ namespace Minecraft {
 
         private Mesh mesh;
 
-        public void UpdateMesh(IDictionary<MaterialType, MeshData> meshDatas) {
-            var materialManager = MaterialManager.Instance;
-
+        public void UpdateMesh(IDictionary<MaterialType, MeshData> meshDatas, MaterialManager materialManager) {
             mesh.Clear();
 
             List<SubMeshDescriptor> subMeshDescriptors = new();

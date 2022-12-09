@@ -2,10 +2,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Zenject;
 
 namespace Minecraft {
-    public class World : Singleton<World> {
+    public class World : MonoBehaviour {
         public const int HEIGHT = 16;
+        public int Height => HEIGHT;
 
         private readonly Dictionary<Vector3Int, ChunkData> chunksData = new();
         public IDictionary<Vector3Int, ChunkData> ChunksData => chunksData;
@@ -25,6 +27,12 @@ namespace Minecraft {
 
         [SerializeField, Min(0)]
         private float tick = 0.25f;
+
+        [Inject]
+        private BlockDataManager BlockDataManager { get; }
+
+        [Inject]
+        private MaterialManager MaterialManager { get; }
 
         public ChunkData CreateChunkData(Vector3Int coordinate) {
             var chunkData = new ChunkData {
@@ -156,8 +164,6 @@ namespace Minecraft {
         }
 
         public void DestroyVoxel(Vector3Int coordinate) {
-            var blockDataManager = BlockDataManager.Instance;
-
             SetVoxel(coordinate, BlockType.Air);
 
             LiquidCalculatorWater.Remove(coordinate);
@@ -169,11 +175,11 @@ namespace Minecraft {
             LightCalculatorGreen.Calculate();
             LightCalculatorBlue.Calculate();
 
-            if (blockDataManager.Data[GetVoxel(coordinate + Vector3Int.up)].IsTransparent
+            if (BlockDataManager.Data[GetVoxel(coordinate + Vector3Int.up)].IsTransparent
                 && GetLightLevel(coordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX) {
                 for (int y = coordinate.y; y >= 0; y--) {
                     LightCalculatorSun.Add(coordinate.x, y, coordinate.z, LightMap.MAX);
-                    if (!blockDataManager.Data[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
+                    if (!BlockDataManager.Data[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
                         break;
                 }
             }
@@ -219,8 +225,6 @@ namespace Minecraft {
         }
 
         public void PlaceVoxel(Vector3Int coordinate, BlockType voxelType) {
-            var blockDataManager = BlockDataManager.Instance;
-
             LiquidCalculatorWater.Remove(coordinate);
 
             SetVoxel(coordinate, voxelType);
@@ -230,7 +234,7 @@ namespace Minecraft {
             LightCalculatorBlue.Remove(coordinate);
             for (int y = coordinate.y; y >= 0; y--) {
                 LightCalculatorSun.Remove(coordinate.x, y, coordinate.z);
-                if (!blockDataManager.Data[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
+                if (!BlockDataManager.Data[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
                     break;
             }
             LightCalculatorRed.Calculate();
@@ -238,7 +242,7 @@ namespace Minecraft {
             LightCalculatorBlue.Calculate();
             LightCalculatorSun.Calculate();
 
-            LightColor emission = blockDataManager.Data[voxelType].Emission;
+            LightColor emission = BlockDataManager.Data[voxelType].Emission;
             if (emission.R != 0) {
                 LightCalculatorRed.Add(coordinate, emission.R);
                 LightCalculatorRed.Calculate();
@@ -254,14 +258,20 @@ namespace Minecraft {
 
             if (voxelType == BlockType.Water) {
                 LiquidCalculatorWater.Add(coordinate, LiquidMap.MAX);
+                LiquidCalculatorWater.Add(coordinate + Vector3Int.right, LiquidMap.MAX - 1);
+                LiquidCalculatorWater.Add(coordinate + Vector3Int.left, LiquidMap.MAX - 1);
+                LiquidCalculatorWater.Add(coordinate + Vector3Int.forward, LiquidMap.MAX - 1);
+                LiquidCalculatorWater.Add(coordinate + Vector3Int.back, LiquidMap.MAX - 1);
             }
         }
 
         private void Awake() {
+            LightCalculator.SetBlockDataManager(BlockDataManager);
             LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
             LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
             LightCalculatorBlue = new LightCalculator(this, LightChanel.Blue);
             LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
+            LiquidCalculator.SetBlockDataManager(BlockDataManager);
             LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
         }
 
@@ -277,7 +287,7 @@ namespace Minecraft {
         private void Update() {
             foreach (var chunk in chunks.Values) {
                 if (chunk.Data.IsComplete && chunk.Data.IsDirty)
-                    chunk.UpdateMesh(ChunkUtility.GenerateMeshData(this, chunk.Data));
+                    chunk.UpdateMesh(ChunkUtility.GenerateMeshData(this, chunk.Data, BlockDataManager), MaterialManager);
             }
         }
     }

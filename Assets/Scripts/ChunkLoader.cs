@@ -7,9 +7,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
+using Zenject;
 
 namespace Minecraft {
-    public class ChunkLoader : Singleton<ChunkLoader> {
+    public class ChunkLoader : MonoBehaviour {
         public UnityEvent OnWorldCreate;
 
         [SerializeField]
@@ -28,6 +29,18 @@ namespace Minecraft {
 
         bool generateChunks = false;
         bool worldGenerated = false;
+
+        [Inject]
+        private World World { get; }
+
+        [Inject]
+        private BlockDataManager BlockDataManager { get; }
+
+        [Inject]
+        private MaterialManager MaterialManager { get; }
+
+        [Inject]
+        private ChunkDataGenerator ChunkDataGenerator { get; }
 
         private Vector3Int GetPlayerChunk() {
             Vector3Int coordinate = CoordinateUtility.ToCoordinate(player.position);
@@ -49,7 +62,7 @@ namespace Minecraft {
             for (int x = startX; x <= endX; x++)
                 for (int z = startZ; z <= endZ; z++) {
                     bool sunlight = false;
-                    for (int y = 0; y < World.HEIGHT; y++) {
+                    for (int y = 0; y < world.Height; y++) {
                         Vector3Int chunkCoordinate = new Vector3Int(x, y, z);
                         loadedCoordinates.Push(chunkCoordinate);
                         if (x != startX && x != endX && z != startZ && z != endZ) {
@@ -85,7 +98,7 @@ namespace Minecraft {
 
             foreach (var item in meshDatas) {
                 Chunk chunk = world.GetOrCreateChunk(item.Key);
-                chunk.UpdateMesh(item.Value);
+                chunk.UpdateMesh(item.Value, MaterialManager);
                 yield return null;
             }
 
@@ -97,33 +110,30 @@ namespace Minecraft {
         }
 
         private async void LoadChunks() {
-            World world = World.Instance;
-            ChunkDataGenerator chunkDataGenerator = ChunkDataGenerator.Instance;
-
-            await Task.Run(() => GenerateLoadData(world));
+            await Task.Run(() => GenerateLoadData(World));
 
             foreach (var item in chunkDataToRemoveCoordinates)
-                world.ChunksData.Remove(item);
+                World.ChunksData.Remove(item);
 
             foreach (var item in chunkToRemoveCoordinates) {
-                world.Chunks.Remove(item, out Chunk chunk);
+                World.Chunks.Remove(item, out Chunk chunk);
                 Destroy(chunk.gameObject);
             }
 
             ConcurrentDictionary<Vector3Int, ChunkData> generatedData = new();
             await Task.Run(() => {
                 foreach (var item in chunkDataToCreateCoordinates)
-                    generatedData.TryAdd(item, chunkDataGenerator.GenerateChunkData(item));
+                    generatedData.TryAdd(item, ChunkDataGenerator.GenerateChunkData(item));
             });
             foreach (var item in generatedData)
-                world.ChunksData.Add(item.Key, item.Value);
+                World.ChunksData.Add(item.Key, item.Value);
 
             await Task.Run(() => {
                 foreach (var item in generatedData) {
                     ChunkUtility.For((localBlockCoordinate) => {
                         if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
                             Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
-                            world.LiquidCalculatorWater.Add(blockCoordinate, LiquidMap.MAX);
+                            World.LiquidCalculatorWater.Add(blockCoordinate, LiquidMap.MAX);
                         }
                     });
                 }
@@ -131,17 +141,17 @@ namespace Minecraft {
 
             await Task.Run(() => {
                 foreach (var item in sunlightCoordinatesToCalculate)
-                    LightCalculator.AddSunlight(world, item);
-                world.LightCalculatorSun.Calculate();
+                    LightCalculator.AddSunlight(World, item);
+                World.LightCalculatorSun.Calculate();
             });
 
             ConcurrentDictionary<Vector3Int, IDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => {
                 foreach (var item in chunkToCreateCoordinates)
-                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.ChunksData[item]));
+                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.ChunksData[item], BlockDataManager));
             });
 
-            StartCoroutine(GenerateChunks(world, generatedMeshDatas));
+            StartCoroutine(GenerateChunks(World, generatedMeshDatas));
         }
 
         private IEnumerator CheckLoadRequirement() {

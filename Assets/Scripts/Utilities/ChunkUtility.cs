@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using UnityEngine;
+using Zenject;
 
 namespace Minecraft.Utilities {
     public static class ChunkUtility {
@@ -31,9 +32,7 @@ namespace Minecraft.Utilities {
             });
         }
 
-        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData) {
-            var blockDataManager = BlockDataManager.Instance;
-
+        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData, BlockDataManager blockDataManager) {
             BlockType GetVoxel(int x, int y, int z) {
                 Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
                 return world.GetVoxel(blockCoordinate);
@@ -96,7 +95,7 @@ namespace Minecraft.Utilities {
                 BlockType voxelType = chunkData.BlockMap[x, y, z];
 
                 if (voxelType != BlockType.Air) {
-                    var localVoxelCoordinate = new Vector3Int(x, y, z);
+                    var localBlockCoordinate = new Vector3Int(x, y, z);
                     MaterialType materialType = blockDataManager.Data[voxelType].MaterialType;
                     if (!result.ContainsKey(materialType))
                         result.TryAdd(materialType, new MeshData());
@@ -127,16 +126,18 @@ namespace Minecraft.Utilities {
                     bool s270 = IsVoxelSolid(x + 0, y + 0, z - 1);
                     bool s315 = IsVoxelSolid(x + 1, y + 0, z - 1);
 
+                    var afbk = LiquidMap.MAX;
+
                     Func<int, int, int, bool> hasFace = null;
                     if (isLiquid) {
                         hasFace = (int x, int y, int z) => {
-                            var side = GetLiquidAmount(x, y, z, voxelType);
-                            bool isTop = y - localVoxelCoordinate.y == 1;
-                            if (isTop)
-                                return GetVoxel(x, y, z) != voxelType;
-
-                            return IsVoxelTransparent(x, y, z) && GetVoxel(x, y, z) != voxelType
-                                || side != 0 && aown > side && atop != 0;
+                            bool isTop = y - localBlockCoordinate.y == 1;
+							if (GetVoxel(x, y, z) == voxelType) {
+                                var side = GetLiquidAmount(x, y, z, voxelType);
+                                return atop != 0 && side < aown && !isTop;
+                            } else {
+                                return IsVoxelTransparent(x, y, z) || isTop;
+							}
                         };
                     } else {
                         hasFace = (int x, int y, int z) => {
@@ -221,23 +222,23 @@ namespace Minecraft.Utilities {
                         if (isLiquid) {
                             if (atop == 0) {
                                 h2 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s270 ? LiquidMap.MAX : a270)
-                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s270 ? afbk : a270)
+                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s045 ? LiquidMap.MAX : a045)
-                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s045 ? afbk : a045)
+                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
                             }
                             if (a000 != 0) {
                                 h1 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s270 ? LiquidMap.MAX : a270)
-                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s270 ? afbk : a270)
+                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
                                 h4 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s045 ? LiquidMap.MAX : a045)
-                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s045 ? afbk : a045)
+                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
                             }
                         }
 
@@ -340,23 +341,23 @@ namespace Minecraft.Utilities {
                         if (isLiquid) {
                             if (atop == 0) {
                                 h2 = (aown
-                                + (s090 ? LiquidMap.MAX : a090)
-                                + (s135 ? LiquidMap.MAX : a135)
-                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
+                                + (s090 ? afbk : a090)
+                                + (s135 ? afbk : a135)
+                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown
-                                + (s180 ? LiquidMap.MAX : a180)
-                                + (s225 ? LiquidMap.MAX : a225)
-                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
+                                + (s180 ? afbk : a180)
+                                + (s225 ? afbk : a225)
+                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
                             }
                             if (a180 != 0) {
                                 h1 = (aown
-                                + (s090 ? LiquidMap.MAX : a090)
-                                + (s135 ? LiquidMap.MAX : a135)
-                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
+                                + (s090 ? afbk : a090)
+                                + (s135 ? afbk : a135)
+                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
                                 h4 = (aown
-                                + (s180 ? LiquidMap.MAX : a180)
-                                + (s225 ? LiquidMap.MAX : a225)
-                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
+                                + (s180 ? afbk : a180)
+                                + (s225 ? afbk : a225)
+                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
                             }
                         }
 
@@ -459,21 +460,21 @@ namespace Minecraft.Utilities {
                         if (isLiquid) {
                             if (atop == 0) {
                                 h1 = (aown
-                                + (s180 ? LiquidMap.MAX : a180)
-                                + (s225 ? LiquidMap.MAX : a225)
-                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
+                                + (s180 ? afbk : a180)
+                                + (s225 ? afbk : a225)
+                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
                                 h2 = (aown
-                                + (s090 ? LiquidMap.MAX : a090)
-                                + (s135 ? LiquidMap.MAX : a135)
-                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
+                                + (s090 ? afbk : a090)
+                                + (s135 ? afbk : a135)
+                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s045 ? LiquidMap.MAX : a045)
-                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s045 ? afbk : a045)
+                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
                                 h4 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s270 ? LiquidMap.MAX : a270)
-                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s270 ? afbk : a270)
+                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
                             }
                         }
 
@@ -667,23 +668,23 @@ namespace Minecraft.Utilities {
                         if (isLiquid) {
                             if (atop == 0) {
                                 h2 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s045 ? LiquidMap.MAX : a045)
-                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s045 ? afbk : a045)
+                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown
-                                + (s090 ? LiquidMap.MAX : a090)
-                                + (s135 ? LiquidMap.MAX : a135)
-                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
+                                + (s090 ? afbk : a090)
+                                + (s135 ? afbk : a135)
+                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
                             }
                             if (a090 != 0) {
                                 h1 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s045 ? LiquidMap.MAX : a045)
-                                + (s090 ? LiquidMap.MAX : a090)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s045 ? afbk : a045)
+                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
                                 h4 = (aown
-                                + (s090 ? LiquidMap.MAX : a090)
-                                + (s135 ? LiquidMap.MAX : a135)
-                                + (s180 ? LiquidMap.MAX : a180)) / 4.0f / LiquidMap.MAX;
+                                + (s090 ? afbk : a090)
+                                + (s135 ? afbk : a135)
+                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
                             }
                         }
 
@@ -786,23 +787,23 @@ namespace Minecraft.Utilities {
                         if (isLiquid) {
                             if (atop == 0) {
                                 h2 = (aown
-                                + (s180 ? LiquidMap.MAX : a180)
-                                + (s225 ? LiquidMap.MAX : a225)
-                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
+                                + (s180 ? afbk : a180)
+                                + (s225 ? afbk : a225)
+                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
                                 h3 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s270 ? LiquidMap.MAX : a270)
-                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s270 ? afbk : a270)
+                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
                             }
                             if (a270 != 0) {
                                 h1 = (aown
-                                + (s180 ? LiquidMap.MAX : a180)
-                                + (s225 ? LiquidMap.MAX : a225)
-                                + (s270 ? LiquidMap.MAX : a270)) / 4.0f / LiquidMap.MAX;
+                                + (s180 ? afbk : a180)
+                                + (s225 ? afbk : a225)
+                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
                                 h4 = (aown
-                                + (s000 ? LiquidMap.MAX : a000)
-                                + (s270 ? LiquidMap.MAX : a270)
-                                + (s315 ? LiquidMap.MAX : a315)) / 4.0f / LiquidMap.MAX;
+                                + (s000 ? afbk : a000)
+                                + (s270 ? afbk : a270)
+                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
                             }
                         }
 

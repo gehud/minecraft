@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace Minecraft {
-    public class AtlasManager : Singleton<AtlasManager>, IAtlasProvider {
+    public class AtlasManager : MonoBehaviour {
         public float TileStep => 16.0f / 256.0f;
 
         [SerializeField]
