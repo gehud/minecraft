@@ -84,7 +84,7 @@ namespace Minecraft {
             Destroy(chunk.gameObject);
         }
 
-        public BlockType GetVoxel(Vector3Int coordinate) {
+        public BlockType GetBlock(Vector3Int coordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
             if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
@@ -95,7 +95,7 @@ namespace Minecraft {
         }
 
         public BlockType GetVoxel(int x, int y, int z) {
-            return GetVoxel(new Vector3Int(x, y, z));
+            return GetBlock(new Vector3Int(x, y, z));
         }
 
         public void SetVoxel(Vector3Int globalVoxelCoordinate, BlockType voxelType) {
@@ -175,11 +175,11 @@ namespace Minecraft {
             LightCalculatorGreen.Calculate();
             LightCalculatorBlue.Calculate();
 
-            if (BlockDataManager.Data[GetVoxel(coordinate + Vector3Int.up)].IsTransparent
+            if (BlockDataManager.Data[GetBlock(coordinate + Vector3Int.up)].IsTransparent
                 && GetLightLevel(coordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX) {
                 for (int y = coordinate.y; y >= 0; y--) {
                     LightCalculatorSun.Add(coordinate.x, y, coordinate.z, LightMap.MAX);
-                    if (!BlockDataManager.Data[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
+                    if (!BlockDataManager.Data[GetBlock(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
                         break;
                 }
             }
@@ -234,7 +234,7 @@ namespace Minecraft {
             LightCalculatorBlue.Remove(coordinate);
             for (int y = coordinate.y; y >= 0; y--) {
                 LightCalculatorSun.Remove(coordinate.x, y, coordinate.z);
-                if (!BlockDataManager.Data[GetVoxel(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
+                if (!BlockDataManager.Data[GetBlock(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
                     break;
             }
             LightCalculatorRed.Calculate();
@@ -257,11 +257,7 @@ namespace Minecraft {
             }
 
             if (voxelType == BlockType.Water) {
-                LiquidCalculatorWater.Add(coordinate, LiquidMap.MAX);
-                LiquidCalculatorWater.Add(coordinate + Vector3Int.right, LiquidMap.MAX - 1);
-                LiquidCalculatorWater.Add(coordinate + Vector3Int.left, LiquidMap.MAX - 1);
-                LiquidCalculatorWater.Add(coordinate + Vector3Int.forward, LiquidMap.MAX - 1);
-                LiquidCalculatorWater.Add(coordinate + Vector3Int.back, LiquidMap.MAX - 1);
+                LiquidCalculatorWater.AddSource(coordinate);
             }
         }
 

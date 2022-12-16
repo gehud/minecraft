@@ -14,8 +14,8 @@ namespace Minecraft {
     }
 
     public class LiquidMap : Array3D<LiquidData> {
-        public const int MIN = 0;
-        public const int MAX = 8;
+        public const byte MIN = 0;
+        public const byte MAX = 8;
 
         public LiquidMap() : base(Chunk.SIZE, Chunk.SIZE, Chunk.SIZE) { }
 

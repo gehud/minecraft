@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using UnityEngine;
-using Zenject;
 
 namespace Minecraft.Utilities {
     public static class ChunkUtility {
@@ -33,9 +32,9 @@ namespace Minecraft.Utilities {
         }
 
         public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData, BlockDataManager blockDataManager) {
-            BlockType GetVoxel(int x, int y, int z) {
+            BlockType GetBlock(int x, int y, int z) {
                 Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
-                return world.GetVoxel(blockCoordinate);
+                return world.GetBlock(blockCoordinate);
             }
 
             int GetLight(int x, int y, int z, LightChanel chanel) {
@@ -48,25 +47,21 @@ namespace Minecraft.Utilities {
                 return world.GetLiquidAmount(blockCoordinate, liquidType);
             }
 
-            bool IsVoxelSolid(int x, int y, int z) {
-                return blockDataManager.Data[GetVoxel(x, y, z)].IsSolid;
+            bool IsSolid(int x, int y, int z) {
+                return blockDataManager.Data[GetBlock(x, y, z)].IsSolid;
+            }
+
+            bool IsLiquid(int x, int y, int z) {
+                return blockDataManager.Data[GetBlock(x, y, z)].IsLiquid;
             }
 
             bool IsVoxelTransparent(int x, int y, int z) {
-                return blockDataManager.Data[GetVoxel(x, y, z)].IsTransparent;
+                return blockDataManager.Data[GetBlock(x, y, z)].IsTransparent;
             }
 
-            void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4) {
+            void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
                 int vertexCount = meshData.Vertices.Count;
-                if (aof1 + aof3 > aof2 + aof4) {
-                    // Normal quad.
-                    meshData.Indices.Add((ushort)(0 + vertexCount));
-                    meshData.Indices.Add((ushort)(1 + vertexCount));
-                    meshData.Indices.Add((ushort)(2 + vertexCount));
-                    meshData.Indices.Add((ushort)(0 + vertexCount));
-                    meshData.Indices.Add((ushort)(2 + vertexCount));
-                    meshData.Indices.Add((ushort)(3 + vertexCount));
-                } else {
+                if ((force && fliped) | aof1 + aof3 < aof2 + aof4) {
                     // Fliped quad.
                     meshData.Indices.Add((ushort)(0 + vertexCount));
                     meshData.Indices.Add((ushort)(1 + vertexCount));
@@ -74,6 +69,14 @@ namespace Minecraft.Utilities {
                     meshData.Indices.Add((ushort)(3 + vertexCount));
                     meshData.Indices.Add((ushort)(1 + vertexCount));
                     meshData.Indices.Add((ushort)(2 + vertexCount));
+                } else {
+                    // Normal quad.
+                    meshData.Indices.Add((ushort)(0 + vertexCount));
+                    meshData.Indices.Add((ushort)(1 + vertexCount));
+                    meshData.Indices.Add((ushort)(2 + vertexCount));
+                    meshData.Indices.Add((ushort)(0 + vertexCount));
+                    meshData.Indices.Add((ushort)(2 + vertexCount));
+                    meshData.Indices.Add((ushort)(3 + vertexCount));
                 }
             }
 
@@ -92,62 +95,73 @@ namespace Minecraft.Utilities {
             ConcurrentDictionary<MaterialType, MeshData> result = new();
 
             ParallelFor((x, y, z) => {
-                BlockType voxelType = chunkData.BlockMap[x, y, z];
+                BlockType blockType = chunkData.BlockMap[x, y, z];
 
-                if (voxelType != BlockType.Air) {
+                if (blockType != BlockType.Air) {
                     var localBlockCoordinate = new Vector3Int(x, y, z);
-                    MaterialType materialType = blockDataManager.Data[voxelType].MaterialType;
+                    MaterialType materialType = blockDataManager.Data[blockType].MaterialType;
                     if (!result.ContainsKey(materialType))
                         result.TryAdd(materialType, new MeshData());
 
                     float atlasStep = 16.0f / 256.0f;
-                    bool isSolid = IsVoxelSolid(x, y, z);
-                    bool isLiquid = blockDataManager.Data[voxelType].IsLiquid;
+                    bool isSolid = IsSolid(x, y, z);
+                    bool isLiquid = blockDataManager.Data[blockType].IsLiquid;
                     var meshData = result[materialType];
 
-                    byte aown = GetLiquidAmount(x + 0, y + 0, z + 0, voxelType);
-                    byte atop = GetLiquidAmount(x + 0, y + 1, z + 0, voxelType);
-                    byte abot = GetLiquidAmount(x + 0, y - 1, z + 0, voxelType);
-                    byte a000 = GetLiquidAmount(x + 1, y + 0, z + 0, voxelType);
-                    byte a045 = GetLiquidAmount(x + 1, y + 0, z + 1, voxelType);
-                    byte a090 = GetLiquidAmount(x + 0, y + 0, z + 1, voxelType);
-                    byte a135 = GetLiquidAmount(x - 1, y + 0, z + 1, voxelType);
-                    byte a180 = GetLiquidAmount(x - 1, y + 0, z + 0, voxelType);
-                    byte a225 = GetLiquidAmount(x - 1, y + 0, z - 1, voxelType);
-                    byte a270 = GetLiquidAmount(x + 0, y + 0, z - 1, voxelType);
-                    byte a315 = GetLiquidAmount(x + 1, y + 0, z - 1, voxelType);
+                    byte aown = GetLiquidAmount(x + 0, y + 0, z + 0, blockType);
+                    byte atop = GetLiquidAmount(x + 0, y + 1, z + 0, blockType);
+                    byte abot = GetLiquidAmount(x + 0, y - 1, z + 0, blockType);
+                    byte a000 = GetLiquidAmount(x + 1, y + 0, z + 0, blockType);
+                    byte a045 = GetLiquidAmount(x + 1, y + 0, z + 1, blockType);
+                    byte a090 = GetLiquidAmount(x + 0, y + 0, z + 1, blockType);
+                    byte a135 = GetLiquidAmount(x - 1, y + 0, z + 1, blockType);
+                    byte a180 = GetLiquidAmount(x - 1, y + 0, z + 0, blockType);
+                    byte a225 = GetLiquidAmount(x - 1, y + 0, z - 1, blockType);
+                    byte a270 = GetLiquidAmount(x + 0, y + 0, z - 1, blockType);
+                    byte a315 = GetLiquidAmount(x + 1, y + 0, z - 1, blockType);
 
-                    bool s000 = IsVoxelSolid(x + 1, y + 0, z + 0);
-                    bool s045 = IsVoxelSolid(x + 1, y + 0, z + 1);
-                    bool s090 = IsVoxelSolid(x + 0, y + 0, z + 1);
-                    bool s135 = IsVoxelSolid(x - 1, y + 0, z + 1);
-                    bool s180 = IsVoxelSolid(x - 1, y + 0, z + 0);
-                    bool s225 = IsVoxelSolid(x - 1, y + 0, z - 1);
-                    bool s270 = IsVoxelSolid(x + 0, y + 0, z - 1);
-                    bool s315 = IsVoxelSolid(x + 1, y + 0, z - 1);
+                    bool s000 = IsSolid(x + 1, y + 0, z + 0);
+                    bool s045 = IsSolid(x + 1, y + 0, z + 1);
+                    bool s090 = IsSolid(x + 0, y + 0, z + 1);
+                    bool s135 = IsSolid(x - 1, y + 0, z + 1);
+                    bool s180 = IsSolid(x - 1, y + 0, z + 0);
+                    bool s225 = IsSolid(x - 1, y + 0, z - 1);
+                    bool s270 = IsSolid(x + 0, y + 0, z - 1);
+                    bool s315 = IsSolid(x + 1, y + 0, z - 1);
 
-                    var afbk = LiquidMap.MAX;
+					bool lq000 = IsLiquid(x + 1, y + 0, z + 0);
+					bool lq045 = IsLiquid(x + 1, y + 0, z + 1);
+					bool lq090 = IsLiquid(x + 0, y + 0, z + 1);
+					bool lq135 = IsLiquid(x - 1, y + 0, z + 1);
+					bool lq180 = IsLiquid(x - 1, y + 0, z + 0);
+					bool lq225 = IsLiquid(x - 1, y + 0, z - 1);
+					bool lq270 = IsLiquid(x + 0, y + 0, z - 1);
+					bool lq315 = IsLiquid(x + 1, y + 0, z - 1);
 
-                    Func<int, int, int, bool> hasFace = null;
+					bool lqt000 = IsLiquid(x + 1, y + 1, z + 0);
+					bool lqt045 = IsLiquid(x + 1, y + 1, z + 1);
+					bool lqt090 = IsLiquid(x + 0, y + 1, z + 1);
+					bool lqt135 = IsLiquid(x - 1, y + 1, z + 1);
+					bool lqt180 = IsLiquid(x - 1, y + 1, z + 0);
+					bool lqt225 = IsLiquid(x - 1, y + 1, z - 1);
+					bool lqt270 = IsLiquid(x + 0, y + 1, z - 1);
+					bool lqt315 = IsLiquid(x + 1, y + 1, z - 1);
+
+					Func<int, int, int, bool> hasFace = null;
                     if (isLiquid) {
+						hasFace = (int x, int y, int z) => {
+							return GetBlock(x, y, z) != blockType
+                                && (IsVoxelTransparent(x, y, z) || y - localBlockCoordinate.y == 1);
+						};
+					} else {
                         hasFace = (int x, int y, int z) => {
-                            bool isTop = y - localBlockCoordinate.y == 1;
-							if (GetVoxel(x, y, z) == voxelType) {
-                                var side = GetLiquidAmount(x, y, z, voxelType);
-                                return atop != 0 && side < aown && !isTop;
-                            } else {
-                                return IsVoxelTransparent(x, y, z) || isTop;
-							}
-                        };
-                    } else {
-                        hasFace = (int x, int y, int z) => {
-                            return IsVoxelTransparent(x, y, z) && GetVoxel(x, y, z) != voxelType;
+                            return IsVoxelTransparent(x, y, z) && GetBlock(x, y, z) != blockType;
                         };
                     }
 
                     // Right face.
                     if (hasFace(x + 1, y, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[voxelType].TexturingData.RightFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.RightFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 0, z + 1);
                         bool t090 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
@@ -219,40 +233,65 @@ namespace Minecraft.Utilities {
                         float h3 = 1.0f;
                         float h4 = 0.0f;
 
-                        if (isLiquid) {
-                            if (atop == 0) {
-                                h2 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s270 ? afbk : a270)
-                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s045 ? afbk : a045)
-                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
+                        float dir = 0.0f;
+
+						var uv1 = new Vector2(0.0f, 0.0f);
+						var uv2 = new Vector2(0.0f, 1.0f);
+						var uv3 = new Vector2(1.0f, 1.0f);
+                        var uv4 = new Vector2(1.0f, 0.0f);
+
+						if (isLiquid) {
+                            byte afbk2 = aown == LiquidMap.MAX
+                                | a000 == LiquidMap.MAX
+                                | a270 == LiquidMap.MAX
+                                | a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							byte afbk3 = aown == LiquidMap.MAX
+								| a000 == LiquidMap.MAX
+								| a045 == LiquidMap.MAX
+								| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							if (atop == 0) {
+                                h2 = lqt000 | lqt270 | lqt315 ? 1.0f : (aown
+                                + (lq000 ? a000 : afbk2)
+                                + (lq270 ? a270 : afbk2)
+                                + (lq315 ? a315 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
+                                h3 = lqt000 | lqt045 | lqt090 ? 1.0f : (aown
+                                + (lq000 ? a000 : afbk3)
+                                + (lq045 ? a045 : afbk3)
+                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
                             }
                             if (a000 != 0) {
                                 h1 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s270 ? afbk : a270)
-                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
+                                + (lq000 ? a000 : afbk2)
+                                + (lq270 ? a270 : afbk2)
+                                + (lq315 ? a315 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
                                 h4 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s045 ? afbk : a045)
-                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
+                                + (lq000 ? a000 : afbk3)
+                                + (lq045 ? a045 : afbk3)
+                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
                             }
+
+                            dir = 5.0f;
+
+                            uv2.y = h2;
+                            uv3.y = h3;
+                        } else {
+						    uv1 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep);
+						    uv2 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep);
+						    uv3 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep);
+						    uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep);
                         }
 
-                        float aof1 = lr1 + lg1 + lb1 + ls1;
+						float aof1 = lr1 + lg1 + lb1 + ls1;
                         float aof2 = lr2 + lg2 + lb2 + ls2;
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
                         lock (lockObject) {
                             AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
                             if (isSolid) {
                                 AddFaceColliderIndices(meshData);
@@ -266,7 +305,7 @@ namespace Minecraft.Utilities {
 
                     // Left face.
                     if (hasFace(x - 1, y, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[voxelType].TexturingData.LeftFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.LeftFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y + 0, z - 1);
                         bool t090 = !IsVoxelTransparent(x - 1, y + 1, z + 0);
@@ -338,28 +377,53 @@ namespace Minecraft.Utilities {
                         float h3 = 1.0f;
                         float h4 = 0.0f;
 
-                        if (isLiquid) {
-                            if (atop == 0) {
-                                h2 = (aown
-                                + (s090 ? afbk : a090)
-                                + (s135 ? afbk : a135)
-                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown
-                                + (s180 ? afbk : a180)
-                                + (s225 ? afbk : a225)
-                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
+						float dir = 0.0f;
+
+						var uv1 = new Vector2(0.0f, 0.0f);
+						var uv2 = new Vector2(0.0f, 1.0f);
+						var uv3 = new Vector2(1.0f, 1.0f);
+						var uv4 = new Vector2(1.0f, 0.0f);
+
+						if (isLiquid) {
+							byte afbk2 = aown == LiquidMap.MAX
+								| a090 == LiquidMap.MAX
+								| a135 == LiquidMap.MAX
+								| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							byte afbk3 = aown == LiquidMap.MAX
+								| a180 == LiquidMap.MAX
+								| a225 == LiquidMap.MAX
+								| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							if (atop == 0) {
+                                h2 = lqt090 | lqt135 | lqt180 ? 1.0f : (aown
+                                + (lq090 ? a090 : afbk2)
+                                + (lq135 ? a135 : afbk2)
+                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
+                                h3 = lqt180 | lqt225 | lqt270 ? 1.0f :  (aown
+                                + (lq180 ? a180 : afbk3)
+                                + (lq225 ? a225 : afbk3)
+                                + (lq270 ? a270 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
                             }
-                            if (a180 != 0) {
+							if (a180 != 0) {
                                 h1 = (aown
-                                + (s090 ? afbk : a090)
-                                + (s135 ? afbk : a135)
-                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
+                                + (lq090 ? a090 : afbk2)
+                                + (lq135 ? a135 : afbk2)
+                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
                                 h4 = (aown
-                                + (s180 ? afbk : a180)
-                                + (s225 ? afbk : a225)
-                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
+                                + (lq180 ? a180 : afbk3)
+                                + (lq225 ? a225 : afbk3)
+                                + (lq270 ? a270 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
                             }
-                        }
+
+							dir = 5.0f;
+
+							uv2.y = h2;
+							uv3.y = h3;
+						} else {
+                            uv1 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep);
+                            uv2 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep);
+                            uv3 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep);
+                            uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep);
+						}
 
                         float aof1 = lr1 + lg1 + lb1 + ls1;
                         float aof2 = lr2 + lg2 + lb2 + ls2;
@@ -368,10 +432,10 @@ namespace Minecraft.Utilities {
 
                         lock (lockObject) {
                             AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
                             if (isSolid) {
                                 AddFaceColliderIndices(meshData);
@@ -385,7 +449,7 @@ namespace Minecraft.Utilities {
 
                     // Top face.
                     if (hasFace(x, y + 1, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[voxelType].TexturingData.TopFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.TopFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -457,26 +521,78 @@ namespace Minecraft.Utilities {
                         float h3 = 1.0f;
                         float h4 = 1.0f;
 
-                        if (isLiquid) {
-                            if (atop == 0) {
-                                h1 = (aown
-                                + (s180 ? afbk : a180)
-                                + (s225 ? afbk : a225)
-                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
-                                h2 = (aown
-                                + (s090 ? afbk : a090)
-                                + (s135 ? afbk : a135)
-                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s045 ? afbk : a045)
-                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
-                                h4 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s270 ? afbk : a270)
-                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
-                            }
-                        }
+						float dir = 0.0f;
+
+						var uv1 = new Vector2(0.0f, 0.0f);
+						var uv2 = new Vector2(0.0f, 1.0f);
+						var uv3 = new Vector2(1.0f, 1.0f);
+						var uv4 = new Vector2(1.0f, 0.0f);
+
+						if (isLiquid) {
+							byte afbk1 = aown == LiquidMap.MAX
+								| a180 == LiquidMap.MAX
+								| a225 == LiquidMap.MAX
+								| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							byte afbk2 = aown == LiquidMap.MAX
+								| a090 == LiquidMap.MAX
+								| a135 == LiquidMap.MAX
+								| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							byte afbk3 = aown == LiquidMap.MAX
+								| a000 == LiquidMap.MAX
+								| a045 == LiquidMap.MAX
+								| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							byte afbk4 = aown == LiquidMap.MAX
+								| a000 == LiquidMap.MAX
+								| a270 == LiquidMap.MAX
+								| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							if (atop == 0) {
+                                h1 = lqt180 | lqt225 | lqt270 ? 1.0f : (aown
+                                + (lq180 ? a180 : afbk1)
+                                + (lq225 ? a225 : afbk1)
+                                + (lq270 ? a270 : afbk1)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt090 | lqt135 | lqt180 ? 1.0f : (aown
+                                + (lq090 ? a090 : afbk2)
+                                + (lq135 ? a135 : afbk2)
+                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
+                                h3 = lqt000 | lqt045 | lqt090 ? 1.0f : (aown
+                                + (lq000 ? a000 : afbk3)
+                                + (lq045 ? a045 : afbk3)
+                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h4 = lqt000 | lqt270 | lqt315 ? 1.0f : (aown
+                                + (lq000 ? a000 : afbk4)
+                                + (lq270 ? a270 : afbk4)
+                                + (lq315 ? a315 : afbk4)) / 4.0f / (LiquidMap.MAX + 1);
+
+                                if (!(a000 == a180 && a090 == a270)) {
+                                    if (a090 == a270) {
+                                        if (a000 < a180)
+                                            dir = 3.0f;
+                                        else
+                                            dir = 7.0f;
+                                    } else if (a000 == a180) {
+                                        if (a090 < a270)
+                                            dir = 1.0f;
+                                        else
+                                            dir = 5.0f;
+                                    } else if (a000 == a090) {
+                                        if (a045 < a225)
+                                            dir = 2.0f;
+                                        else
+                                            dir = 6.0f;
+                                    } else if (a090 == a180) {
+										if (a315 < a135)
+											dir = 4.0f;
+										else
+											dir = 8.0f;
+									}
+								}
+							}
+                        } else {
+							uv1 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep);
+							uv2 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + 1 * atlasStep);
+							uv3 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep);
+							uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep);
+						}
 
                         float aof1 = lr1 + lg1 + lb1 + ls1;
                         float aof2 = lr2 + lg2 + lb2 + ls2;
@@ -484,11 +600,12 @@ namespace Minecraft.Utilities {
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
                         lock (lockObject) {
-                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep, lr1, lg1, lb1, ls1));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 1 * atlasStep, lr2, lg2, lb2, ls2));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
+                            bool fliped = isLiquid && (lqt045 || lqt225);
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4, true, fliped);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
                             if (isSolid) {
                                 AddFaceColliderIndices(meshData);
@@ -502,7 +619,7 @@ namespace Minecraft.Utilities {
 
                     // Bottom face.
                     if (hasFace(x, y - 1, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[voxelType].TexturingData.BottomFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.BottomFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y - 1, z + 0);
                         bool t090 = !IsVoxelTransparent(x + 0, y - 1, z + 1);
@@ -574,12 +691,29 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-                        lock (lockObject) {
+						float dir1 = 0.0f;
+						float dir2 = 0.0f;
+						float dir3 = 0.0f;
+						float dir4 = 0.0f;
+
+						var uv1 = new Vector2(0.0f, 0.0f);
+						var uv2 = new Vector2(0.0f, 1.0f);
+						var uv3 = new Vector2(1.0f, 1.0f);
+						var uv4 = new Vector2(1.0f, 0.0f);
+
+                        if (!isLiquid) {
+							uv1 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep);
+							uv2 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + 1 * atlasStep);
+							uv3 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep);
+							uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep);
+						}
+
+						lock (lockObject) {
                             AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep, lr1, lg1, lb1, ls1));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + 1 * atlasStep, lr2, lg2, lb2, ls2));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 1 * atlasStep, lr3, lg3, lb3, ls3));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep, lr4, lg4, lb4, ls4));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir1));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir2));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir3));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir4));
 
                             if (isSolid) {
                                 AddFaceColliderIndices(meshData);
@@ -593,7 +727,7 @@ namespace Minecraft.Utilities {
 
                     // Front face.
                     if (hasFace(x, y, z + 1)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[voxelType].TexturingData.BackFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.BackFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y + 0, z + 1);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -665,28 +799,53 @@ namespace Minecraft.Utilities {
                         float h3 = 1.0f;
                         float h4 = 0.0f;
 
-                        if (isLiquid) {
-                            if (atop == 0) {
-                                h2 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s045 ? afbk : a045)
-                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown
-                                + (s090 ? afbk : a090)
-                                + (s135 ? afbk : a135)
-                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
+                        float dir = 0.0f;
+
+						var uv1 = new Vector2(0.0f, 0.0f);
+						var uv2 = new Vector2(0.0f, 1.0f);
+						var uv3 = new Vector2(1.0f, 1.0f);
+						var uv4 = new Vector2(1.0f, 0.0f);
+
+						if (isLiquid) {
+							byte afbk2 = aown == LiquidMap.MAX
+								| a000 == LiquidMap.MAX
+								| a045 == LiquidMap.MAX
+								| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							byte afbk3 = aown == LiquidMap.MAX
+								| a090 == LiquidMap.MAX
+								| a135 == LiquidMap.MAX
+								| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							if (atop == 0) {
+                                h2 = lqt000 | lqt045 | lqt090 ? 1.0f : (aown
+                                + (lq000 ? a000 : afbk2)
+                                + (lq045 ? a045 : afbk2)
+                                + (lq090 ? a090 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
+                                h3 = lqt090 | lqt135 | lqt180 ? 1.0f : (aown
+                                + (lq090 ? a090 : afbk3)
+                                + (lq135 ? a135 : afbk3)
+                                + (lq180 ? a180 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
                             }
                             if (a090 != 0) {
                                 h1 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s045 ? afbk : a045)
-                                + (s090 ? afbk : a090)) / 4.0f / LiquidMap.MAX;
+                                + (lq000 ? a000 : afbk2)
+                                + (lq045 ? a045 : afbk2)
+                                + (lq090 ? a090 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
                                 h4 = (aown
-                                + (s090 ? afbk : a090)
-                                + (s135 ? afbk : a135)
-                                + (s180 ? afbk : a180)) / 4.0f / LiquidMap.MAX;
+                                + (lq090 ? a090 : afbk3)
+                                + (lq135 ? a135 : afbk3)
+                                + (lq180 ? a180 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
                             }
-                        }
+
+							dir = 5.0f;
+
+							uv2.y = h2;
+							uv3.y = h3;
+						} else {
+							uv1 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep);
+							uv2 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep);
+							uv3 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep);
+							uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep);
+						}
 
                         float aof1 = lr1 + lg1 + lb1 + ls1;
                         float aof2 = lr2 + lg2 + lb2 + ls2;
@@ -695,10 +854,10 @@ namespace Minecraft.Utilities {
 
                         lock (lockObject) {
                             AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
                             if (isSolid) {
                                 AddFaceColliderIndices(meshData);
@@ -712,7 +871,7 @@ namespace Minecraft.Utilities {
 
                     // Back face.
                     if (hasFace(x, y, z - 1)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[voxelType].TexturingData.FrontFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.FrontFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 0, z - 1);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z - 1);
@@ -784,28 +943,53 @@ namespace Minecraft.Utilities {
                         float h3 = 1.0f;
                         float h4 = 0.0f;
 
-                        if (isLiquid) {
-                            if (atop == 0) {
-                                h2 = (aown
-                                + (s180 ? afbk : a180)
-                                + (s225 ? afbk : a225)
-                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
-                                h3 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s270 ? afbk : a270)
-                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
+						float dir = 0.0f;
+
+						var uv1 = new Vector2(0.0f, 0.0f);
+						var uv2 = new Vector2(0.0f, 1.0f);
+						var uv3 = new Vector2(1.0f, 1.0f);
+						var uv4 = new Vector2(1.0f, 0.0f);
+
+						if (isLiquid) {
+							byte afbk2 = aown == LiquidMap.MAX
+								| a180 == LiquidMap.MAX
+								| a225 == LiquidMap.MAX
+								| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							byte afbk3 = aown == LiquidMap.MAX
+								| a000 == LiquidMap.MAX
+								| a270 == LiquidMap.MAX
+								| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+							if (atop == 0) {
+                                h2 = lqt180 | lqt225 | lqt270 ? 1.0f : (aown
+                                + (lq180 ? a180 : afbk2)
+                                + (lq225 ? a225 : afbk2)
+                                + (lq270 ? a270 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
+                                h3 = lqt000 | lqt270 | lqt315 ? 1.0f : (aown
+                                + (lq000 ? a000 : afbk3)
+                                + (lq270 ? a270 : afbk3)
+                                + (lq315 ? a315 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
                             }
                             if (a270 != 0) {
                                 h1 = (aown
-                                + (s180 ? afbk : a180)
-                                + (s225 ? afbk : a225)
-                                + (s270 ? afbk : a270)) / 4.0f / LiquidMap.MAX;
+                                + (lq180 ? a180 : afbk2)
+                                + (lq225 ? a225 : afbk2)
+                                + (lq270 ? a270 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
                                 h4 = (aown
-                                + (s000 ? afbk : a000)
-                                + (s270 ? afbk : a270)
-                                + (s315 ? afbk : a315)) / 4.0f / LiquidMap.MAX;
+                                + (lq000 ? a000 : afbk3)
+                                + (lq270 ? a270 : afbk3)
+                                + (lq315 ? a315 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
                             }
-                        }
+
+							dir = 5.0f;
+
+							uv2.y = h2;
+							uv3.y = h3;
+						} else {
+							uv1 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep);
+							uv2 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep);
+							uv3 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep);
+							uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep);
+						}
 
                         float aof1 = lr1 + lg1 + lb1 + ls1;
                         float aof2 = lr2 + lg2 + lb2 + ls2;
@@ -814,10 +998,10 @@ namespace Minecraft.Utilities {
 
                         lock (lockObject) {
                             AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h1 * atlasStep, lr1, lg1, lb1, ls1));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, atlasPosition.x + 0 * atlasStep, atlasPosition.y + h2 * atlasStep, lr2, lg2, lb2, ls2));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h3 * atlasStep, lr3, lg3, lb3, ls3));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, atlasPosition.x + 1 * atlasStep, atlasPosition.y + h4 * atlasStep, lr4, lg4, lb4, ls4));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
                             if (isSolid) {
                                 AddFaceColliderIndices(meshData);

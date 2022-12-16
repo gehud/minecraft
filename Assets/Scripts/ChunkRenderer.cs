@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
-using Zenject;
 
 namespace Minecraft {
     [RequireComponent(typeof(MeshFilter))]
@@ -33,7 +32,8 @@ namespace Minecraft {
             mesh.SetVertexBufferParams(vertices.Count,
                 new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
                 new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2),
-                new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 4));
+                new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 4),
+                new VertexAttributeDescriptor(VertexAttribute.TexCoord2, VertexAttributeFormat.Float32, 1));
             mesh.SetVertexBufferData(vertices, 0, 0, vertices.Count);
             mesh.SetIndexBufferParams(indices.Count, IndexFormat.UInt16);
             mesh.SetIndexBufferData(indices, 0, 0, indices.Count);

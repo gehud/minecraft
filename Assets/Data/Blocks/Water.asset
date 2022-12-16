@@ -19,7 +19,7 @@ MonoBehaviour:
     bottomFace: {x: 13, y: 3}
     frontFace: {x: 13, y: 3}
     backFace: {x: 13, y: 3}
-  materialType: 1
+  materialType: 2
   isSolid: 0
   isLiquid: 1
   isTransparent: 1

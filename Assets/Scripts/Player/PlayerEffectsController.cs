@@ -15,7 +15,7 @@ namespace Minecraft.Player {
 
         private void Update() {
             Vector3Int blockCoordinate = CoordinateUtility.ToCoordinate(transform.position + Vector3.up * waterEffectHeight);
-            if (World.GetVoxel(blockCoordinate) == BlockType.Water) {
+            if (World.GetBlock(blockCoordinate) == BlockType.Water) {
                 underWaterVolume.enabled= true;
             } else {
                 underWaterVolume.enabled= false;

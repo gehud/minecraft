@@ -214,6 +214,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   atlas: {fileID: 2800000, guid: ef4b370ae6b7a5343bd57581834d8686, type: 3}
+  liquidAtlas: {fileID: 2800000, guid: 531515633a73757408c865a46f0a0ce1, type: 3}
   mipCount: 3
 --- !u!1 &386717544
 GameObject:
@@ -1114,6 +1115,8 @@ MonoBehaviour:
     Material: {fileID: 2100000, guid: 4411663840250d5478ad18e2080e01d6, type: 2}
   - Type: 1
     Material: {fileID: 2100000, guid: c7fb93f2fc85d54489a4477ecb16423f, type: 2}
+  - Type: 2
+    Material: {fileID: 2100000, guid: 423ed16c7e77a3d43984a4e09931a678, type: 2}
 --- !u!4 &1388594961
 Transform:
   m_ObjectHideFlags: 0

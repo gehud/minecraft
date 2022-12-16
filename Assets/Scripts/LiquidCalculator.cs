@@ -39,6 +39,8 @@ namespace Minecraft {
             new Vector3Int(-1,  0,  0),
         };
 
+        private HashSet<Vector3Int> flowDirections = new();
+
         public static void SetBlockDataManager(BlockDataManager blockDataManager) {
             BlockDataManager = blockDataManager;
         }
@@ -46,6 +48,16 @@ namespace Minecraft {
         public LiquidCalculator(World world, BlockType liquidType) {
             this.world = world;
             this.liquidType = liquidType;
+        }
+
+        public void AddSource(Vector3Int blockCoordinate) {
+            Add(blockCoordinate, LiquidMap.MAX);
+            if (flowDirections.Count == 0) {
+                Add(blockCoordinate + Vector3Int.right, LiquidMap.MAX - 1);
+                Add(blockCoordinate + Vector3Int.left, LiquidMap.MAX - 1);
+                Add(blockCoordinate + Vector3Int.forward, LiquidMap.MAX - 1);
+                Add(blockCoordinate + Vector3Int.back, LiquidMap.MAX - 1);
+            }
         }
 
         public void Add(Vector3Int blockCoordinate, byte amount) {
@@ -104,11 +116,10 @@ namespace Minecraft {
             removeQueue.Enqueue(entry);
         }
 
-        private Vector3Int GetFlowDirection(Vector3Int origin) {
-            Vector3Int result = Vector3Int.zero;
-
-            foreach (var side in flowSides)
-                for (int e = 1; e <= 5; e++) {
+        private void GetFlowDirections(Vector3Int origin) {
+            flowDirections.Clear();
+            foreach (var side in flowSides) {
+				for (int e = 1; e <= 5; e++) {
                     var x = origin.x + side.x * e;
                     var y = origin.y;
                     var z = origin.z + side.z * e;
@@ -122,12 +133,11 @@ namespace Minecraft {
                         if (world.ChunksData.TryGetValue(chunkCoordinate, out chunkData)) {
                             localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate + Vector3Int.down);
                             if (!BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid)
-                                result = side;
+                                flowDirections.Add(side);
                         }
                     }
                 }
-
-            return result;
+            }
         }
 
         private bool IsRenewable(Vector3Int blockCoordinate) {
@@ -158,8 +168,9 @@ namespace Minecraft {
                         var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                         chunkData.IsDirty = true;
                         var amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
-                        if (amount != 0 && (amount == entry.Amount - 1
-							|| (side.y == -1 && amount == LiquidMap.MAX)) && !IsRenewable(blockCoordinate)) {
+                        if (amount != 0 
+                            && (amount == entry.Amount - 1 || (side.y == -1 && amount == LiquidMap.MAX)) 
+                            && !IsRenewable(blockCoordinate)) {
                             var removeEntry = new Entry(x, y, z, amount);
                             toRemove.Enqueue(removeEntry);
                             chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, LiquidMap.MIN);
@@ -192,9 +203,9 @@ namespace Minecraft {
                     Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                     chunkData.IsDirty = true;
                     if (BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid) {
-                        Vector3Int flowDirection = GetFlowDirection(entry.Coordinate);
+                        GetFlowDirections(entry.Coordinate);
                         foreach (var side in flowSides) {
-                            if (flowDirection != Vector3Int.zero && side != flowDirection)
+                            if (flowDirections.Count != 0 && !flowDirections.Contains(side))
                                 continue;
 
                             x = entry.Coordinate.x + side.x;
@@ -209,12 +220,15 @@ namespace Minecraft {
                                 var amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
                                 if (!BlockDataManager.Data[blockType].IsSolid) {
                                     if (amount + 2 <= entry.Amount) {
-                                        chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, (byte)(entry.Amount - 1));
+                                        byte newAmount = (byte)(entry.Amount - 1);
+                                        //if (IsRenewable(blockCoordinate))
+                                        //    newAmount = LiquidMap.MAX;
+                                        chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, newAmount);
                                         chunkData.BlockMap[localBlockCoordinate] = liquidType;
-                                        var addEntry = new Entry(x, y, z, (byte)(entry.Amount - 1));
+                                        var addEntry = new Entry(x, y, z, newAmount);
                                         toAdd.Enqueue(addEntry);
                                     }
-                                }
+								}
                             }
                         }
                     } else {

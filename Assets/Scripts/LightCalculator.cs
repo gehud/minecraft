@@ -131,11 +131,11 @@ namespace Minecraft {
                         Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                         if (!world.ChunksData.ContainsKey(chunkCoordinate))
                             break;
-                        if (!BlockDataManager.Data[world.GetVoxel(blockCoordinate)].IsTransparent) {
+                        if (!BlockDataManager.Data[world.GetBlock(blockCoordinate)].IsTransparent) {
                             for (int newY = y - 1; newY >= 0; newY--) {
                                 blockCoordinate = new Vector3Int(x, newY, z);
                                 chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                                if (!BlockDataManager.Data[world.GetVoxel(blockCoordinate)].IsTransparent)
+                                if (!BlockDataManager.Data[world.GetBlock(blockCoordinate)].IsTransparent)
                                     continue;
                                 if (world.ChunksData.ContainsKey(chunkCoordinate + Vector3Int.right)
                                     && world.GetLightLevel(blockCoordinate + Vector3Int.right, LightChanel.Sun) == LightMap.MAX)
