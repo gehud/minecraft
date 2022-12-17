@@ -98,7 +98,7 @@ namespace Minecraft {
             return GetBlock(new Vector3Int(x, y, z));
         }
 
-        public void SetVoxel(Vector3Int globalVoxelCoordinate, BlockType voxelType) {
+        public void SetBlock(Vector3Int globalVoxelCoordinate, BlockType voxelType) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
             Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
             if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
@@ -164,7 +164,7 @@ namespace Minecraft {
         }
 
         public void DestroyVoxel(Vector3Int coordinate) {
-            SetVoxel(coordinate, BlockType.Air);
+            SetBlock(coordinate, BlockType.Air);
 
             LiquidCalculatorWater.Remove(coordinate);
 
@@ -226,7 +226,7 @@ namespace Minecraft {
         public void PlaceVoxel(Vector3Int coordinate, BlockType voxelType) {
             LiquidCalculatorWater.Remove(coordinate);
 
-            SetVoxel(coordinate, voxelType);
+            SetBlock(coordinate, voxelType);
 
             LightCalculatorRed.Remove(coordinate);
             LightCalculatorGreen.Remove(coordinate);
