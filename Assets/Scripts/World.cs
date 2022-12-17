@@ -34,89 +34,93 @@ namespace Minecraft {
         [Inject]
         private MaterialManager MaterialManager { get; }
 
-        public ChunkData CreateChunkData(Vector3Int coordinate) {
+        public ChunkData CreateChunkData(Vector3Int blockCoordinate) {
             var chunkData = new ChunkData {
-                Coordinate = coordinate
+                Coordinate = blockCoordinate
             };
-            chunksData.Add(coordinate, chunkData);
+            chunksData.Add(blockCoordinate, chunkData);
             return chunkData;
         }
 
-        public Chunk CreateChunk(Vector3Int coordinate) {
+        public Chunk CreateChunk(Vector3Int blockCoordinate) {
             var chunk = Instantiate(this.chunk, transform);
-            var chunkData = GetOrCreateChunkData(coordinate);
+            var chunkData = GetOrCreateChunkData(blockCoordinate);
             chunk.Initialize(chunkData);
-            chunks.Add(coordinate, chunk);
+            chunks.Add(blockCoordinate, chunk);
             return chunk;
         }
 
-        public ChunkData GetChunkData(Vector3Int coordinate) {
-            if (chunksData.ContainsKey(coordinate))
-                return chunksData[coordinate];
+        public ChunkData GetChunkData(Vector3Int blockCoordinate) {
+            if (chunksData.ContainsKey(blockCoordinate))
+                return chunksData[blockCoordinate];
 
             return null;
         }
 
-        public Chunk GetChunk(Vector3Int coordinate) {
-            if (chunks.ContainsKey(coordinate))
-                return chunks[coordinate];
+        public Chunk GetChunk(Vector3Int blockCoordinate) {
+            if (chunks.ContainsKey(blockCoordinate))
+                return chunks[blockCoordinate];
 
             return null;
         }
 
-        public ChunkData GetOrCreateChunkData(Vector3Int coordinate) {
-            if (chunksData.ContainsKey(coordinate))
-                return chunksData[coordinate];
+        public ChunkData GetOrCreateChunkData(Vector3Int blockCoordinate) {
+            if (chunksData.ContainsKey(blockCoordinate))
+                return chunksData[blockCoordinate];
 
-            return CreateChunkData(coordinate);
+            return CreateChunkData(blockCoordinate);
         }
 
-        public Chunk GetOrCreateChunk(Vector3Int coordinate) {
-            if (chunks.ContainsKey(coordinate))
-                return chunks[coordinate];
+        public Chunk GetOrCreateChunk(Vector3Int blockCoordinate) {
+            if (chunks.ContainsKey(blockCoordinate))
+                return chunks[blockCoordinate];
 
-            return CreateChunk(coordinate);
+            return CreateChunk(blockCoordinate);
         }
 
-        public void DestroyChunk(Vector3Int coordinate) {
-            chunksData.Remove(coordinate);
-            chunks.Remove(coordinate, out Chunk chunk);
+        public void DestroyChunk(Vector3Int blockCoordinate) {
+            chunksData.Remove(blockCoordinate);
+            chunks.Remove(blockCoordinate, out Chunk chunk);
             Destroy(chunk.gameObject);
         }
 
-        public BlockType GetBlock(Vector3Int coordinate) {
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
+        /// <summary>
+        /// Marks chunk data as dirty if needed.
+        /// </summary>
+        public void ValidateChunkData(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
+			ChunkData chunkData;
+            if (localBlockCoordinate.x == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.left, out chunkData))
+                chunkData.MarkDirty();
+			if (localBlockCoordinate.y == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.down, out chunkData))
+				chunkData.MarkDirty();
+			if (localBlockCoordinate.z == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.back, out chunkData))
+				chunkData.MarkDirty();
+			if (localBlockCoordinate.x == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.right, out chunkData))
+				chunkData.MarkDirty();
+			if (localBlockCoordinate.y == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.up, out chunkData))
+				chunkData.MarkDirty();
+			if (localBlockCoordinate.z == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.forward, out chunkData))
+				chunkData.MarkDirty();
+        }
+
+		public BlockType GetBlock(Vector3Int blockCoordinate) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
-                return chunkData.BlockMap[localVoxelCoordinate];
+                Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                return chunkData.BlockMap[localBlockCoordinate];
             }
 
             return BlockType.Air;
         }
 
-        public BlockType GetVoxel(int x, int y, int z) {
-            return GetBlock(new Vector3Int(x, y, z));
-        }
-
-        public void SetBlock(Vector3Int globalVoxelCoordinate, BlockType voxelType) {
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(globalVoxelCoordinate);
-            Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, globalVoxelCoordinate);
+        public void SetBlock(Vector3Int blockCoordinate, BlockType voxelType) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                chunkData.BlockMap[localVoxelCoordinate] = voxelType;
-                chunkData.IsDirty = true;
+                Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                chunkData.BlockMap[localBlockCoordinate] = voxelType;
+				chunkData.MarkDirty();
+				ValidateChunkData(chunkCoordinate, localBlockCoordinate);
             }
-            if (localVoxelCoordinate.x == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.left, out chunkData))
-                chunkData.IsDirty = true;
-            if (localVoxelCoordinate.y == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.down, out chunkData))
-                chunkData.IsDirty = true;
-            if (localVoxelCoordinate.z == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.back, out chunkData))
-                chunkData.IsDirty = true;
-            if (localVoxelCoordinate.x == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.right, out chunkData))
-                chunkData.IsDirty = true;
-            if (localVoxelCoordinate.y == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.up, out chunkData))
-                chunkData.IsDirty = true;
-            if (localVoxelCoordinate.z == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.forward, out chunkData))
-                chunkData.IsDirty = true;
         }
 
         public int GetLightLevel(Vector3Int blockCoordinate, LightChanel chanel) {
@@ -129,111 +133,126 @@ namespace Minecraft {
             return LightMap.MAX;
         }
 
-        public byte GetLiquidAmount(Vector3Int coordinate) {
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
+        public byte GetLiquidAmount(Vector3Int blockCoordinate) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
-                return chunkData.LiquidMap[localVoxelCoordinate].Amount;
+                Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                return chunkData.LiquidMap[localBlockCoordinate].Amount;
             }
 
             return LiquidMap.MIN;
         }
 
-        public LiquidData GetLiquid(Vector3Int coordinate) {
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
+		public void SetLiquidAmount(Vector3Int blockCoordinate, byte amount) {
+			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+			if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                chunkData.LiquidMap.Set(localBlockCoordinate, amount);
+				chunkData.MarkDirty();
+				ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+			}
+		}
+
+		public byte GetLiquidAmount(Vector3Int blockCoordinate, BlockType type) {
+			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+			if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+				return chunkData.LiquidMap.Get(localBlockCoordinate, type);
+			}
+
+			return LiquidMap.MIN;
+		}
+
+		public void SetLiquidAmount(Vector3Int blockCoordinate, BlockType type, byte amount) {
+			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+			if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+				chunkData.LiquidMap.Set(localBlockCoordinate, type, amount);
+                chunkData.MarkDirty();
+			    ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+			}
+		}
+
+		public LiquidData GetLiquidData(Vector3Int blockCoordinate) {
+            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
-                return chunkData.LiquidMap[localVoxelCoordinate];
+                Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                return chunkData.LiquidMap[localBlockCoordinate];
             }
 
             return LiquidData.Empty;
         }
 
-        public LiquidData GetLiquid(int x, int y, int z) {
-            return GetLiquid(new Vector3Int(x, y, z));
-        }
+		public void DestroyVoxel(Vector3Int blockCoordinate) {
+            SetBlock(blockCoordinate, BlockType.Air);
+            LiquidCalculatorWater.Remove(blockCoordinate);
 
-        public byte GetLiquidAmount(Vector3Int coordinate, BlockType type) {
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(coordinate);
-            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                Vector3Int localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, coordinate);
-                return chunkData.LiquidMap.Get(localVoxelCoordinate, type);
-            }
-
-            return LiquidMap.MIN;
-        }
-
-        public void DestroyVoxel(Vector3Int coordinate) {
-            SetBlock(coordinate, BlockType.Air);
-
-            LiquidCalculatorWater.Remove(coordinate);
-
-            LightCalculatorRed.Remove(coordinate);
-            LightCalculatorGreen.Remove(coordinate);
-            LightCalculatorBlue.Remove(coordinate);
+            LightCalculatorRed.Remove(blockCoordinate);
+            LightCalculatorGreen.Remove(blockCoordinate);
+            LightCalculatorBlue.Remove(blockCoordinate);
             LightCalculatorRed.Calculate();
             LightCalculatorGreen.Calculate();
             LightCalculatorBlue.Calculate();
 
-            if (BlockDataManager.Data[GetBlock(coordinate + Vector3Int.up)].IsTransparent
-                && GetLightLevel(coordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX) {
-                for (int y = coordinate.y; y >= 0; y--) {
-                    LightCalculatorSun.Add(coordinate.x, y, coordinate.z, LightMap.MAX);
-                    if (!BlockDataManager.Data[GetBlock(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
+            if (BlockDataManager.Data[GetBlock(blockCoordinate + Vector3Int.up)].IsTransparent
+                && GetLightLevel(blockCoordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX) {
+                for (int y = blockCoordinate.y; y >= 0; y--) {
+                    LightCalculatorSun.Add(blockCoordinate.x, y, blockCoordinate.z, LightMap.MAX);
+                    if (!BlockDataManager.Data[GetBlock(new Vector3Int(blockCoordinate.x, y - 1, blockCoordinate.z))].IsTransparent)
                         break;
                 }
             }
 
-            LiquidCalculatorWater.Add(coordinate + Vector3Int.right);
-            LiquidCalculatorWater.Add(coordinate + Vector3Int.left);
-            LiquidCalculatorWater.Add(coordinate + Vector3Int.up);
-            LiquidCalculatorWater.Add(coordinate + Vector3Int.forward);
-            LiquidCalculatorWater.Add(coordinate + Vector3Int.back);
+            LiquidCalculatorWater.Add(blockCoordinate + Vector3Int.right);
+            LiquidCalculatorWater.Add(blockCoordinate + Vector3Int.left);
+            LiquidCalculatorWater.Add(blockCoordinate + Vector3Int.up);
+            LiquidCalculatorWater.Add(blockCoordinate + Vector3Int.forward);
+            LiquidCalculatorWater.Add(blockCoordinate + Vector3Int.back);
 
-            LightCalculatorRed.Add(coordinate + Vector3Int.right);
-            LightCalculatorRed.Add(coordinate + Vector3Int.left);
-            LightCalculatorRed.Add(coordinate + Vector3Int.up);
-            LightCalculatorRed.Add(coordinate + Vector3Int.down);
-            LightCalculatorRed.Add(coordinate + Vector3Int.forward);
-            LightCalculatorRed.Add(coordinate + Vector3Int.back);
+            LightCalculatorRed.Add(blockCoordinate + Vector3Int.right);
+            LightCalculatorRed.Add(blockCoordinate + Vector3Int.left);
+            LightCalculatorRed.Add(blockCoordinate + Vector3Int.up);
+            LightCalculatorRed.Add(blockCoordinate + Vector3Int.down);
+            LightCalculatorRed.Add(blockCoordinate + Vector3Int.forward);
+            LightCalculatorRed.Add(blockCoordinate + Vector3Int.back);
             LightCalculatorRed.Calculate();
 
-            LightCalculatorGreen.Add(coordinate + Vector3Int.right);
-            LightCalculatorGreen.Add(coordinate + Vector3Int.left);
-            LightCalculatorGreen.Add(coordinate + Vector3Int.up);
-            LightCalculatorGreen.Add(coordinate + Vector3Int.down);
-            LightCalculatorGreen.Add(coordinate + Vector3Int.forward);
-            LightCalculatorGreen.Add(coordinate + Vector3Int.back);
+            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.right);
+            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.left);
+            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.up);
+            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.down);
+            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.forward);
+            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.back);
             LightCalculatorGreen.Calculate();
 
-            LightCalculatorBlue.Add(coordinate + Vector3Int.right);
-            LightCalculatorBlue.Add(coordinate + Vector3Int.left);
-            LightCalculatorBlue.Add(coordinate + Vector3Int.up);
-            LightCalculatorBlue.Add(coordinate + Vector3Int.down);
-            LightCalculatorBlue.Add(coordinate + Vector3Int.forward);
-            LightCalculatorBlue.Add(coordinate + Vector3Int.back);
+            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.right);
+            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.left);
+            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.up);
+            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.down);
+            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.forward);
+            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.back);
             LightCalculatorBlue.Calculate();
 
-            LightCalculatorSun.Add(coordinate + Vector3Int.right);
-            LightCalculatorSun.Add(coordinate + Vector3Int.left);
-            LightCalculatorSun.Add(coordinate + Vector3Int.up);
-            LightCalculatorSun.Add(coordinate + Vector3Int.down);
-            LightCalculatorSun.Add(coordinate + Vector3Int.forward);
-            LightCalculatorSun.Add(coordinate + Vector3Int.back);
+            LightCalculatorSun.Add(blockCoordinate + Vector3Int.right);
+            LightCalculatorSun.Add(blockCoordinate + Vector3Int.left);
+            LightCalculatorSun.Add(blockCoordinate + Vector3Int.up);
+            LightCalculatorSun.Add(blockCoordinate + Vector3Int.down);
+            LightCalculatorSun.Add(blockCoordinate + Vector3Int.forward);
+            LightCalculatorSun.Add(blockCoordinate + Vector3Int.back);
             LightCalculatorSun.Calculate();
         }
 
-        public void PlaceVoxel(Vector3Int coordinate, BlockType voxelType) {
-            LiquidCalculatorWater.Remove(coordinate);
+        public void PlaceVoxel(Vector3Int blockCoordinate, BlockType voxelType) {
+            LiquidCalculatorWater.Remove(blockCoordinate);
 
-            SetBlock(coordinate, voxelType);
+            SetBlock(blockCoordinate, voxelType);
 
-            LightCalculatorRed.Remove(coordinate);
-            LightCalculatorGreen.Remove(coordinate);
-            LightCalculatorBlue.Remove(coordinate);
-            for (int y = coordinate.y; y >= 0; y--) {
-                LightCalculatorSun.Remove(coordinate.x, y, coordinate.z);
-                if (!BlockDataManager.Data[GetBlock(new Vector3Int(coordinate.x, y - 1, coordinate.z))].IsTransparent)
+            LightCalculatorRed.Remove(blockCoordinate);
+            LightCalculatorGreen.Remove(blockCoordinate);
+            LightCalculatorBlue.Remove(blockCoordinate);
+            for (int y = blockCoordinate.y; y >= 0; y--) {
+                LightCalculatorSun.Remove(blockCoordinate.x, y, blockCoordinate.z);
+                if (!BlockDataManager.Data[GetBlock(new Vector3Int(blockCoordinate.x, y - 1, blockCoordinate.z))].IsTransparent)
                     break;
             }
             LightCalculatorRed.Calculate();
@@ -243,20 +262,20 @@ namespace Minecraft {
 
             LightColor emission = BlockDataManager.Data[voxelType].Emission;
             if (emission.R != 0) {
-                LightCalculatorRed.Add(coordinate, emission.R);
+                LightCalculatorRed.Add(blockCoordinate, emission.R);
                 LightCalculatorRed.Calculate();
             }
             if (emission.G != 0) {
-                LightCalculatorGreen.Add(coordinate, emission.G);
+                LightCalculatorGreen.Add(blockCoordinate, emission.G);
                 LightCalculatorGreen.Calculate();
             }
             if (emission.B != 0) {
-                LightCalculatorBlue.Add(coordinate, emission.B);
+                LightCalculatorBlue.Add(blockCoordinate, emission.B);
                 LightCalculatorBlue.Calculate();
             }
 
             if (voxelType == BlockType.Water) {
-                LiquidCalculatorWater.AddSource(coordinate);
+                LiquidCalculatorWater.Add(blockCoordinate, LiquidMap.MAX);
             }
         }
 

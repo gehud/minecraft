@@ -26,6 +26,7 @@ namespace Minecraft {
             var aspect = Screen.width / (float)Screen.height;
             image.material.mainTexture = texture;
             image.material.mainTextureScale = new Vector2(tiling * aspect, tiling);
+            image.color = Color.white;
         }
     }
 }

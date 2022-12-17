@@ -24,7 +24,15 @@ namespace Minecraft {
             return (byte)(unit.Type == type ? unit.Amount : 0);
         }
 
-        public byte Get(Vector3Int coordinate, BlockType type) {
+        public byte Get(int x, int y, int z) {
+            return this[x, y, z].Amount;
+        }
+
+		public byte Get(Vector3Int coordinate) {
+			return this[coordinate].Amount;
+		}
+
+		public byte Get(Vector3Int coordinate, BlockType type) {
             return Get(coordinate.x, coordinate.y, coordinate.z, type);
         }
 
@@ -35,5 +43,13 @@ namespace Minecraft {
         public void Set(Vector3Int coordinate, BlockType type, byte value) {
             Set(coordinate.x, coordinate.y, coordinate.z, type, value);
         }
-    }
+
+        public void Set(int x, int y, int z, byte value) {
+            this[x, y, z] = new LiquidData(this[x, y, z].Type, value);
+        }
+
+		public void Set(Vector3Int coordinate, byte value) {
+			this[coordinate] = new LiquidData(this[coordinate].Type, value);
+		}
+	}
 }

@@ -134,7 +134,7 @@ namespace Minecraft {
                     ChunkUtility.For((localBlockCoordinate) => {
                         if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
                             Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
-                            World.LiquidCalculatorWater.Add(blockCoordinate, LiquidMap.MAX);
+                            World.LiquidCalculatorWater.Add(blockCoordinate);
                         }
                     });
                 }

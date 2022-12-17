@@ -29,6 +29,7 @@ namespace Minecraft {
                 if (blockCoordinate.y > surfaceHeight) {
                     if (blockCoordinate.y <= waterLevel) {
                         result.BlockMap[x, y, z] = BlockType.Water;
+                        result.LiquidMap.Set(x, y, z, BlockType.Water, LiquidMap.MAX);
                     } else {
                         result.BlockMap[x, y, z] = BlockType.Air;
                     }

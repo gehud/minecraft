@@ -14,6 +14,8 @@ namespace Minecraft.UI {
 		[SerializeField]
 		private TMP_Text positionText;
 		[SerializeField]
+		private TMP_Text cursorText;
+		[SerializeField]
 		private TMP_Text blockText;
 		[SerializeField]
 		private TMP_Text normalBlockText;
@@ -35,8 +37,10 @@ namespace Minecraft.UI {
 					blockCoordinate.z--;
 				blockText.text = ObjectNames.NicifyVariableName(World.GetBlock(blockCoordinate).ToString());
 				var normalBlockCoordinate = blockCoordinate + Vector3Int.FloorToInt(hitInfo.normal);
+				cursorText.text = normalBlockCoordinate.ToString();
 				normalBlockText.text = ObjectNames.NicifyVariableName(World.GetBlock(normalBlockCoordinate).ToString());
 			} else {
+				cursorText.text = Vector3.zero.ToString();
 				blockText.text = ObjectNames.NicifyVariableName(BlockType.Air.ToString());
 				normalBlockText.text = ObjectNames.NicifyVariableName(BlockType.Air.ToString());
 			}
