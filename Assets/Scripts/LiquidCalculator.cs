@@ -39,7 +39,7 @@ namespace Minecraft {
             new Vector3Int(-1,  0,  0),
         };
 
-        private HashSet<Vector3Int> flowDirections = new();
+        private readonly HashSet<Vector3Int> flowDirections = new();
 
         public static void SetBlockDataManager(BlockDataManager blockDataManager) {
             BlockDataManager = blockDataManager;
@@ -92,8 +92,6 @@ namespace Minecraft {
             if (amount < 1)
                 return;
 
-            chunkData.BlockMap[localBlockCoordinate] = liquidType;
-
             var entry = new Entry(blockCoordinate, amount);
             addQueue.Enqueue(entry);
         }
@@ -119,7 +117,7 @@ namespace Minecraft {
         private void GetFlowDirections(Vector3Int origin) {
             flowDirections.Clear();
             foreach (var side in flowSides) {
-				for (int e = 1; e <= 5; e++) {
+                for (int e = 1; e <= 5; e++) {
                     var x = origin.x + side.x * e;
                     var y = origin.y;
                     var z = origin.z + side.z * e;
@@ -168,8 +166,8 @@ namespace Minecraft {
                         var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                         chunkData.IsDirty = true;
                         var amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
-                        if (amount != 0 
-                            && (amount == entry.Amount - 1 || (side.y == -1 && amount == LiquidMap.MAX)) 
+                        if (amount != 0
+                            && (amount == entry.Amount - 1 || (side.y == -1 && amount == LiquidMap.MAX))
                             && !IsRenewable(blockCoordinate)) {
                             var removeEntry = new Entry(x, y, z, amount);
                             toRemove.Enqueue(removeEntry);
@@ -201,7 +199,6 @@ namespace Minecraft {
                 chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                 if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                     Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                    chunkData.IsDirty = true;
                     if (BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid) {
                         GetFlowDirections(entry.Coordinate);
                         foreach (var side in flowSides) {
@@ -228,7 +225,7 @@ namespace Minecraft {
                                         var addEntry = new Entry(x, y, z, newAmount);
                                         toAdd.Enqueue(addEntry);
                                     }
-								}
+                                }
                             }
                         }
                     } else {

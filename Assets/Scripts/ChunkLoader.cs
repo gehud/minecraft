@@ -125,6 +125,7 @@ namespace Minecraft {
                 foreach (var item in chunkDataToCreateCoordinates)
                     generatedData.TryAdd(item, ChunkDataGenerator.GenerateChunkData(item));
             });
+
             foreach (var item in generatedData)
                 World.ChunksData.Add(item.Key, item.Value);
 

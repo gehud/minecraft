@@ -187,7 +187,6 @@ namespace Minecraft {
             LiquidCalculatorWater.Add(coordinate + Vector3Int.right);
             LiquidCalculatorWater.Add(coordinate + Vector3Int.left);
             LiquidCalculatorWater.Add(coordinate + Vector3Int.up);
-            LiquidCalculatorWater.Add(coordinate + Vector3Int.down);
             LiquidCalculatorWater.Add(coordinate + Vector3Int.forward);
             LiquidCalculatorWater.Add(coordinate + Vector3Int.back);
 

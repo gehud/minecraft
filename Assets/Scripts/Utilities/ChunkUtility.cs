@@ -563,7 +563,7 @@ namespace Minecraft.Utilities {
                                 + (lq270 ? a270 : afbk4)
                                 + (lq315 ? a315 : afbk4)) / 4.0f / (LiquidMap.MAX + 1);
 
-                                if (!(a000 == a180 && a090 == a270)) {
+                                if (aown != LiquidMap.MAX) {
                                     if (a090 == a270) {
                                         if (a000 < a180)
                                             dir = 3.0f;
