@@ -187,7 +187,7 @@ namespace Minecraft {
             SetBlock(blockCoordinate, BlockType.Air);
             LiquidCalculatorWater.Remove(blockCoordinate);
 
-            LightCalculatorRed.Remove(blockCoordinate);
+			LightCalculatorRed.Remove(blockCoordinate);
             LightCalculatorGreen.Remove(blockCoordinate);
             LightCalculatorBlue.Remove(blockCoordinate);
             LightCalculatorRed.Calculate();

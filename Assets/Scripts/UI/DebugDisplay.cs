@@ -23,6 +23,10 @@ namespace Minecraft.UI {
 		[Inject]
 		private World World { get; }
 
+		private void Start() {
+			gameObject.SetActive(false);
+		}
+
 		private void Update() {
 			positionText.text = player.position.ToString();
 

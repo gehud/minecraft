@@ -61,7 +61,7 @@ namespace Minecraft.Utilities {
 
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
                 int vertexCount = meshData.Vertices.Count;
-                if ((force && fliped) | aof1 + aof3 < aof2 + aof4) {
+                if ((force && fliped) || aof1 + aof3 < aof2 + aof4) {
                     // Fliped quad.
                     meshData.Indices.Add((ushort)(0 + vertexCount));
                     meshData.Indices.Add((ushort)(1 + vertexCount));
@@ -242,19 +242,19 @@ namespace Minecraft.Utilities {
 
 						if (isLiquid) {
                             byte afbk2 = aown == LiquidMap.MAX
-                                | a000 == LiquidMap.MAX
-                                | a270 == LiquidMap.MAX
-                                | a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+                                || a000 == LiquidMap.MAX
+                                || a270 == LiquidMap.MAX
+                                || a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							byte afbk3 = aown == LiquidMap.MAX
-								| a000 == LiquidMap.MAX
-								| a045 == LiquidMap.MAX
-								| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a000 == LiquidMap.MAX
+								|| a045 == LiquidMap.MAX
+								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt000 | lqt270 | lqt315 ? 1.0f : (aown
+                                h2 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
                                 + (lq000 ? a000 : afbk2)
                                 + (lq270 ? a270 : afbk2)
                                 + (lq315 ? a315 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 | lqt045 | lqt090 ? 1.0f : (aown
+                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
                                 + (lq000 ? a000 : afbk3)
                                 + (lq045 ? a045 : afbk3)
                                 + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
@@ -386,19 +386,19 @@ namespace Minecraft.Utilities {
 
 						if (isLiquid) {
 							byte afbk2 = aown == LiquidMap.MAX
-								| a090 == LiquidMap.MAX
-								| a135 == LiquidMap.MAX
-								| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a090 == LiquidMap.MAX
+								|| a135 == LiquidMap.MAX
+								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							byte afbk3 = aown == LiquidMap.MAX
-								| a180 == LiquidMap.MAX
-								| a225 == LiquidMap.MAX
-								| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a180 == LiquidMap.MAX
+								|| a225 == LiquidMap.MAX
+								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt090 | lqt135 | lqt180 ? 1.0f : (aown
+                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
                                 + (lq090 ? a090 : afbk2)
                                 + (lq135 ? a135 : afbk2)
                                 + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt180 | lqt225 | lqt270 ? 1.0f :  (aown
+                                h3 = lqt180 || lqt225 || lqt270 ? 1.0f :  (aown
                                 + (lq180 ? a180 : afbk3)
                                 + (lq225 ? a225 : afbk3)
                                 + (lq270 ? a270 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
@@ -530,62 +530,71 @@ namespace Minecraft.Utilities {
 
 						if (isLiquid) {
 							byte afbk1 = aown == LiquidMap.MAX
-								| a180 == LiquidMap.MAX
-								| a225 == LiquidMap.MAX
-								| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a180 == LiquidMap.MAX
+								|| a225 == LiquidMap.MAX
+								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							byte afbk2 = aown == LiquidMap.MAX
-								| a090 == LiquidMap.MAX
-								| a135 == LiquidMap.MAX
-								| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a090 == LiquidMap.MAX
+								|| a135 == LiquidMap.MAX
+								|| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							byte afbk3 = aown == LiquidMap.MAX
-								| a000 == LiquidMap.MAX
-								| a045 == LiquidMap.MAX
-								| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a000 == LiquidMap.MAX
+								|| a045 == LiquidMap.MAX
+								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							byte afbk4 = aown == LiquidMap.MAX
-								| a000 == LiquidMap.MAX
-								| a270 == LiquidMap.MAX
-								| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a000 == LiquidMap.MAX
+								|| a270 == LiquidMap.MAX
+								|| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h1 = lqt180 | lqt225 | lqt270 ? 1.0f : (aown
+                                h1 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown
                                 + (lq180 ? a180 : afbk1)
                                 + (lq225 ? a225 : afbk1)
                                 + (lq270 ? a270 : afbk1)) / 4.0f / (LiquidMap.MAX + 1);
-                                h2 = lqt090 | lqt135 | lqt180 ? 1.0f : (aown
+                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
                                 + (lq090 ? a090 : afbk2)
                                 + (lq135 ? a135 : afbk2)
                                 + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 | lqt045 | lqt090 ? 1.0f : (aown
+                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
                                 + (lq000 ? a000 : afbk3)
                                 + (lq045 ? a045 : afbk3)
                                 + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = lqt000 | lqt270 | lqt315 ? 1.0f : (aown
+                                h4 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
                                 + (lq000 ? a000 : afbk4)
                                 + (lq270 ? a270 : afbk4)
                                 + (lq315 ? a315 : afbk4)) / 4.0f / (LiquidMap.MAX + 1);
 
-                                if (aown != LiquidMap.MAX) {
-                                    if (a090 == a270) {
-                                        if (a000 < a180)
-                                            dir = 3.0f;
-                                        else
-                                            dir = 7.0f;
-                                    } else if (a000 == a180) {
-                                        if (a090 < a270)
-                                            dir = 1.0f;
-                                        else
-                                            dir = 5.0f;
-                                    } else if (a000 == a090) {
-                                        if (a045 < a225)
-                                            dir = 2.0f;
-                                        else
-                                            dir = 6.0f;
-                                    } else if (a090 == a180) {
-										if (a315 < a135)
-											dir = 4.0f;
-										else
-											dir = 8.0f;
-									}
-								}
+                                byte la000 = s000 ? LiquidMap.MAX : a000; 
+                                byte la045 = s045 ? LiquidMap.MAX : a045; 
+                                byte la090 = s090 ? LiquidMap.MAX : a090; 
+                                byte la135 = s135 ? LiquidMap.MAX : a135; 
+                                byte la180 = s180 ? LiquidMap.MAX : a180; 
+                                byte la225 = s225 ? LiquidMap.MAX : a225; 
+                                byte la270 = s270 ? LiquidMap.MAX : a270; 
+                                byte la315 = s315 ? LiquidMap.MAX : a315;
+
+                                if (la000 == la090 && la000 == la180 && la000 == la270) {
+                                    dir = 0.0f;
+                                } else if (la045 == la315 || la135 == la225) {
+                                    if (la000 < la180)
+                                        dir = 3.0f;
+                                    else
+                                        dir = 7.0f;
+                                } else if (la045 == la135 || la225 == la315) {
+                                    if (la090 < la270)
+                                        dir = 1.0f;
+                                    else
+                                        dir = 5.0f;
+                                } else if (la000 == la090 || la180 == la270) {
+                                    if (la045 < la225)
+                                        dir = 2.0f;
+                                    else
+                                        dir = 6.0f;
+                                } else if (la090 == la180 || la000 == la270) {
+                                    if (la315 < la135)
+                                        dir = 4.0f;
+                                    else
+                                        dir = 8.0f;
+                                }
 							}
                         } else {
 							uv1 = new Vector2(atlasPosition.x + 0 * atlasStep, atlasPosition.y + 0 * atlasStep);
@@ -808,19 +817,19 @@ namespace Minecraft.Utilities {
 
 						if (isLiquid) {
 							byte afbk2 = aown == LiquidMap.MAX
-								| a000 == LiquidMap.MAX
-								| a045 == LiquidMap.MAX
-								| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a000 == LiquidMap.MAX
+								|| a045 == LiquidMap.MAX
+								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							byte afbk3 = aown == LiquidMap.MAX
-								| a090 == LiquidMap.MAX
-								| a135 == LiquidMap.MAX
-								| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a090 == LiquidMap.MAX
+								|| a135 == LiquidMap.MAX
+								|| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt000 | lqt045 | lqt090 ? 1.0f : (aown
+                                h2 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
                                 + (lq000 ? a000 : afbk2)
                                 + (lq045 ? a045 : afbk2)
                                 + (lq090 ? a090 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt090 | lqt135 | lqt180 ? 1.0f : (aown
+                                h3 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
                                 + (lq090 ? a090 : afbk3)
                                 + (lq135 ? a135 : afbk3)
                                 + (lq180 ? a180 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
@@ -952,19 +961,19 @@ namespace Minecraft.Utilities {
 
 						if (isLiquid) {
 							byte afbk2 = aown == LiquidMap.MAX
-								| a180 == LiquidMap.MAX
-								| a225 == LiquidMap.MAX
-								| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a180 == LiquidMap.MAX
+								|| a225 == LiquidMap.MAX
+								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							byte afbk3 = aown == LiquidMap.MAX
-								| a000 == LiquidMap.MAX
-								| a270 == LiquidMap.MAX
-								| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
+								|| a000 == LiquidMap.MAX
+								|| a270 == LiquidMap.MAX
+								|| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt180 | lqt225 | lqt270 ? 1.0f : (aown
+                                h2 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown
                                 + (lq180 ? a180 : afbk2)
                                 + (lq225 ? a225 : afbk2)
                                 + (lq270 ? a270 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 | lqt270 | lqt315 ? 1.0f : (aown
+                                h3 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
                                 + (lq000 ? a000 : afbk3)
                                 + (lq270 ? a270 : afbk3)
                                 + (lq315 ? a315 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
