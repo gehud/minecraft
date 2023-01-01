@@ -2,28 +2,27 @@
 
 namespace Minecraft {
     public class Array3D<T> {
-        private readonly int x, y, z;
-        private readonly T[] data;
+        protected readonly T[] Data;
+        protected readonly int X, XY;
 
         public Array3D(int x, int y, int z) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            data = new T[this.x * this.y * this.z];
+            X = x;
+            XY = x * y;
+            Data = new T[x * y * z];
         }
 
         public T this[int x, int y, int z] {
-            get => data[z * this.x * this.y + y * this.x + x];
-            set => data[z * this.x * this.y + y * this.x + x] = value;
+            get => Data[z * XY + y * X + x];
+            set => Data[z * XY + y * X + x] = value;
         }
 
         public T this[Vector3Int coordinate] {
-            get => data[coordinate.z * x * y + coordinate.y * x + coordinate.x];
-            set => data[coordinate.z * x * y + coordinate.y * x + coordinate.x] = value;
+            get => Data[coordinate.z * XY + coordinate.y * X + coordinate.x];
+            set => Data[coordinate.z * XY + coordinate.y * X + coordinate.x] = value;
         }
 
         public void CopyTo(Array3D<T> other) {
-            data.CopyTo(other.data, 0);
+            Data.CopyTo(other.Data, 0);
         }
     }
 }
