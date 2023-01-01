@@ -13,13 +13,13 @@ namespace Minecraft {
         }
 
         public T this[int x, int y, int z] {
-            get => data[(z * this.x * this.y) + (y * this.x) + x];
-            set => data[(z * this.x * this.y) + (y * this.x) + x] = value;
+            get => data[z * this.x * this.y + y * this.x + x];
+            set => data[z * this.x * this.y + y * this.x + x] = value;
         }
 
         public T this[Vector3Int coordinate] {
-            get => this[coordinate.x, coordinate.y, coordinate.z];
-            set => this[coordinate.x, coordinate.y, coordinate.z] = value;
+            get => data[coordinate.z * x * y + coordinate.y * x + coordinate.x];
+            set => data[coordinate.z * x * y + coordinate.y * x + coordinate.x] = value;
         }
 
         public void CopyTo(Array3D<T> other) {
