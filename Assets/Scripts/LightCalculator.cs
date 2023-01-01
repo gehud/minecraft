@@ -51,9 +51,10 @@ namespace Minecraft {
 
             Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
             chunkData.LightMap.Set(localBlockCoordinate, chanel, level);
-            chunkData.IsDirty = true;
+			world.ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+			chunkData.MarkDirty();
 
-            Entry entry = new(blockCoordinate, level);
+			Entry entry = new(blockCoordinate, level);
             addQueue.Enqueue(entry);
         }
 
@@ -65,8 +66,6 @@ namespace Minecraft {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
                 return;
-
-            chunkData.IsDirty = true;
 
             Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
             byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
@@ -92,7 +91,8 @@ namespace Minecraft {
                 return;
 
             chunkData.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
-            chunkData.IsDirty = true;
+            world.ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+            chunkData.MarkDirty();
 
             Entry entry = new(blockCoordinate, level);
             removeQueue.Enqueue(entry);
@@ -166,7 +166,7 @@ namespace Minecraft {
                     Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                     Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                     if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                        chunkData.IsDirty = true;
+                        chunkData.MarkDirty();
                         byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
                         if (level != 0 && level == entry.Level - 1) {
                             Entry removeEntry = new(x, y, z, level);
@@ -192,7 +192,7 @@ namespace Minecraft {
                     Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                     Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                     if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                        chunkData.IsDirty = true;
+                        chunkData.MarkDirty();
                         BlockType voxelType = chunkData.BlockMap[localBlockCoordinate];
                         byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
                         if (BlockDataManager.Data[voxelType].IsTransparent && level + 2 <= entry.Level) {

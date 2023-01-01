@@ -61,7 +61,7 @@ namespace Minecraft.Utilities {
 
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
                 int vertexCount = meshData.Vertices.Count;
-                if ((force && fliped) || aof1 + aof3 < aof2 + aof4) {
+                if (force && fliped || aof1 + aof3 < aof2 + aof4) {
                     // Fliped quad.
                     meshData.Indices.Add((ushort)(0 + vertexCount));
                     meshData.Indices.Add((ushort)(1 + vertexCount));
@@ -563,34 +563,54 @@ namespace Minecraft.Utilities {
                                 + (lq270 ? a270 : afbk4)
                                 + (lq315 ? a315 : afbk4)) / 4.0f / (LiquidMap.MAX + 1);
 
-                                byte la000 = s000 ? LiquidMap.MAX : a000; 
-                                byte la045 = s045 ? LiquidMap.MAX : a045; 
-                                byte la090 = s090 ? LiquidMap.MAX : a090; 
-                                byte la135 = s135 ? LiquidMap.MAX : a135; 
-                                byte la180 = s180 ? LiquidMap.MAX : a180; 
-                                byte la225 = s225 ? LiquidMap.MAX : a225; 
-                                byte la270 = s270 ? LiquidMap.MAX : a270; 
-                                byte la315 = s315 ? LiquidMap.MAX : a315;
+                                byte la000;
+                                byte la045;
+                                byte la090;
+                                byte la135;
+                                byte la180;
+                                byte la225;
+                                byte la270;
+                                byte la315;
 
-                                if (la000 == la090 && la000 == la180 && la000 == la270) {
+                                if (aown == LiquidMap.MAX) {
+                                     la000 = s000 ? LiquidMap.MAX : a000; 
+                                     la045 = s045 ? LiquidMap.MAX : a045; 
+                                     la090 = s090 ? LiquidMap.MAX : a090; 
+                                     la135 = s135 ? LiquidMap.MAX : a135; 
+                                     la180 = s180 ? LiquidMap.MAX : a180; 
+                                     la225 = s225 ? LiquidMap.MAX : a225; 
+                                     la270 = s270 ? LiquidMap.MAX : a270;
+								     la315 = s315 ? LiquidMap.MAX : a315;
+                                } else {
+                                    la000 = a000;
+                                    la045 = a045;
+                                    la090 = a090;
+                                    la135 = a135;
+                                    la180 = a180;
+                                    la225 = a225;
+                                    la270 = a270;
+                                    la315 = a315;
+                                }
+
+                                if (la000 == la180 && la090 == la270 && aown == la000 && aown == la090) {
                                     dir = 0.0f;
-                                } else if (la045 == la315 || la135 == la225) {
-                                    if (la000 < la180)
+                                } else if (la000 != la180 && la090 == la270) {
+                                    if (la000 < la180 || la000 < aown || aown < la180)
                                         dir = 3.0f;
                                     else
                                         dir = 7.0f;
-                                } else if (la045 == la135 || la225 == la315) {
-                                    if (la090 < la270)
+                                } else if (la090 != la270 && la000 == la180) {
+                                    if (la090 < la270 || la090 < aown || aown < la270)
                                         dir = 1.0f;
                                     else
                                         dir = 5.0f;
                                 } else if (la000 == la090 || la180 == la270) {
-                                    if (la045 < la225)
+                                    if (la045 < la225 || la045 < aown || aown < la225)
                                         dir = 2.0f;
                                     else
                                         dir = 6.0f;
                                 } else if (la090 == la180 || la000 == la270) {
-                                    if (la315 < la135)
+                                    if (la315 < la135 || la315 < aown || aown < la135)
                                         dir = 4.0f;
                                     else
                                         dir = 8.0f;

@@ -62,7 +62,7 @@ namespace Minecraft {
             for (int x = startX; x <= endX; x++)
                 for (int z = startZ; z <= endZ; z++) {
                     bool sunlight = false;
-                    for (int y = 0; y < world.Height; y++) {
+                    for (int y = 0; y < World.HEIGHT; y++) {
                         Vector3Int chunkCoordinate = new Vector3Int(x, y, z);
                         loadedCoordinates.Push(chunkCoordinate);
                         if (x != startX && x != endX && z != startZ && z != endZ) {
@@ -93,7 +93,7 @@ namespace Minecraft {
             }
         }
 
-        private IEnumerator GenerateChunks(World world, ConcurrentDictionary<Vector3Int, IDictionary<MaterialType, MeshData>> meshDatas) {
+        private IEnumerator GenerateChunks(World world, ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> meshDatas) {
             generateChunks = true;
 
             foreach (var item in meshDatas) {
@@ -129,6 +129,14 @@ namespace Minecraft {
             foreach (var item in generatedData)
                 World.ChunksData.Add(item.Key, item.Value);
 
+            await Task.Run(() => { 
+                foreach (var item in generatedData) {
+                    foreach (var treeRoot in item.Value.TreeData.Positions) {
+                        GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
+                    }
+                }
+            });
+
             await Task.Run(() => {
                 foreach (var item in generatedData) {
                     ChunkUtility.For((localBlockCoordinate) => {
@@ -146,13 +154,37 @@ namespace Minecraft {
                 World.LightCalculatorSun.Calculate();
             });
 
-            ConcurrentDictionary<Vector3Int, IDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
+            ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => {
                 foreach (var item in chunkToCreateCoordinates)
                     generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.ChunksData[item], BlockDataManager));
             });
 
             StartCoroutine(GenerateChunks(World, generatedMeshDatas));
+        }
+
+        private void GenerateTree(Vector3Int blockCoordinate) {
+            for (int i = 0; i < 5; i++) {
+                Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+                if (World.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+                    Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                    chunkData.BlockMap[localBlockCoordinate] = BlockType.Log;
+                }
+
+                blockCoordinate += Vector3Int.up;
+            }
+
+            for (int x = -2; x <= 2; x++)
+                for (int y = -2; y <= 2; y++)
+                    for (int z = -2; z <= 2; z++) {
+                        Vector3Int leavesCoordinate = blockCoordinate + new Vector3Int(x, y, z);
+						Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
+						if (World.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+							Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
+                            if (!BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid)
+							    chunkData.BlockMap[localBlockCoordinate] = BlockType.Leaves;
+						}
+					}
         }
 
         private IEnumerator CheckLoadRequirement() {

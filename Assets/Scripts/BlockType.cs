@@ -7,5 +7,7 @@
         Sand,
         Water,
         JackOLantern,
+        Log,
+        Leaves,
     }
 }

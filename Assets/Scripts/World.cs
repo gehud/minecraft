@@ -6,18 +6,21 @@ using Zenject;
 
 namespace Minecraft {
     public class World : MonoBehaviour {
+        /// <summary>
+        /// World height in Chunks.
+        /// </summary>
         public const int HEIGHT = 16;
-        public int Height => HEIGHT;
 
-        private readonly Dictionary<Vector3Int, ChunkData> chunksData = new();
-        public IDictionary<Vector3Int, ChunkData> ChunksData => chunksData;
+        public Dictionary<Vector3Int, ChunkData> ChunksData { get; set; } = new();
 
-        private readonly Dictionary<Vector3Int, Chunk> chunks = new();
-        public IDictionary<Vector3Int, Chunk> Chunks => chunks;
+        public Dictionary<Vector3Int, Chunk> Chunks { get; set; } = new();
 
         public LightCalculator LightCalculatorSun { get; set; }
+
         public LightCalculator LightCalculatorRed { get; set; }
+
         public LightCalculator LightCalculatorGreen { get; set; }
+
         public LightCalculator LightCalculatorBlue { get; set; }
 
         public LiquidCalculator LiquidCalculatorWater { get; set; }
@@ -38,7 +41,7 @@ namespace Minecraft {
             var chunkData = new ChunkData {
                 Coordinate = blockCoordinate
             };
-            chunksData.Add(blockCoordinate, chunkData);
+            ChunksData.Add(blockCoordinate, chunkData);
             return chunkData;
         }
 
@@ -46,41 +49,41 @@ namespace Minecraft {
             var chunk = Instantiate(this.chunk, transform);
             var chunkData = GetOrCreateChunkData(blockCoordinate);
             chunk.Initialize(chunkData);
-            chunks.Add(blockCoordinate, chunk);
+            Chunks.Add(blockCoordinate, chunk);
             return chunk;
         }
 
         public ChunkData GetChunkData(Vector3Int blockCoordinate) {
-            if (chunksData.ContainsKey(blockCoordinate))
-                return chunksData[blockCoordinate];
+            if (ChunksData.ContainsKey(blockCoordinate))
+                return ChunksData[blockCoordinate];
 
             return null;
         }
 
         public Chunk GetChunk(Vector3Int blockCoordinate) {
-            if (chunks.ContainsKey(blockCoordinate))
-                return chunks[blockCoordinate];
+            if (Chunks.ContainsKey(blockCoordinate))
+                return Chunks[blockCoordinate];
 
             return null;
         }
 
         public ChunkData GetOrCreateChunkData(Vector3Int blockCoordinate) {
-            if (chunksData.ContainsKey(blockCoordinate))
-                return chunksData[blockCoordinate];
+            if (ChunksData.ContainsKey(blockCoordinate))
+                return ChunksData[blockCoordinate];
 
             return CreateChunkData(blockCoordinate);
         }
 
         public Chunk GetOrCreateChunk(Vector3Int blockCoordinate) {
-            if (chunks.ContainsKey(blockCoordinate))
-                return chunks[blockCoordinate];
+            if (Chunks.ContainsKey(blockCoordinate))
+                return Chunks[blockCoordinate];
 
             return CreateChunk(blockCoordinate);
         }
 
         public void DestroyChunk(Vector3Int blockCoordinate) {
-            chunksData.Remove(blockCoordinate);
-            chunks.Remove(blockCoordinate, out Chunk chunk);
+            ChunksData.Remove(blockCoordinate);
+            Chunks.Remove(blockCoordinate, out Chunk chunk);
             Destroy(chunk.gameObject);
         }
 
@@ -89,23 +92,23 @@ namespace Minecraft {
         /// </summary>
         public void ValidateChunkData(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
 			ChunkData chunkData;
-            if (localBlockCoordinate.x == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.left, out chunkData))
+            if (localBlockCoordinate.x == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.left, out chunkData))
                 chunkData.MarkDirty();
-			if (localBlockCoordinate.y == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.down, out chunkData))
+			if (localBlockCoordinate.y == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.down, out chunkData))
 				chunkData.MarkDirty();
-			if (localBlockCoordinate.z == 0 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.back, out chunkData))
+			if (localBlockCoordinate.z == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.back, out chunkData))
 				chunkData.MarkDirty();
-			if (localBlockCoordinate.x == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.right, out chunkData))
+			if (localBlockCoordinate.x == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.right, out chunkData))
 				chunkData.MarkDirty();
-			if (localBlockCoordinate.y == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.up, out chunkData))
+			if (localBlockCoordinate.y == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.up, out chunkData))
 				chunkData.MarkDirty();
-			if (localBlockCoordinate.z == Chunk.SIZE - 1 && chunksData.TryGetValue(chunkCoordinate + Vector3Int.forward, out chunkData))
+			if (localBlockCoordinate.z == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.forward, out chunkData))
 				chunkData.MarkDirty();
         }
 
 		public BlockType GetBlock(Vector3Int blockCoordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                 return chunkData.BlockMap[localBlockCoordinate];
             }
@@ -115,7 +118,7 @@ namespace Minecraft {
 
         public void SetBlock(Vector3Int blockCoordinate, BlockType voxelType) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                 chunkData.BlockMap[localBlockCoordinate] = voxelType;
 				chunkData.MarkDirty();
@@ -125,7 +128,7 @@ namespace Minecraft {
 
         public int GetLightLevel(Vector3Int blockCoordinate, LightChanel chanel) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                 return chunkData.LightMap.Get(localBlockCoordinate, chanel);
             }
@@ -135,7 +138,7 @@ namespace Minecraft {
 
         public byte GetLiquidAmount(Vector3Int blockCoordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                 return chunkData.LiquidMap[localBlockCoordinate].Amount;
             }
@@ -145,7 +148,7 @@ namespace Minecraft {
 
 		public void SetLiquidAmount(Vector3Int blockCoordinate, byte amount) {
 			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
 				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                 chunkData.LiquidMap.Set(localBlockCoordinate, amount);
 				chunkData.MarkDirty();
@@ -155,7 +158,7 @@ namespace Minecraft {
 
 		public byte GetLiquidAmount(Vector3Int blockCoordinate, BlockType type) {
 			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
 				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
 				return chunkData.LiquidMap.Get(localBlockCoordinate, type);
 			}
@@ -165,7 +168,7 @@ namespace Minecraft {
 
 		public void SetLiquidAmount(Vector3Int blockCoordinate, BlockType type, byte amount) {
 			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
 				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
 				chunkData.LiquidMap.Set(localBlockCoordinate, type, amount);
                 chunkData.MarkDirty();
@@ -175,7 +178,7 @@ namespace Minecraft {
 
 		public LiquidData GetLiquidData(Vector3Int blockCoordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (chunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                 return chunkData.LiquidMap[localBlockCoordinate];
             }
@@ -299,7 +302,7 @@ namespace Minecraft {
         }
 
         private void Update() {
-            foreach (var chunk in chunks.Values) {
+            foreach (var chunk in Chunks.Values) {
                 if (chunk.Data.IsComplete && chunk.Data.IsDirty)
                     chunk.UpdateMesh(ChunkUtility.GenerateMeshData(this, chunk.Data, BlockDataManager), MaterialManager);
             }

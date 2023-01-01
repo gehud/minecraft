@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -11,7 +12,7 @@ namespace Minecraft {
 
         private Mesh mesh;
 
-        public void UpdateMesh(IDictionary<MaterialType, MeshData> meshDatas) {
+        public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshDatas) {
             List<Vector3> vertices = new();
             List<ushort> indices = new();
             foreach (var meshData in meshDatas) {
@@ -28,7 +29,7 @@ namespace Minecraft {
             mesh.SetSubMesh(0, new SubMeshDescriptor(0, indices.Count));
             meshCollider.sharedMesh = mesh;
 
-            mesh.RecalculateNormals();
+			mesh.RecalculateNormals();
         }
 
         private void Awake() {

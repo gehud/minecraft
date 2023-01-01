@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using UnityEngine;
 
 namespace Minecraft {
@@ -20,7 +20,7 @@ namespace Minecraft {
             transform.position = data.Coordinate * SIZE;
         }
 
-        public void UpdateMesh(IDictionary<MaterialType, MeshData> meshDatas, MaterialManager materialManager) {
+        public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshDatas, MaterialManager materialManager) {
             renderer.UpdateMesh(meshDatas, materialManager);
             collider.UpdateMesh(meshDatas);
             Data.IsDirty = false;

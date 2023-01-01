@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -14,7 +15,7 @@ namespace Minecraft {
 
         private Mesh mesh;
 
-        public void UpdateMesh(IDictionary<MaterialType, MeshData> meshDatas, MaterialManager materialManager) {
+        public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshDatas, MaterialManager materialManager) {
             mesh.Clear();
 
             List<SubMeshDescriptor> subMeshDescriptors = new();
@@ -39,6 +40,10 @@ namespace Minecraft {
             mesh.SetIndexBufferData(indices, 0, 0, indices.Count);
             mesh.SetSubMeshes(subMeshDescriptors);
             meshRenderer.materials = materials.ToArray();
+
+            Vector3 center = Vector3.one * Chunk.SIZE / 2.0f;
+            Vector3 size = Vector3.one * Chunk.SIZE;
+            mesh.bounds = new Bounds(center, size);
 
             mesh.RecalculateNormals();
         }
