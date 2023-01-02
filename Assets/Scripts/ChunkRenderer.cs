@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -15,19 +15,22 @@ namespace Minecraft {
 
         private Mesh mesh;
 
-        public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshDatas, MaterialManager materialManager) {
-            mesh.Clear();
+        public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshData, MaterialManager materialManager) {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             List<SubMeshDescriptor> subMeshDescriptors = new();
             List<ushort> indices = new();
             List<Vertex> vertices = new();
             List<Material> materials = new();
-            foreach (var meshData in meshDatas) {
-                subMeshDescriptors.Add(new SubMeshDescriptor(indices.Count, meshData.Value.Indices.Count));
+            foreach (var pair in meshData) {
+                subMeshDescriptors.Add(new SubMeshDescriptor(indices.Count, pair.Value.Indices.Count));
                 int vertexCount = vertices.Count;
-                indices.AddRange(meshData.Value.Indices.Select(i => (ushort)(i + vertexCount)));
-                vertices.AddRange(meshData.Value.Vertices);
-                materials.Add(materialManager.Materials[meshData.Key]);
+                for (int i = 0; i < pair.Value.Indices.Count; i++) {
+                    indices.Add((ushort)(pair.Value.Indices[i] + vertexCount));
+                }
+                vertices.AddRange(pair.Value.Vertices);
+                materials.Add(materialManager.Materials[pair.Key]);
             }
 
             mesh.SetVertexBufferParams(vertices.Count,
@@ -39,13 +42,12 @@ namespace Minecraft {
             mesh.SetIndexBufferParams(indices.Count, IndexFormat.UInt16);
             mesh.SetIndexBufferData(indices, 0, 0, indices.Count);
             mesh.SetSubMeshes(subMeshDescriptors);
-            meshRenderer.materials = materials.ToArray();
 
             Vector3 center = Vector3.one * Chunk.SIZE / 2.0f;
             Vector3 size = Vector3.one * Chunk.SIZE;
             mesh.bounds = new Bounds(center, size);
 
-            mesh.RecalculateNormals();
+            meshRenderer.materials = materials.ToArray();
         }
 
         private void Awake() {
