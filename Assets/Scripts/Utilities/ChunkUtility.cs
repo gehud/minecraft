@@ -19,12 +19,14 @@ namespace Minecraft.Utilities {
                         action(new Vector3Int(x, y, z));
         }
 
+        private const int SIZE_X_SIZE = Chunk.SIZE * Chunk.SIZE;
+
         private static readonly object lockObject = new();
 
         public static void ParallelFor(Action<int, int, int> action) {
             Parallel.For(0, Chunk.VOLUME, (index, state) => {
-                int z = index / (Chunk.SIZE * Chunk.SIZE);
-                index -= z * Chunk.SIZE * Chunk.SIZE;
+                int z = index / SIZE_X_SIZE;
+                index -= z * SIZE_X_SIZE;
                 int y = index / Chunk.SIZE;
                 int x = index % Chunk.SIZE;
                 action(x, y, z);
@@ -82,19 +84,20 @@ namespace Minecraft.Utilities {
 
             void AddFaceColliderIndices(MeshData meshData) {
                 int vertexCount = meshData.ColliderVertices.Count;
-                lock (lockObject) {
-                    meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
-                    meshData.ColliderIndices.Add((ushort)(1 + vertexCount));
-                    meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
-                    meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
-                    meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
-                    meshData.ColliderIndices.Add((ushort)(3 + vertexCount));
-                }
+                meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
+                meshData.ColliderIndices.Add((ushort)(1 + vertexCount));
+                meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
+                meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
+                meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
+                meshData.ColliderIndices.Add((ushort)(3 + vertexCount));
             }
 
             ConcurrentDictionary<MaterialType, MeshData> result = new();
-
+#if CHUNK_UTILITY_PARALLEL_FOR
             ParallelFor((x, y, z) => {
+#else
+            For((x, y, z) => { 
+#endif
                 BlockType blockType = chunkData.BlockMap[x, y, z];
 
                 if (blockType != BlockType.Air) {
@@ -286,22 +289,26 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
+#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
+#endif
+                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                        meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
-                            if (isSolid) {
-                                AddFaceColliderIndices(meshData);
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                            }
+                        if (isSolid) {
+                            AddFaceColliderIndices(meshData);
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
                         }
-                    }
+#if CHUNK_UTILITY_PARALLEL_FOR
+					    }
+#endif
+				    }
 
                     // Left face.
                     if (hasFace(x - 1, y, z)) {
@@ -430,25 +437,29 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
+#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
+#endif
+						AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                        meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
-                            if (isSolid) {
-                                AddFaceColliderIndices(meshData);
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
-                            }
+                        if (isSolid) {
+                            AddFaceColliderIndices(meshData);
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
                         }
-                    }
+#if CHUNK_UTILITY_PARALLEL_FOR
+					    }
+#endif
+					}
 
-                    // Top face.
-                    if (hasFace(x, y + 1, z)) {
+					// Top face.
+					if (hasFace(x, y + 1, z)) {
                         Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.TopFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
@@ -628,26 +639,30 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
+#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-                            bool fliped = isLiquid && (lqt045 || lqt225);
-                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4, true, fliped);
-                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
+#endif
+					    bool fliped = isLiquid && (lqt045 || lqt225);
+                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4, true, fliped);
+                        meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
-                            if (isSolid) {
-                                AddFaceColliderIndices(meshData);
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                            }
+                        if (isSolid) {
+                            AddFaceColliderIndices(meshData);
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
                         }
-                    }
+#if CHUNK_UTILITY_PARALLEL_FOR
+					    }
+#endif
+					}
 
-                    // Bottom face.
-                    if (hasFace(x, y - 1, z)) {
+					// Bottom face.
+					if (hasFace(x, y - 1, z)) {
                         Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.BottomFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y - 1, z + 0);
@@ -737,25 +752,29 @@ namespace Minecraft.Utilities {
 							uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep);
 						}
 
-						lock (lockObject) {
-                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir1));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir2));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir3));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir4));
+#if CHUNK_UTILITY_PARALLEL_FOR
+                        lock (lockObject) {
+#endif
+				        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                        meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir1));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir2));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir3));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir4));
 
-                            if (isSolid) {
-                                AddFaceColliderIndices(meshData);
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
-                            }
+                        if (isSolid) {
+                            AddFaceColliderIndices(meshData);
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
                         }
-                    }
+#if CHUNK_UTILITY_PARALLEL_FOR
+					    }
+#endif
+					}
 
-                    // Front face.
-                    if (hasFace(x, y, z + 1)) {
+					// Front face.
+					if (hasFace(x, y, z + 1)) {
                         Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.BackFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y + 0, z + 1);
@@ -881,25 +900,29 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
+#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
+#endif
+                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                        meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
-                            if (isSolid) {
-                                AddFaceColliderIndices(meshData);
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                            }
+                        if (isSolid) {
+                            AddFaceColliderIndices(meshData);
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
                         }
-                    }
+#if CHUNK_UTILITY_PARALLEL_FOR
+					    }
+#endif
+					}
 
-                    // Back face.
-                    if (hasFace(x, y, z - 1)) {
+					// Back face.
+					if (hasFace(x, y, z - 1)) {
                         Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.FrontFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 0, z - 1);
@@ -1025,23 +1048,27 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
+#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
+#endif
+	                    AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                        meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                        meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                        meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
 
-                            if (isSolid) {
-                                AddFaceColliderIndices(meshData);
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
-                                meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                                meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                            }
+                        if (isSolid) {
+                            AddFaceColliderIndices(meshData);
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
+                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
                         }
-                    }
-                }
+#if CHUNK_UTILITY_PARALLEL_FOR
+					    }
+#endif
+					}
+				}
             });
 
             return result;

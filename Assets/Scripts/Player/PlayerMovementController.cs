@@ -1,0 +1,157 @@
+﻿using Minecraft.Utilities;
+using System;
+using UnityEngine;
+using Zenject;
+
+namespace Minecraft.Player {
+    [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(BoxCollider))]
+    [RequireComponent(typeof(GroundChecker))]
+    public class PlayerMovementController : MonoBehaviour {
+        public event Action OnSprint;
+        public event Action OnSneak;
+
+        [SerializeField]
+        private new Transform camera;
+
+        [SerializeField, Min(0)]
+        private float walkSpeed = 5;
+        [SerializeField, Min(0)]
+        private float sneakSpeed = 3;
+        [SerializeField, Min(0)]
+        private float sprintSpeed = 7;
+        [SerializeField, Min(0)]
+        private float speedDelta = 1.0f;
+
+        [SerializeField, Min(0)]
+        private float jumpingHeight = 1.125f;
+        [SerializeField, Min(0)]
+        private float doubleTapTime = 0.5f;
+
+        [Header("Keys")]
+        [SerializeField]
+        private KeyCode jumpKey = KeyCode.Space;
+        [SerializeField]
+        private KeyCode sneakKey = KeyCode.LeftShift;
+        [SerializeField]
+        private KeyCode sprintKey = KeyCode.LeftControl;
+
+        private float lastDoubleTapTime = 0.0f;
+
+        private new Rigidbody rigidbody;
+        private BoxCollider boxCollider;
+        private GroundChecker groundChecker;
+        private Vector3 velocity = Vector3.zero;
+        private float targetSpeed = 0;
+        private float speed = 0;
+        private bool isSneak = false;
+        private bool isSprint = false;
+
+        [Inject]
+        private World World { get; }
+
+        [Inject]
+        private BlockDataManager BlockDataManager { get; }
+
+        private void Awake() {
+            rigidbody = GetComponent<Rigidbody>();
+            boxCollider = GetComponent<BoxCollider>();
+            groundChecker = GetComponent<GroundChecker>();
+        }
+
+        private void Jump() {
+            float velocity = Mathf.Sqrt(2 * Mathf.Abs(Physics.gravity.y) * jumpingHeight);
+            rigidbody.velocity += Vector3.up * velocity;
+        }
+
+        private void Update() {
+            bool isGrounded = groundChecker.IsGrounded;
+
+            if (isGrounded) {
+                if (!rigidbody.useGravity)
+                    rigidbody.useGravity = true;
+            }
+
+            if (Input.GetKey(sneakKey)) {
+                if (isGrounded)
+                    isSneak = true;
+                OnSneak?.Invoke();
+            } else if (Input.GetKey(sprintKey)) {
+                OnSprint?.Invoke();
+                isSprint = true;
+            } else {
+                isSneak = false;
+                isSprint = false;
+            }
+
+            if (isSneak) {
+                targetSpeed = sneakSpeed;
+            } else if (isSprint) {
+                targetSpeed = sprintSpeed;
+            } else {
+                targetSpeed = walkSpeed;
+            }
+
+            if (Input.GetKeyDown(jumpKey)) {
+                if (isGrounded)
+                    Jump();
+                if (Time.time - lastDoubleTapTime < doubleTapTime)
+                    rigidbody.useGravity = !rigidbody.useGravity;
+                lastDoubleTapTime = Time.time;
+            }
+
+            speed = Mathf.MoveTowards(speed, targetSpeed, speedDelta);
+
+            if (rigidbody.useGravity) {
+                velocity.y = rigidbody.velocity.y;
+            } else {
+                velocity.y = Input.GetAxis("Fly") * speed;
+            }
+
+            float horizontalInput = Input.GetAxis("Horizontal");
+            float verticalInput = Input.GetAxis("Vertical");
+            Vector2 input = new(horizontalInput, verticalInput);
+            input = input.magnitude > 1 ? input.normalized : input;
+
+            velocity.x = input.x * speed;
+            velocity.z = input.y * speed;
+            velocity = Quaternion.Euler(0, camera.localEulerAngles.y, 0) * velocity;
+
+
+            if (isSneak && isGrounded && velocity != Vector3.zero) {
+                var direction = velocity.normalized;
+                if (direction.x > 0)
+                    direction.x = 1.0f;
+                else if (direction.x < 0)
+                    direction.x = -1.0f;
+                if (direction.z > 0)
+                    direction.z = 1.0f;
+                else if (direction.z < 0)
+                    direction.z = -1.0f;
+
+                var extents = Vector3.one * boxCollider.bounds.extents.x;
+
+                if (!CheckSquare(transform.position + Vector3.forward * direction.z * speed * Time.fixedDeltaTime, extents)) {
+                    velocity.z = 0.0f;
+                }
+
+                if (!CheckSquare(transform.position + Vector3.right * direction.x * speed * Time.fixedDeltaTime, extents)) {
+                    velocity.x = 0.0f;
+                }
+            }
+
+            rigidbody.velocity = velocity;
+        }
+
+        private bool CheckSquare(Vector3 position, Vector3 extents) {
+            for (float x = position.x - extents.x; x <= position.x + extents.x; x++) {
+                for (float z = position.z - extents.z; z <= position.z + extents.z; z++) {
+                    if (BlockDataManager.Data[World.GetBlock(CoordinateUtility.ToCoordinate(new Vector3(x, position.y - extents.y, z)))].IsSolid)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+    }
+}
