@@ -120,13 +120,13 @@ namespace Minecraft.Player {
 
             if (isSneak && isGrounded && velocity != Vector3.zero) {
                 var direction = velocity.normalized;
-                if (direction.x > 0)
+                if (direction.x > 0.0f)
                     direction.x = 1.0f;
-                else if (direction.x < 0)
+                else if (direction.x < 0.0f)
                     direction.x = -1.0f;
-                if (direction.z > 0)
+                if (direction.z > 0.0f)
                     direction.z = 1.0f;
-                else if (direction.z < 0)
+                else if (direction.z < 0.0f)
                     direction.z = -1.0f;
 
                 var extents = Vector3.one * boxCollider.bounds.extents.x;
@@ -144,9 +144,9 @@ namespace Minecraft.Player {
         }
 
         private bool CheckSquare(Vector3 position, Vector3 extents) {
-            for (float x = position.x - extents.x; x <= position.x + extents.x; x++) {
-                for (float z = position.z - extents.z; z <= position.z + extents.z; z++) {
-                    if (BlockDataManager.Data[World.GetBlock(CoordinateUtility.ToCoordinate(new Vector3(x, position.y - extents.y, z)))].IsSolid)
+            for (int x = Mathf.FloorToInt(position.x - extents.x); x <= Mathf.FloorToInt(position.x + extents.x); x++) {
+                for (int z = Mathf.FloorToInt(position.z - extents.z); z <= Mathf.FloorToInt(position.z + extents.z); z++) {
+                    if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, Mathf.FloorToInt(position.y - extents.y), z))].IsSolid)
                         return true;
                 }
             }
