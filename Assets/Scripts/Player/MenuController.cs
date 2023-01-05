@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 namespace Minecraft.Player {
-    public class PlayerMenuController : MonoBehaviour {
+    public class MenuController : MonoBehaviour {
         [SerializeField]
         private GameObject menu;
 

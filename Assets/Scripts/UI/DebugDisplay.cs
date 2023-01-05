@@ -1,6 +1,6 @@
 ﻿using Minecraft.Utilities;
+using System.Collections;
 using TMPro;
-using UnityEditor;
 using UnityEngine;
 using Zenject;
 
@@ -10,43 +10,50 @@ namespace Minecraft.UI {
 		private Transform player;
 		[SerializeField]
 		private new Camera camera;
+		[SerializeField]
+		private float framerateUpdate = 0.5f;
 
+		[SerializeField]
+		private TMP_Text framerateText;
 		[SerializeField]
 		private TMP_Text positionText;
 		[SerializeField]
-		private TMP_Text cursorText;
+		private TMP_Text continentalnessText;
 		[SerializeField]
-		private TMP_Text blockText;
+		private TMP_Text peaksAndValleysText;
 		[SerializeField]
-		private TMP_Text normalBlockText;
+		private TMP_Text erosionText;
 
 		[Inject]
-		private World World { get; }
+		private ChunkDataGenerator ChunkDataGenerator { get; }
+
+		private int framerate;
 
 		private void Start() {
 			gameObject.SetActive(false);
 		}
 
 		private void Update() {
+			framerateText.text = framerate.ToString();
 			positionText.text = player.position.ToString();
+			var playerCoordinate = CoordinateUtility.ToCoordinate(player.position);
+			continentalnessText.text = ChunkDataGenerator.GetContinentalness(playerCoordinate).ToString("F2");
+			peaksAndValleysText.text = ChunkDataGenerator.GetPeaksAndValleys(playerCoordinate).ToString("F2");
+			erosionText.text = ChunkDataGenerator.GetErosion(playerCoordinate).ToString("F2");
+		}
 
-			var ray = camera.ScreenPointToRay(Input.mousePosition);
-			if (Physics.Raycast(ray, out RaycastHit hitInfo)) {
-				var blockCoordinate = CoordinateUtility.ToCoordinate(hitInfo.point);
-				if (hitInfo.normal.x > 0)
-					blockCoordinate.x--;
-				if (hitInfo.normal.y > 0)
-					blockCoordinate.y--;
-				if (hitInfo.normal.z > 0)
-					blockCoordinate.z--;
-				blockText.text = ObjectNames.NicifyVariableName(World.GetBlock(blockCoordinate).ToString());
-				var normalBlockCoordinate = blockCoordinate + Vector3Int.FloorToInt(hitInfo.normal);
-				cursorText.text = normalBlockCoordinate.ToString();
-				normalBlockText.text = ObjectNames.NicifyVariableName(World.GetBlock(normalBlockCoordinate).ToString());
-			} else {
-				cursorText.text = Vector3.zero.ToString();
-				blockText.text = ObjectNames.NicifyVariableName(BlockType.Air.ToString());
-				normalBlockText.text = ObjectNames.NicifyVariableName(BlockType.Air.ToString());
+		private void OnEnable() {
+			StartCoroutine(nameof(UpdateFramerate));
+		}
+
+		private void OnDisable() {
+			StopCoroutine(nameof(UpdateFramerate));
+		}
+
+		private IEnumerator UpdateFramerate() {
+			while (true) {
+				framerate = (int)(1.0f / Time.smoothDeltaTime);
+				yield return new WaitForSeconds(framerateUpdate);
 			}
 		}
 	}

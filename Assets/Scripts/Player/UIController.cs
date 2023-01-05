@@ -2,7 +2,7 @@
 using Minecraft.UI;
 
 namespace Minecraft.Player {
-	public class PlayerUIController : MonoBehaviour {
+	public class UIController : MonoBehaviour {
 		[SerializeField]
 		private DebugDisplay debugDisplay;
 

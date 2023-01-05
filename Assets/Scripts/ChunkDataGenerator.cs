@@ -14,7 +14,19 @@ namespace Minecraft {
         [SerializeField] private Noise2D erosionNoise;
         [SerializeField] private Noise2D treeNoise;
 
-        public ChunkData GenerateChunkData(Vector3Int coordinate) {
+        public float GetContinentalness(Vector3Int blockCoordinate) {
+            return continentalnessNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+		}
+
+		public float GetErosion(Vector3Int blockCoordinate) {
+			return erosionNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+		}
+
+		public float GetPeaksAndValleys(Vector3Int blockCoordinate) {
+			return peaksAndValleysNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+		}
+
+		public ChunkData GenerateChunkData(Vector3Int coordinate) {
             ChunkData result = new() {
                 Coordinate = coordinate
             };
@@ -24,9 +36,9 @@ namespace Minecraft {
             ChunkUtility.For((x, y, z) => {
                 Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(coordinate, new Vector3Int(x, y, z));
 
-                float erosionNoiseValue = erosionNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
-                float continantalnessNoiseValue = continentalnessNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
-                float peaksAndValleysNoiseValue = peaksAndValleysNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+                float continantalnessNoiseValue = GetContinentalness(blockCoordinate);
+                float peaksAndValleysNoiseValue = GetPeaksAndValleys(blockCoordinate);
+                float erosionNoiseValue = GetErosion(blockCoordinate);
                 int surfaceHeight = surfaceOffset + Mathf.FloorToInt((continantalnessNoiseValue
                                                                     + peaksAndValleysNoiseValue
                                                                     + erosionNoiseValue) / 3);

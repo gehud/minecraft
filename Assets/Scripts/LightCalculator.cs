@@ -1,6 +1,9 @@
 ﻿using Minecraft.Utilities;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.Assertions.Must;
+using UnityEngine.Profiling;
 
 namespace Minecraft {
     public class LightCalculator {
@@ -157,6 +160,8 @@ namespace Minecraft {
         }
 
         public void Calculate() {
+            Profiler.BeginSample("LightCalculator.Calculate");
+
             while (removeQueue.TryDequeue(out Entry entry)) {
                 foreach (var side in blockSides) {
                     int x = entry.Coordinate.x + side.x;
@@ -203,6 +208,8 @@ namespace Minecraft {
                     }
                 }
             }
-        }
+
+            Profiler.EndSample();
+		}
     }
 }

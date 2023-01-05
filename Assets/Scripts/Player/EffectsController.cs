@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 using Zenject;
 
 namespace Minecraft.Player {
-    public class PlayerEffectsController : MonoBehaviour {
+    public class EffectsController : MonoBehaviour {
         [SerializeField]
         private Volume underWaterVolume;
         [SerializeField]

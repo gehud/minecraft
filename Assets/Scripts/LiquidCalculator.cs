@@ -1,6 +1,8 @@
 ﻿using Minecraft.Utilities;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 namespace Minecraft {
     public class LiquidCalculator {
@@ -142,6 +144,8 @@ namespace Minecraft {
         }
 
         public void Calculate() {
+            Profiler.BeginSample("LiquidCalculator.Calculate");
+
             var toRemove = new Queue<Entry>();
             var toAdd = new Queue<Entry>();
 
@@ -153,7 +157,7 @@ namespace Minecraft {
                         var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                         var amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
                         if (amount != 0
-                            && (amount == entry.Amount - 1 || (side.y == -1 && amount == LiquidMap.MAX))
+                            && (amount == entry.Amount - 1 || side.y == -1 && amount == LiquidMap.MAX)
                             && !IsRenewable(blockCoordinate)) {
                             var removeEntry = new Entry(blockCoordinate, amount);
                             toRemove.Enqueue(removeEntry);
@@ -163,16 +167,13 @@ namespace Minecraft {
                             world.ValidateChunkData(chunkCoordinate, localBlockCoordinate);
                         } else if (amount >= entry.Amount) {
                             var addEntry = new Entry(blockCoordinate, amount);
-                            toAdd.Enqueue(addEntry);
+                            addQueue.Enqueue(addEntry);
                         }
                     }
                 }
             }
 
-            foreach (var item in toAdd)
-                addQueue.Enqueue(item);
-
-            while (addQueue.TryDequeue(out Entry entry)) {
+			while (addQueue.TryDequeue(out Entry entry)) {
                 Vector3Int blockCoordinate;
                 Vector3Int chunkCoordinate;
 
@@ -219,10 +220,12 @@ namespace Minecraft {
                 }
             }
 
-            foreach (var item in toRemove)
-                removeQueue.Enqueue(item);
-            foreach (var item in toAdd)
-                addQueue.Enqueue(item);
+            for (int i = 0; i < toRemove.Count; i++)
+                removeQueue.Enqueue(toRemove.Dequeue());
+			for (int i = 0; i < toAdd.Count; i++)
+				addQueue.Enqueue(toAdd.Dequeue());
+
+            Profiler.EndSample();
         }
     }
 }

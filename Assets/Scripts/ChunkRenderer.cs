@@ -16,9 +16,6 @@ namespace Minecraft {
         private Mesh mesh;
 
         public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshData, MaterialManager materialManager) {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
             List<SubMeshDescriptor> subMeshDescriptors = new();
             List<ushort> indices = new();
             List<Vertex> vertices = new();
@@ -52,7 +49,7 @@ namespace Minecraft {
 
         private void Awake() {
             mesh = new();
-            meshFilter.mesh = mesh;
+            meshFilter.sharedMesh = mesh;
         }
     }
 }

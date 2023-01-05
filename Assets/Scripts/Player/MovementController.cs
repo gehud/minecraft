@@ -1,5 +1,4 @@
-﻿using Minecraft.Utilities;
-using System;
+﻿using System;
 using UnityEngine;
 using Zenject;
 
@@ -7,9 +6,10 @@ namespace Minecraft.Player {
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(BoxCollider))]
     [RequireComponent(typeof(GroundChecker))]
-    public class PlayerMovementController : MonoBehaviour {
-        public event Action OnSprint;
-        public event Action OnSneak;
+    public class MovementController : MonoBehaviour {
+        public bool IsSneaking => isSneaking;
+
+        public bool IsSprinting => isSprinting;
 
         [SerializeField]
         private new Transform camera;
@@ -44,8 +44,8 @@ namespace Minecraft.Player {
         private Vector3 velocity = Vector3.zero;
         private float targetSpeed = 0;
         private float speed = 0;
-        private bool isSneak = false;
-        private bool isSprint = false;
+        private bool isSneaking = false;
+        private bool isSprinting = false;
 
         [Inject]
         private World World { get; }
@@ -65,28 +65,24 @@ namespace Minecraft.Player {
         }
 
         private void Update() {
-            bool isGrounded = groundChecker.IsGrounded;
+			bool isGrounded = groundChecker.IsGrounded;
 
             if (isGrounded) {
                 if (!rigidbody.useGravity)
                     rigidbody.useGravity = true;
             }
 
-            if (Input.GetKey(sneakKey)) {
-                if (isGrounded)
-                    isSneak = true;
-                OnSneak?.Invoke();
-            } else if (Input.GetKey(sprintKey)) {
-                OnSprint?.Invoke();
-                isSprint = true;
-            } else {
-                isSneak = false;
-                isSprint = false;
-            }
+			float horizontalInput = Input.GetAxis("Horizontal");
+			float verticalInput = Input.GetAxis("Vertical");
+			Vector2 input = new(horizontalInput, verticalInput);
+			input = input.magnitude > 1 ? input.normalized : input;
 
-            if (isSneak) {
+            isSneaking = Input.GetKey(sneakKey) && isGrounded;
+            isSprinting = Input.GetKeyDown(sprintKey) || isSprinting && input.magnitude == 1.0f;
+
+			if (isSneaking) {
                 targetSpeed = sneakSpeed;
-            } else if (isSprint) {
+            } else if (isSprinting) {
                 targetSpeed = sprintSpeed;
             } else {
                 targetSpeed = walkSpeed;
@@ -108,17 +104,11 @@ namespace Minecraft.Player {
                 velocity.y = Input.GetAxis("Fly") * speed;
             }
 
-            float horizontalInput = Input.GetAxis("Horizontal");
-            float verticalInput = Input.GetAxis("Vertical");
-            Vector2 input = new(horizontalInput, verticalInput);
-            input = input.magnitude > 1 ? input.normalized : input;
-
             velocity.x = input.x * speed;
             velocity.z = input.y * speed;
             velocity = Quaternion.Euler(0, camera.localEulerAngles.y, 0) * velocity;
 
-
-            if (isSneak && isGrounded && velocity != Vector3.zero) {
+            if (isSneaking && velocity != Vector3.zero) {
                 var direction = velocity.normalized;
                 if (direction.x > 0.0f)
                     direction.x = 1.0f;
