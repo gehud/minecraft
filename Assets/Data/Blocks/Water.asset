@@ -22,8 +22,9 @@ MonoBehaviour:
   materialType: 2
   isSolid: 0
   isLiquid: 1
-  isTransparent: 1
   emission:
     R: 0
     G: 0
     B: 0
+  isTransparent: 1
+  absorption: 1

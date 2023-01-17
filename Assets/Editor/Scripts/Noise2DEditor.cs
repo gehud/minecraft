@@ -5,9 +5,9 @@ using UnityEditor;
 using UnityEngine;
 using Minecraft.Extensions;
 
-namespace Minecraft.Noise {
+namespace Minecraft.Noise.Editor {
     [CustomEditor(typeof(Noise2D), true)]
-    public class Noise2DEditor : Editor {
+    public class Noise2DEditor : UnityEditor.Editor {
         struct PerlinNoise2DTextureJob : IJobFor, IDisposable {
             public NativeArray<Color32> Colors;
 

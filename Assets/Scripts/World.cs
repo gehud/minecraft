@@ -197,12 +197,12 @@ namespace Minecraft {
             LightCalculatorGreen.Calculate();
             LightCalculatorBlue.Calculate();
 
-            if (BlockDataManager.Data[GetBlock(blockCoordinate + Vector3Int.up)].IsTransparent
+            if (GetBlock(blockCoordinate + Vector3Int.up) == BlockType.Air
                 && GetLightLevel(blockCoordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX) {
                 for (int y = blockCoordinate.y; y >= 0; y--) {
-                    LightCalculatorSun.Add(blockCoordinate.x, y, blockCoordinate.z, LightMap.MAX);
-                    if (!BlockDataManager.Data[GetBlock(new Vector3Int(blockCoordinate.x, y - 1, blockCoordinate.z))].IsTransparent)
+                    if (GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z)) != BlockType.Air)
                         break;
+                    LightCalculatorSun.Add(blockCoordinate.x, y, blockCoordinate.z, LightMap.MAX);
                 }
             }
 
@@ -254,9 +254,9 @@ namespace Minecraft {
             LightCalculatorGreen.Remove(blockCoordinate);
             LightCalculatorBlue.Remove(blockCoordinate);
             for (int y = blockCoordinate.y; y >= 0; y--) {
-                LightCalculatorSun.Remove(blockCoordinate.x, y, blockCoordinate.z);
-                if (!BlockDataManager.Data[GetBlock(new Vector3Int(blockCoordinate.x, y - 1, blockCoordinate.z))].IsTransparent)
+                if (!BlockDataManager.Data[GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))].IsTransparent)
                     break;
+                LightCalculatorSun.Remove(blockCoordinate.x, y, blockCoordinate.z);
             }
             LightCalculatorRed.Calculate();
             LightCalculatorGreen.Calculate();

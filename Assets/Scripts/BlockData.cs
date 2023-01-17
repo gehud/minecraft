@@ -15,10 +15,13 @@ namespace Minecraft {
         public bool IsLiquid => isLiquid;
         [SerializeField] private bool isLiquid = false;
 
+        public LightColor Emission => emission;
+        [SerializeField] private LightColor emission;
+
         public bool IsTransparent => isTransparent;
         [SerializeField] private bool isTransparent = false;
 
-        public LightColor Emission => emission;
-        [SerializeField] private LightColor emission;
-    }
+        public byte Absorption => absorption;
+		[SerializeField, Range(LightMap.MIN, LightMap.MAX)] private byte absorption;
+	}
 }
