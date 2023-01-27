@@ -253,7 +253,8 @@ namespace Minecraft {
             LightCalculatorRed.Remove(blockCoordinate);
             LightCalculatorGreen.Remove(blockCoordinate);
             LightCalculatorBlue.Remove(blockCoordinate);
-            for (int y = blockCoordinate.y; y >= 0; y--) {
+            LightCalculatorSun.Remove(blockCoordinate);
+            for (int y = blockCoordinate.y - 1; y >= 0; y--) {
                 if (!BlockDataManager.Data[GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))].IsTransparent)
                     break;
                 LightCalculatorSun.Remove(blockCoordinate.x, y, blockCoordinate.z);
