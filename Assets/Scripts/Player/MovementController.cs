@@ -1,11 +1,10 @@
-﻿using System;
+﻿using Minecraft.Utilities;
+using System;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft.Player {
-    [RequireComponent(typeof(Rigidbody))]
-    [RequireComponent(typeof(BoxCollider))]
-    [RequireComponent(typeof(GroundChecker))]
+    [RequireComponent(typeof(BoundsAuthoring))]
     public class MovementController : MonoBehaviour {
         public bool IsSneaking => isSneaking;
 
@@ -38,9 +37,7 @@ namespace Minecraft.Player {
 
         private float lastDoubleTapTime = 0.0f;
 
-        private new Rigidbody rigidbody;
-        private BoxCollider boxCollider;
-        private GroundChecker groundChecker;
+        private BoundsAuthoring bounds;
         private Vector3 velocity = Vector3.zero;
         private float targetSpeed = 0;
         private float speed = 0;
@@ -53,34 +50,47 @@ namespace Minecraft.Player {
         [Inject]
         private BlockDataManager BlockDataManager { get; }
 
+        [Inject]
+        private PhysicsSolver PhysicsSolver { get; }
+
+        private Hitbox hitbox;
+
         private void Awake() {
-            rigidbody = GetComponent<Rigidbody>();
-            boxCollider = GetComponent<BoxCollider>();
-            groundChecker = GetComponent<GroundChecker>();
+            for (int y = World.HEIGHT * Chunk.SIZE; y >= 0; --y) {
+                if (BlockDataManager.Data[World.GetBlock(new Vector3Int(0, y, 0))].IsSolid) {
+                    transform.position = new Vector3(0.0f, y + 1.0f, 0.0f);
+                    break;
+                }
+            }
+			bounds = GetComponent<BoundsAuthoring>();
+            hitbox = PhysicsSolver.CreatePlayer();
+            hitbox.Position = transform.position;
+            hitbox.Bounds = bounds.Value;
         }
 
-        private void Jump() {
+		private void Jump() {
             float velocity = Mathf.Sqrt(2 * Mathf.Abs(Physics.gravity.y) * jumpingHeight);
-            rigidbody.velocity += Vector3.up * velocity;
+            hitbox.Velocity += Vector3.up * velocity;
         }
 
         private void Update() {
-			bool isGrounded = groundChecker.IsGrounded;
+			transform.position = hitbox.Position;
+
+            bool isGrounded = BlockDataManager.Data[World.GetBlock(CoordinateUtility.ToCoordinate(transform.position + Vector3.down))].IsSolid;
 
             if (isGrounded) {
-                if (!rigidbody.useGravity)
-                    rigidbody.useGravity = true;
+                if (!hitbox.UseGravity)
+                    hitbox.UseGravity = true;
             }
 
-			float horizontalInput = Input.GetAxis("Horizontal");
-			float verticalInput = Input.GetAxis("Vertical");
-			Vector2 input = new(horizontalInput, verticalInput);
-			input = input.magnitude > 1 ? input.normalized : input;
+            float horizontalInput = Input.GetAxis("Horizontal");
+            float verticalInput = Input.GetAxis("Vertical");
+            Vector2 input = new(horizontalInput, verticalInput);
+            input = input.magnitude > 1 ? input.normalized : input;
 
-            isSneaking = Input.GetKey(sneakKey) && isGrounded;
             isSprinting = Input.GetKeyDown(sprintKey) || isSprinting && input.magnitude == 1.0f;
 
-			if (isSneaking) {
+            if (isSneaking) {
                 targetSpeed = sneakSpeed;
             } else if (isSprinting) {
                 targetSpeed = sprintSpeed;
@@ -92,14 +102,14 @@ namespace Minecraft.Player {
                 if (isGrounded)
                     Jump();
                 if (Time.time - lastDoubleTapTime < doubleTapTime)
-                    rigidbody.useGravity = !rigidbody.useGravity;
+                    hitbox.UseGravity = !hitbox.UseGravity;
                 lastDoubleTapTime = Time.time;
             }
 
             speed = Mathf.MoveTowards(speed, targetSpeed, speedDelta);
 
-            if (rigidbody.useGravity) {
-                velocity.y = rigidbody.velocity.y;
+            if (hitbox.UseGravity) {
+                velocity.y = hitbox.Velocity.y;
             } else {
                 velocity.y = Input.GetAxis("Fly") * speed;
             }
@@ -108,40 +118,7 @@ namespace Minecraft.Player {
             velocity.z = input.y * speed;
             velocity = Quaternion.Euler(0, camera.localEulerAngles.y, 0) * velocity;
 
-            if (isSneaking && velocity != Vector3.zero) {
-                var direction = velocity.normalized;
-                if (direction.x > 0.0f)
-                    direction.x = 1.0f;
-                else if (direction.x < 0.0f)
-                    direction.x = -1.0f;
-                if (direction.z > 0.0f)
-                    direction.z = 1.0f;
-                else if (direction.z < 0.0f)
-                    direction.z = -1.0f;
-
-                var extents = Vector3.one * boxCollider.bounds.extents.x;
-
-                if (!CheckSquare(transform.position + Vector3.forward * direction.z * speed * Time.fixedDeltaTime, extents)) {
-                    velocity.z = 0.0f;
-                }
-
-                if (!CheckSquare(transform.position + Vector3.right * direction.x * speed * Time.fixedDeltaTime, extents)) {
-                    velocity.x = 0.0f;
-                }
-            }
-
-            rigidbody.velocity = velocity;
-        }
-
-        private bool CheckSquare(Vector3 position, Vector3 extents) {
-            for (int x = Mathf.FloorToInt(position.x - extents.x); x <= Mathf.FloorToInt(position.x + extents.x); x++) {
-                for (int z = Mathf.FloorToInt(position.z - extents.z); z <= Mathf.FloorToInt(position.z + extents.z); z++) {
-                    if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, Mathf.FloorToInt(position.y - extents.y), z))].IsSolid)
-                        return true;
-                }
-            }
-
-            return false;
+            hitbox.Velocity = velocity;
         }
     }
 }

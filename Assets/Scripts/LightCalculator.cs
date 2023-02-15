@@ -1,5 +1,6 @@
 ﻿using Minecraft.Utilities;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Profiling;
 
@@ -22,7 +23,7 @@ namespace Minecraft {
         private readonly ConcurrentQueue<Entry> addQueue = new();
         private readonly ConcurrentQueue<Entry> removeQueue = new();
 
-        private static BlockDataManager BlockDataManager { get; set; }
+		private static BlockDataManager BlockDataManager { get; set; }
 
         private static readonly Vector3Int[] blockSides = {
             new Vector3Int( 0,  0,  1),

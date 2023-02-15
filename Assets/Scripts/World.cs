@@ -116,6 +116,10 @@ namespace Minecraft {
             return BlockType.Air;
         }
 
+        public BlockType GetBlock(int x, int y, int z) {
+            return GetBlock(new Vector3Int(x, y, z));
+        }
+
         public void SetBlock(Vector3Int blockCoordinate, BlockType voxelType) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
@@ -308,5 +312,5 @@ namespace Minecraft {
                     chunk.UpdateMesh(ChunkUtility.GenerateMeshData(this, chunk.Data, BlockDataManager), MaterialManager);
             }
         }
-    }
+	}
 }

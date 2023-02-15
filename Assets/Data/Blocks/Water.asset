@@ -27,4 +27,4 @@ MonoBehaviour:
     G: 0
     B: 0
   isTransparent: 1
-  absorption: 0
+  absorption: 1
