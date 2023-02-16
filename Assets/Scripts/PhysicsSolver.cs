@@ -18,7 +18,7 @@ namespace Minecraft {
 		private World World { get; }
 
 		[Inject]
-		private BlockDataManager BlockDataManager { get; }
+		private BlockDataProvider BlockDataProvider { get; }
 
 		private Hitbox playerBox;
 
@@ -40,7 +40,7 @@ namespace Minecraft {
 				for (int y = Mathf.FloorToInt(playerBox.Position.y + offset.y - extents.y + contactOffset); y <= Mathf.FloorToInt(playerBox.Position.y + offset.y + extents.y - contactOffset); y++) {
 					for (int z = Mathf.FloorToInt(playerBox.Position.z + offset.z - extents.z + contactOffset); z <= Mathf.FloorToInt(playerBox.Position.z + offset.z + extents.z - contactOffset); z++) {
 						int x = Mathf.FloorToInt(playerBox.Position.x + offset.x - extents.x - contactOffset);
-						if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, y, z))].IsSolid) {
+						if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 							playerBox.Velocity.x = 0.0f;
 							playerBox.Position.x = x + 1.0f - offset.x + extents.x + contactOffset;
 							break;
@@ -53,7 +53,7 @@ namespace Minecraft {
 				for (int y = Mathf.FloorToInt(playerBox.Position.y + offset.y - extents.y + contactOffset); y <= Mathf.FloorToInt(playerBox.Position.y + offset.y + extents.y - contactOffset); y++) {
 					for (int z = Mathf.FloorToInt(playerBox.Position.z + offset.z - extents.z + contactOffset); z <= Mathf.FloorToInt(playerBox.Position.z + offset.z + extents.z - contactOffset); z++) {
 						int x = Mathf.FloorToInt(playerBox.Position.x + offset.x + extents.x + contactOffset);
-						if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, y, z))].IsSolid) {
+						if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 							playerBox.Velocity.x = 0.0f;
 							playerBox.Position.x = x - offset.x - extents.x - contactOffset;
 							break;
@@ -66,7 +66,7 @@ namespace Minecraft {
 				for (int y = Mathf.FloorToInt(playerBox.Position.y + offset.y - extents.y + contactOffset); y <= Mathf.FloorToInt(playerBox.Position.y + offset.y + extents.y - contactOffset); y++) {
 					for (int x = Mathf.FloorToInt(playerBox.Position.x + offset.x - extents.x + contactOffset); x <= Mathf.FloorToInt(playerBox.Position.x + offset.x + extents.x - contactOffset); x++) {
 						int z = Mathf.FloorToInt(playerBox.Position.z + offset.z - extents.z - contactOffset);
-						if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, y, z))].IsSolid) {
+						if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 							playerBox.Velocity.z = 0.0f;
 							playerBox.Position.z = z + 1.0f - offset.z + extents.z + contactOffset;
 							break;
@@ -79,7 +79,7 @@ namespace Minecraft {
 				for (int y = Mathf.FloorToInt(playerBox.Position.y + offset.y - extents.y + contactOffset); y <= Mathf.FloorToInt(playerBox.Position.y + offset.y + extents.y - contactOffset); y++) {
 					for (int x = Mathf.FloorToInt(playerBox.Position.x + offset.x - extents.x + contactOffset); x <= Mathf.FloorToInt(playerBox.Position.x + offset.x + extents.x - contactOffset); x++) {
 						int z = Mathf.FloorToInt(playerBox.Position.z + offset.z + extents.z + contactOffset);
-						if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, y, z))].IsSolid) {
+						if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 							playerBox.Velocity.z = 0.0f;
 							playerBox.Position.z = z - offset.z - extents.z - contactOffset;
 							break;
@@ -92,7 +92,7 @@ namespace Minecraft {
 				for (int x = Mathf.FloorToInt(playerBox.Position.x + offset.x - extents.x + contactOffset); x <= Mathf.FloorToInt(playerBox.Position.x + offset.x + extents.x - contactOffset); x++) {
 					for (int z = Mathf.FloorToInt(playerBox.Position.z + offset.z - extents.z + contactOffset); z <= Mathf.FloorToInt(playerBox.Position.z + offset.z + extents.z - contactOffset); z++) {
 						int y = Mathf.FloorToInt(playerBox.Position.y + offset.y - extents.y - contactOffset);
-						if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, y, z))].IsSolid) {
+						if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 							playerBox.Velocity.y = 0.0f;
 							playerBox.Position.y = y + 1.0f - offset.y + extents.y + contactOffset;
 							break;
@@ -105,7 +105,7 @@ namespace Minecraft {
 				for (int x = Mathf.FloorToInt(playerBox.Position.x + offset.x - extents.x + contactOffset); x <= Mathf.FloorToInt(playerBox.Position.x + offset.x + extents.x - contactOffset); x++) {
 					for (int z = Mathf.FloorToInt(playerBox.Position.z + offset.z - extents.z + contactOffset); z <= Mathf.FloorToInt(playerBox.Position.z + offset.z + extents.z - contactOffset); z++) {
 						int y = Mathf.FloorToInt(playerBox.Position.y + offset.y + extents.y + contactOffset);
-						if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, y, z))].IsSolid) {
+						if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 							playerBox.Velocity.y = 0.0f;
 							playerBox.Position.y = y - offset.y - extents.y - contactOffset;
 							break;
@@ -159,7 +159,7 @@ namespace Minecraft {
 
 			while (t <= maxDistance) {
 				BlockType block = World.GetBlock((int)ix, (int)iy, (int)iz);
-				if (BlockDataManager.Data[block].IsSolid) {
+				if (BlockDataProvider.Get(block).IsSolid) {
 					end.x = px + t * dx;
 					end.y = py + t * dy;
 					end.z = pz + t * dz;

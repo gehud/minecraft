@@ -33,7 +33,7 @@ namespace Minecraft.Utilities {
             });
         }
 
-        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData, BlockDataManager blockDataManager) {
+        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData, BlockDataProvider blockDataProvider) {
             BlockType GetBlock(int x, int y, int z) {
                 Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
                 return world.GetBlock(blockCoordinate);
@@ -50,15 +50,15 @@ namespace Minecraft.Utilities {
             }
 
             bool IsSolid(int x, int y, int z) {
-                return blockDataManager.Data[GetBlock(x, y, z)].IsSolid;
+                return blockDataProvider.Get(GetBlock(x, y, z)).IsSolid;
             }
 
             bool IsLiquid(int x, int y, int z) {
-                return blockDataManager.Data[GetBlock(x, y, z)].IsLiquid;
+                return blockDataProvider.Get(GetBlock(x, y, z)).IsLiquid;
             }
 
             bool IsVoxelTransparent(int x, int y, int z) {
-                return blockDataManager.Data[GetBlock(x, y, z)].IsTransparent;
+                return blockDataProvider.Get(GetBlock(x, y, z)).IsTransparent;
             }
 
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
@@ -102,13 +102,14 @@ namespace Minecraft.Utilities {
 
                 if (blockType != BlockType.Air) {
                     var localBlockCoordinate = new Vector3Int(x, y, z);
-                    MaterialType materialType = blockDataManager.Data[blockType].MaterialType;
+                    var blockData = blockDataProvider.Get(blockType);
+					MaterialType materialType = blockData.MaterialType;
                     if (!result.ContainsKey(materialType))
                         result.TryAdd(materialType, new MeshData());
 
                     float atlasStep = 16.0f / 256.0f;
                     bool isSolid = IsSolid(x, y, z);
-                    bool isLiquid = blockDataManager.Data[blockType].IsLiquid;
+                    bool isLiquid = blockData.IsLiquid;
                     var meshData = result[materialType];
 
                     byte aown = GetLiquidAmount(x + 0, y + 0, z + 0, blockType);
@@ -164,7 +165,7 @@ namespace Minecraft.Utilities {
 
                     // Right face.
                     if (hasFace(x + 1, y, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.RightFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.RightFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 0, z + 1);
                         bool t090 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
@@ -312,7 +313,7 @@ namespace Minecraft.Utilities {
 
                     // Left face.
                     if (hasFace(x - 1, y, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.LeftFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.LeftFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y + 0, z - 1);
                         bool t090 = !IsVoxelTransparent(x - 1, y + 1, z + 0);
@@ -460,7 +461,7 @@ namespace Minecraft.Utilities {
 
 					// Top face.
 					if (hasFace(x, y + 1, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.TopFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.TopFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -663,7 +664,7 @@ namespace Minecraft.Utilities {
 
 					// Bottom face.
 					if (hasFace(x, y - 1, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.BottomFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.BottomFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y - 1, z + 0);
                         bool t090 = !IsVoxelTransparent(x + 0, y - 1, z + 1);
@@ -775,7 +776,7 @@ namespace Minecraft.Utilities {
 
 					// Front face.
 					if (hasFace(x, y, z + 1)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.BackFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.BackFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y + 0, z + 1);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -923,7 +924,7 @@ namespace Minecraft.Utilities {
 
 					// Back face.
 					if (hasFace(x, y, z - 1)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.FrontFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.FrontFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 0, z - 1);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z - 1);

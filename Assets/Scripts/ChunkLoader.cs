@@ -34,7 +34,7 @@ namespace Minecraft {
         private World World { get; }
 
         [Inject]
-        private BlockDataManager BlockDataManager { get; }
+        private BlockDataProvider BlockDataProvider { get; }
 
         [Inject]
         private MaterialManager MaterialManager { get; }
@@ -157,7 +157,7 @@ namespace Minecraft {
             ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => {
                 foreach (var item in chunkToCreateCoordinates)
-                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.ChunksData[item], BlockDataManager));
+                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.ChunksData[item], BlockDataProvider));
             });
 
             StartCoroutine(GenerateChunks(World, generatedMeshDatas));
@@ -181,7 +181,7 @@ namespace Minecraft {
 						Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
 						if (World.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
 							Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
-                            if (!BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid)
+                            if (!BlockDataProvider.Get(chunkData.BlockMap[localBlockCoordinate]).IsSolid)
 							    chunkData.BlockMap[localBlockCoordinate] = BlockType.Leaves;
 						}
 					}

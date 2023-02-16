@@ -48,7 +48,7 @@ namespace Minecraft.Player {
         private World World { get; }
 
         [Inject]
-        private BlockDataManager BlockDataManager { get; }
+        private BlockDataProvider BlockDataProvider { get; }
 
         [Inject]
         private PhysicsSolver PhysicsSolver { get; }
@@ -57,7 +57,7 @@ namespace Minecraft.Player {
 
         private void Awake() {
             for (int y = World.HEIGHT * Chunk.SIZE; y >= 0; --y) {
-                if (BlockDataManager.Data[World.GetBlock(new Vector3Int(0, y, 0))].IsSolid) {
+                if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(0, y, 0))).IsSolid) {
                     transform.position = new Vector3(0.0f, y + 1.0f, 0.0f);
                     break;
                 }
@@ -76,7 +76,7 @@ namespace Minecraft.Player {
         private void Update() {
 			transform.position = hitbox.Position;
 
-            bool isGrounded = BlockDataManager.Data[World.GetBlock(CoordinateUtility.ToCoordinate(transform.position + Vector3.down))].IsSolid;
+            bool isGrounded = BlockDataProvider.Get(World.GetBlock(CoordinateUtility.ToCoordinate(transform.position + Vector3.down))).IsSolid;
 
             if (isGrounded) {
                 if (!hitbox.UseGravity)

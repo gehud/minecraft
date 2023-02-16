@@ -2362,9 +2362,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 1316329371}
   placementDistance: 5
-  layerMask:
-    serializedVersion: 2
-    m_Bits: 55
   voxelTypeText: {fileID: 542958130}
 --- !u!114 &1316329376
 MonoBehaviour:
@@ -2629,7 +2626,7 @@ GameObject:
   - component: {fileID: 1392060669}
   - component: {fileID: 1392060668}
   m_Layer: 0
-  m_Name: Block Data Manager
+  m_Name: Block Data Provider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2647,25 +2644,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 79e76cbdcc9e1d04686b7cc425bffa0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  blockDataPairs:
-  - Type: 0
-    Data: {fileID: 11400000, guid: 4cad193bfb199534fa3e9bab8f9d4ade, type: 2}
-  - Type: 1
-    Data: {fileID: 11400000, guid: ff20fbdbe0bc05443b2974c48eadd8dd, type: 2}
-  - Type: 2
-    Data: {fileID: 11400000, guid: ff41b3b4c9c43424085abeb29587b02d, type: 2}
-  - Type: 3
-    Data: {fileID: 11400000, guid: ec27f3e4cc071c2479005908a781d06f, type: 2}
-  - Type: 4
-    Data: {fileID: 11400000, guid: 4f8ff2d0cfffae5448df23c1ae04facc, type: 2}
-  - Type: 5
-    Data: {fileID: 11400000, guid: d36e950f35190f241b6d461020a115b4, type: 2}
-  - Type: 6
-    Data: {fileID: 11400000, guid: 7323c000b2c2e274c94956208b440fbe, type: 2}
-  - Type: 7
-    Data: {fileID: 11400000, guid: 169a609f5b1038f4ca1d8aaa8b92c5cb, type: 2}
-  - Type: 8
-    Data: {fileID: 11400000, guid: acc1e747c2e8f7b418cd455b99219012, type: 2}
+  data:
+  - {fileID: 11400000, guid: 4cad193bfb199534fa3e9bab8f9d4ade, type: 2}
+  - {fileID: 11400000, guid: ff20fbdbe0bc05443b2974c48eadd8dd, type: 2}
+  - {fileID: 11400000, guid: ec27f3e4cc071c2479005908a781d06f, type: 2}
+  - {fileID: 11400000, guid: ff41b3b4c9c43424085abeb29587b02d, type: 2}
+  - {fileID: 11400000, guid: d36e950f35190f241b6d461020a115b4, type: 2}
+  - {fileID: 11400000, guid: 4f8ff2d0cfffae5448df23c1ae04facc, type: 2}
+  - {fileID: 11400000, guid: 169a609f5b1038f4ca1d8aaa8b92c5cb, type: 2}
+  - {fileID: 11400000, guid: acc1e747c2e8f7b418cd455b99219012, type: 2}
+  - {fileID: 11400000, guid: 7323c000b2c2e274c94956208b440fbe, type: 2}
 --- !u!4 &1392060669
 Transform:
   m_ObjectHideFlags: 0

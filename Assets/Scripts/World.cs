@@ -32,7 +32,7 @@ namespace Minecraft {
         private float tick = 0.25f;
 
         [Inject]
-        private BlockDataManager BlockDataManager { get; }
+        private BlockDataProvider BlockDataProvider { get; }
 
         [Inject]
         private MaterialManager MaterialManager { get; }
@@ -259,7 +259,7 @@ namespace Minecraft {
             LightCalculatorBlue.Remove(blockCoordinate);
             LightCalculatorSun.Remove(blockCoordinate);
             for (int y = blockCoordinate.y - 1; y >= 0; y--) {
-                if (!BlockDataManager.Data[GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))].IsTransparent)
+                if (!BlockDataProvider.Get(GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))).IsTransparent)
                     break;
                 LightCalculatorSun.Remove(blockCoordinate.x, y, blockCoordinate.z);
             }
@@ -268,7 +268,7 @@ namespace Minecraft {
             LightCalculatorBlue.Calculate();
             LightCalculatorSun.Calculate();
 
-            LightColor emission = BlockDataManager.Data[voxelType].Emission;
+            LightColor emission = BlockDataProvider.Get(voxelType).Emission;
             if (emission.R != 0) {
                 LightCalculatorRed.Add(blockCoordinate, emission.R);
                 LightCalculatorRed.Calculate();
@@ -288,12 +288,12 @@ namespace Minecraft {
         }
 
         private void Awake() {
-            LightCalculator.SetBlockDataManager(BlockDataManager);
+            LightCalculator.SetBlockDataManager(BlockDataProvider);
             LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
             LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
             LightCalculatorBlue = new LightCalculator(this, LightChanel.Blue);
             LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
-            LiquidCalculator.SetBlockDataManager(BlockDataManager);
+            LiquidCalculator.SetBlockDataManager(BlockDataProvider);
             LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
         }
 
@@ -309,7 +309,7 @@ namespace Minecraft {
         private void Update() {
             foreach (var chunk in Chunks.Values) {
                 if (chunk.Data.IsComplete && chunk.Data.IsDirty)
-                    chunk.UpdateMesh(ChunkUtility.GenerateMeshData(this, chunk.Data, BlockDataManager), MaterialManager);
+                    chunk.UpdateMesh(ChunkUtility.GenerateMeshData(this, chunk.Data, BlockDataProvider), MaterialManager);
             }
         }
 	}

@@ -23,7 +23,7 @@ namespace Minecraft {
         private readonly ConcurrentQueue<Entry> addQueue = new();
         private readonly ConcurrentQueue<Entry> removeQueue = new();
 
-		private static BlockDataManager BlockDataManager { get; set; }
+		private static BlockDataProvider BlockDataProvider { get; set; }
 
         private static readonly Vector3Int[] blockSides = {
             new Vector3Int( 0,  0,  1),
@@ -34,8 +34,8 @@ namespace Minecraft {
             new Vector3Int(-1,  0,  0),
         };
 
-        public static void SetBlockDataManager(BlockDataManager blockDataManager) {
-            BlockDataManager = blockDataManager;
+        public static void SetBlockDataManager(BlockDataProvider blockDataManager) {
+            BlockDataProvider = blockDataManager;
         }
 
         public LightCalculator(World world, LightChanel chanel) {
@@ -135,7 +135,7 @@ namespace Minecraft {
                     if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                         var level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
                         var blockType = chunkData.BlockMap[localBlockCoordinate];
-                        var absorption = BlockDataManager.Data[blockType].Absorption;
+                        var absorption = BlockDataProvider.Get(blockType).Absorption;
                         if (level != 0 && level == entry.Level - absorption - 1) {
                             var removeEntry = new Entry(blockCoordinate, level);
                             removeQueue.Enqueue(removeEntry);
@@ -160,9 +160,9 @@ namespace Minecraft {
                     var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                     if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
                         var blockType = chunkData.BlockMap[localBlockCoordinate];
-                        var absorption = BlockDataManager.Data[blockType].Absorption;
+                        var absorption = BlockDataProvider.Get(blockType).Absorption;
                         var level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
-                        if (BlockDataManager.Data[blockType].IsTransparent && level + absorption + 1 < entry.Level) {
+                        if (BlockDataProvider.Get(blockType).IsTransparent && level + absorption + 1 < entry.Level) {
                             var newLevel = (byte)(entry.Level - absorption - 1);
                             chunkData.LightMap.Set(localBlockCoordinate, chanel, newLevel);
                             var addEntry = new Entry(blockCoordinate, newLevel);

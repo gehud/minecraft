@@ -22,7 +22,7 @@ namespace Minecraft {
 		private readonly Queue<Entry> removeQueue = new();
 		private readonly Queue<Entry> addQueue = new();
 
-		private static BlockDataManager BlockDataManager { get; set; }
+		private static BlockDataProvider BlockDataProvider { get; set; }
 
 		private static readonly Vector3Int[] blockSides = {
 			new Vector3Int( 0,  0,  1),
@@ -40,8 +40,8 @@ namespace Minecraft {
 			new Vector3Int(-1,  0,  0),
 		};
 
-		public static void SetBlockDataManager(BlockDataManager blockDataManager) {
-			BlockDataManager = blockDataManager;
+		public static void SetBlockDataManager(BlockDataProvider blockDataManager) {
+			BlockDataProvider = blockDataManager;
 		}
 
 		public LiquidCalculator(World world, BlockType liquidType) {
@@ -58,7 +58,7 @@ namespace Minecraft {
 				return;
 
 			var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-			if (BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid)
+			if (BlockDataProvider.Get(chunkData.BlockMap[localBlockCoordinate]).IsSolid)
 				return;
 
 			chunkData.LiquidMap[localBlockCoordinate] = new LiquidData(liquidType, amount);
@@ -113,7 +113,7 @@ namespace Minecraft {
 					var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
 					if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
 						var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-						if (BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid)
+						if (BlockDataProvider.Get(chunkData.BlockMap[localBlockCoordinate]).IsSolid)
 							break;
 						blockCoordinate += Vector3Int.down;
 						chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
@@ -183,19 +183,19 @@ namespace Minecraft {
 				chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
 				if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
 					Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-					if (BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid) {
+					if (BlockDataProvider.Get(chunkData.BlockMap[localBlockCoordinate]).IsSolid) {
 						Vector3Int flowDirection = GetFlowDirection(entry.Coordinate);
 						foreach (var side in flowSides) {
 							blockCoordinate = entry.Coordinate + side;
 							if (flowDirection != Vector3Int.zero && flowDirection != side
-								&& BlockDataManager.Data[world.GetBlock(blockCoordinate + Vector3Int.down)].IsSolid)
+								&& BlockDataProvider.Get(world.GetBlock(blockCoordinate + Vector3Int.down)).IsSolid)
 								continue;
 							chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
 							if (world.ChunksData.TryGetValue(chunkCoordinate, out chunkData)) {
 								localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
 								var blockType = chunkData.BlockMap[localBlockCoordinate];
 								var amount = chunkData.LiquidMap.Get(localBlockCoordinate, liquidType);
-								if (!BlockDataManager.Data[blockType].IsSolid) {
+								if (!BlockDataProvider.Get(blockType).IsSolid) {
 									if (amount + 2 <= entry.Amount) {
 										byte newAmount = (byte)(entry.Amount - 1);
 										chunkData.LiquidMap.Set(localBlockCoordinate, liquidType, newAmount);
