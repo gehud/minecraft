@@ -59,7 +59,13 @@ namespace Minecraft {
             return chunks[coordinate];
 		}
 
-        public void SetChunk(Vector3Int coordinate, Chunk chunk) {
+		public Chunk TryGetChunk(Vector3Int coordinate) {
+            if (chunks.TryGetValue(coordinate, out Chunk chunk))
+                return chunk;
+            return null;
+		}
+
+		public void SetChunk(Vector3Int coordinate, Chunk chunk) {
 			chunks[coordinate] = chunk;
 		}
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -33,33 +34,9 @@ namespace Minecraft.Utilities {
             });
         }
 
-        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunkData, BlockDataProvider blockDataProvider) {
-            BlockType GetBlock(int x, int y, int z) {
-                Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
-                return world.GetBlock(blockCoordinate);
-            }
-
-            int GetLight(int x, int y, int z, LightChanel chanel) {
-                Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
-                return world.GetLightLevel(blockCoordinate, chanel);
-            }
-
-            byte GetLiquidAmount(int x, int y, int z, BlockType liquidType) {
-                Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
-                return world.GetLiquidAmount(blockCoordinate, liquidType);
-            }
-
-            bool IsSolid(int x, int y, int z) {
-                return blockDataProvider.Get(GetBlock(x, y, z)).IsSolid;
-            }
-
-            bool IsLiquid(int x, int y, int z) {
-                return blockDataProvider.Get(GetBlock(x, y, z)).IsLiquid;
-            }
-
-            bool IsVoxelTransparent(int x, int y, int z) {
-                return blockDataProvider.Get(GetBlock(x, y, z)).IsTransparent;
-            }
+        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunk, BlockDataProvider blockDataProvider) {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
                 int vertexCount = meshData.Vertices.Count;
@@ -92,13 +69,99 @@ namespace Minecraft.Utilities {
                 meshData.ColliderIndices.Add((ushort)(3 + vertexCount));
             }
 
-            ConcurrentDictionary<MaterialType, MeshData> result = new();
+            var neighbours = new Chunk[3 * 3 * 3];
+            neighbours[0] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.back);
+            neighbours[1] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.back);
+            neighbours[2] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.back);
+            neighbours[3] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.back);
+            neighbours[4] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.back);
+            neighbours[5] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.back);
+            neighbours[6] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.back);
+            neighbours[7] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.back);
+            neighbours[8] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.back);
+
+            neighbours[9] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.zero);
+            neighbours[10] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.zero);
+            neighbours[11] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.zero);
+            neighbours[12] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.zero);
+            neighbours[13] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.zero);
+            neighbours[14] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.zero);
+            neighbours[15] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.zero);
+            neighbours[16] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.zero);
+            neighbours[17] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.zero);
+
+            neighbours[18] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.forward);
+            neighbours[19] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.forward);
+            neighbours[20] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.forward);
+            neighbours[21] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.forward);
+            neighbours[22] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.forward);
+            neighbours[23] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.forward);
+            neighbours[24] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.forward);
+            neighbours[25] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.forward);
+            neighbours[26] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.forward);
+
+            int CoordinateToIndex(Vector3Int coordinate) {
+                return Array3DUtility.To1D(
+                    coordinate.x - chunk.Coordinate.x + 1,
+                    coordinate.y - chunk.Coordinate.y + 1,
+					coordinate.z - chunk.Coordinate.z + 1, 3, 3);
+            }
+
+			BlockType GetBlock(int x, int y, int z) {
+				var blockCoordinate = CoordinateUtility.ToGlobal(chunk.Coordinate, new Vector3Int(x, y, z));
+                var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+                var neighbour = neighbours[CoordinateToIndex(chunkCoordinate)];
+                if (neighbour != null) {
+                    var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                    return neighbour.BlockMap[localBlockCoordinate];
+                }
+
+                return BlockType.Air;
+			}
+
+			int GetLight(int x, int y, int z, LightChanel chanel) {
+				Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunk.Coordinate, new Vector3Int(x, y, z));
+				var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+				var neighbour = neighbours[CoordinateToIndex(chunkCoordinate)];
+				if (neighbour != null) {
+					var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+					return neighbour.LightMap.Get(localBlockCoordinate, chanel);
+				}
+
+				return LightMap.MIN;
+			}
+
+			byte GetLiquidAmount(int x, int y, int z, BlockType liquidType) {
+				Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunk.Coordinate, new Vector3Int(x, y, z));
+				var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+				var neighbour = neighbours[CoordinateToIndex(chunkCoordinate)];
+				if (neighbour != null) {
+					var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+					return neighbour.LiquidMap.Get(localBlockCoordinate, liquidType);
+				}
+
+				return LiquidMap.MIN;
+			}
+
+			bool IsSolid(int x, int y, int z) {
+				return blockDataProvider.Get(GetBlock(x, y, z)).IsSolid;
+			}
+
+			bool IsLiquid(int x, int y, int z) {
+				return blockDataProvider.Get(GetBlock(x, y, z)).IsLiquid;
+			}
+
+			bool IsVoxelTransparent(int x, int y, int z) {
+				return blockDataProvider.Get(GetBlock(x, y, z)).IsTransparent;
+			}
+
+			ConcurrentDictionary<MaterialType, MeshData> result = new();
 #if CHUNK_UTILITY_PARALLEL_FOR
             ParallelFor((x, y, z) => {
 #else
             For((x, y, z) => { 
 #endif
-                BlockType blockType = chunkData.BlockMap[x, y, z];
+                BlockType blockType = chunk.BlockMap[x, y, z];
 
                 if (blockType != BlockType.Air) {
                     var localBlockCoordinate = new Vector3Int(x, y, z);
@@ -1071,6 +1134,9 @@ namespace Minecraft.Utilities {
 					}
 				}
             });
+
+            stopwatch.Stop();
+            UnityEngine.Debug.Log(stopwatch.ElapsedTicks);
 
             return result;
         }
