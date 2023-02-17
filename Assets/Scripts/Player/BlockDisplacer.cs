@@ -1,9 +1,10 @@
-﻿using TMPro;
+﻿using Minecraft.Physics;
+using TMPro;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft.Player {
-    public class BlockDisplacer : MonoBehaviour {
+	public class BlockDisplacer : MonoBehaviour {
         [SerializeField]
         private Transform player;
         [SerializeField]
@@ -17,7 +18,7 @@ namespace Minecraft.Player {
         private World World { get; }
 
         [Inject]
-        private PhysicsSolver PhysicsSolver { get; }
+        private PhysicsWorld PhysicsSolver { get; }
 
         private void Awake() {
             voxelTypeText.text = currentBlock.ToString();

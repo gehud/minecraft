@@ -26,8 +26,8 @@ namespace Minecraft {
 			return peaksAndValleysNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
 		}
 
-		public ChunkData GenerateChunkData(Vector3Int coordinate) {
-            ChunkData result = new() {
+		public Chunk GenerateChunkData(Vector3Int coordinate) {
+            Chunk result = new() {
                 Coordinate = coordinate
             };
 

@@ -11,9 +11,9 @@ namespace Minecraft {
         /// </summary>
         public const int HEIGHT = 16;
 
-        public Dictionary<Vector3Int, ChunkData> ChunksData { get; set; } = new();
+        public Dictionary<Vector3Int, Chunk> Chunks => chunks;
 
-        public Dictionary<Vector3Int, Chunk> Chunks { get; set; } = new();
+        public Dictionary<Vector3Int, ChunkRenderer> Renderers => renderers;
 
         public LightCalculator LightCalculatorSun { get; set; }
 
@@ -26,7 +26,7 @@ namespace Minecraft {
         public LiquidCalculator LiquidCalculatorWater { get; set; }
 
         [SerializeField]
-        private Chunk chunk;
+        private new ChunkRenderer renderer;
 
         [SerializeField, Min(0)]
         private float tick = 0.25f;
@@ -37,80 +37,92 @@ namespace Minecraft {
         [Inject]
         private MaterialManager MaterialManager { get; }
 
-        public ChunkData CreateChunkData(Vector3Int blockCoordinate) {
-            var chunkData = new ChunkData {
-                Coordinate = blockCoordinate
-            };
-            ChunksData.Add(blockCoordinate, chunkData);
-            return chunkData;
-        }
+        private Dictionary<Vector3Int, Chunk> chunks = new();
+        private Dictionary<Vector3Int, ChunkRenderer> renderers = new();
 
-        public Chunk CreateChunk(Vector3Int blockCoordinate) {
-            var chunk = Instantiate(this.chunk, transform);
-            var chunkData = GetOrCreateChunkData(blockCoordinate);
-            chunk.Initialize(chunkData);
-            Chunks.Add(blockCoordinate, chunk);
+		public bool HasChunk(Vector3Int coordinate) {
+            return chunks.ContainsKey(coordinate);
+		}
+
+        public bool HasRenderer(Vector3Int coordinate) {
+            return renderers.ContainsKey(coordinate);
+		}
+
+        public Chunk CreateChunk(Vector3Int coordinate) {
+            var chunk = new Chunk();
+            chunk.Coordinate = coordinate;
+            chunks[coordinate] = chunk;
             return chunk;
         }
 
-        public ChunkData GetChunkData(Vector3Int blockCoordinate) {
-            if (ChunksData.ContainsKey(blockCoordinate))
-                return ChunksData[blockCoordinate];
+        public Chunk GetChunk(Vector3Int coordinate) {
+            return chunks[coordinate];
+		}
 
-            return null;
+        public void SetChunk(Vector3Int coordinate, Chunk chunk) {
+			chunks[coordinate] = chunk;
+		}
+
+        public ChunkRenderer CreateRenderer(Vector3Int coordinate) {
+            var renderer = Instantiate(this.renderer, transform);
+            var chunk = GetOrCreateChunk(coordinate);
+            renderer.Initialize(chunk);
+            renderers[coordinate] = renderer;
+            return renderer;
         }
 
-        public Chunk GetChunk(Vector3Int blockCoordinate) {
-            if (Chunks.ContainsKey(blockCoordinate))
-                return Chunks[blockCoordinate];
+		public bool TryGetChunk(Vector3Int coordinate, out Chunk chunk) {
+            return chunks.TryGetValue(coordinate, out chunk);
+		}
 
-            return null;
+		public bool TryGetRenderer(Vector3Int coordinate, out ChunkRenderer renderer) {
+			return renderers.TryGetValue(coordinate, out renderer);
+		}
+
+		public Chunk GetOrCreateChunk(Vector3Int coordinate) {
+            if (TryGetChunk(coordinate, out Chunk chunk))
+                return chunk;
+            return CreateChunk(coordinate);
         }
 
-        public ChunkData GetOrCreateChunkData(Vector3Int blockCoordinate) {
-            if (ChunksData.ContainsKey(blockCoordinate))
-                return ChunksData[blockCoordinate];
-
-            return CreateChunkData(blockCoordinate);
+        public ChunkRenderer GetOrCreateRenderer(Vector3Int coordinate) {
+            if (TryGetRenderer(coordinate, out ChunkRenderer renderer))
+                return renderer;
+            return CreateRenderer(coordinate);
         }
 
-        public Chunk GetOrCreateChunk(Vector3Int blockCoordinate) {
-            if (Chunks.ContainsKey(blockCoordinate))
-                return Chunks[blockCoordinate];
-
-            return CreateChunk(blockCoordinate);
+        public void DestroyChunk(Vector3Int coordinate) {
+            chunks.Remove(coordinate);
         }
 
-        public void DestroyChunk(Vector3Int blockCoordinate) {
-            ChunksData.Remove(blockCoordinate);
-            Chunks.Remove(blockCoordinate, out Chunk chunk);
-            Destroy(chunk.gameObject);
+        public void DestroyRenderer(Vector3Int coordinate) {
+            Destroy(renderers[coordinate].gameObject);
+            renderers.Remove(coordinate);
         }
 
         /// <summary>
-        /// Marks chunk data as dirty if needed.
+        /// Marks chunk as dirty if needed.
         /// </summary>
-        public void ValidateChunkData(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
-			ChunkData chunkData;
-            if (localBlockCoordinate.x == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.left, out chunkData))
-                chunkData.MarkDirty();
-			if (localBlockCoordinate.y == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.down, out chunkData))
-				chunkData.MarkDirty();
-			if (localBlockCoordinate.z == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.back, out chunkData))
-				chunkData.MarkDirty();
-			if (localBlockCoordinate.x == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.right, out chunkData))
-				chunkData.MarkDirty();
-			if (localBlockCoordinate.y == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.up, out chunkData))
-				chunkData.MarkDirty();
-			if (localBlockCoordinate.z == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.forward, out chunkData))
-				chunkData.MarkDirty();
+        public void ValidateChunk(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
+			if (localBlockCoordinate.x == 0 && TryGetChunk(chunkCoordinate + Vector3Int.left, out var chunk))
+				chunk.MarkDirty();
+			if (localBlockCoordinate.y == 0 && TryGetChunk(chunkCoordinate + Vector3Int.down, out chunk))
+				chunk.MarkDirty();
+			if (localBlockCoordinate.z == 0 && TryGetChunk(chunkCoordinate + Vector3Int.back, out chunk))
+				chunk.MarkDirty();
+			if (localBlockCoordinate.x == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.right, out chunk))
+				chunk.MarkDirty();
+			if (localBlockCoordinate.y == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.up, out chunk))
+				chunk.MarkDirty();
+			if (localBlockCoordinate.z == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.forward, out chunk))
+				chunk.MarkDirty();
         }
 
 		public BlockType GetBlock(Vector3Int blockCoordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                return chunkData.BlockMap[localBlockCoordinate];
+                return chunk.BlockMap[localBlockCoordinate];
             }
 
             return BlockType.Air;
@@ -122,19 +134,19 @@ namespace Minecraft {
 
         public void SetBlock(Vector3Int blockCoordinate, BlockType voxelType) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                chunkData.BlockMap[localBlockCoordinate] = voxelType;
-				chunkData.MarkDirty();
-				ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+                chunk.BlockMap[localBlockCoordinate] = voxelType;
+				chunk.MarkDirty();
+				ValidateChunk(chunkCoordinate, localBlockCoordinate);
             }
         }
 
         public int GetLightLevel(Vector3Int blockCoordinate, LightChanel chanel) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                return chunkData.LightMap.Get(localBlockCoordinate, chanel);
+                return chunk.LightMap.Get(localBlockCoordinate, chanel);
             }
 
             return LightMap.MAX;
@@ -142,9 +154,9 @@ namespace Minecraft {
 
         public byte GetLiquidAmount(Vector3Int blockCoordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                return chunkData.LiquidMap[localBlockCoordinate].Amount;
+                return chunk.LiquidMap[localBlockCoordinate].Amount;
             }
 
             return LiquidMap.MIN;
@@ -152,19 +164,19 @@ namespace Minecraft {
 
 		public void SetLiquidAmount(Vector3Int blockCoordinate, byte amount) {
 			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+			if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                chunkData.LiquidMap.Set(localBlockCoordinate, amount);
-				chunkData.MarkDirty();
-				ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+                chunk.LiquidMap.Set(localBlockCoordinate, amount);
+				chunk.MarkDirty();
+				ValidateChunk(chunkCoordinate, localBlockCoordinate);
 			}
 		}
 
 		public byte GetLiquidAmount(Vector3Int blockCoordinate, BlockType type) {
 			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+			if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-				return chunkData.LiquidMap.Get(localBlockCoordinate, type);
+				return chunk.LiquidMap.Get(localBlockCoordinate, type);
 			}
 
 			return LiquidMap.MIN;
@@ -172,19 +184,19 @@ namespace Minecraft {
 
 		public void SetLiquidAmount(Vector3Int blockCoordinate, BlockType type, byte amount) {
 			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+			if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-				chunkData.LiquidMap.Set(localBlockCoordinate, type, amount);
-                chunkData.MarkDirty();
-			    ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+				chunk.LiquidMap.Set(localBlockCoordinate, type, amount);
+                chunk.MarkDirty();
+			    ValidateChunk(chunkCoordinate, localBlockCoordinate);
 			}
 		}
 
 		public LiquidData GetLiquidData(Vector3Int blockCoordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                return chunkData.LiquidMap[localBlockCoordinate];
+                return chunk.LiquidMap[localBlockCoordinate];
             }
 
             return LiquidData.Empty;
@@ -307,9 +319,9 @@ namespace Minecraft {
         }
 
         private void Update() {
-            foreach (var chunk in Chunks.Values) {
-                if (chunk.Data.IsComplete && chunk.Data.IsDirty)
-                    chunk.UpdateMesh(ChunkUtility.GenerateMeshData(this, chunk.Data, BlockDataProvider), MaterialManager);
+            foreach (var renderer in renderers) {
+                if (renderer.Value.Data.IsComplete && renderer.Value.Data.IsDirty)
+                    renderer.Value.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Value.Data, BlockDataProvider), MaterialManager);
             }
         }
 	}

@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -16,15 +15,15 @@ namespace Minecraft {
         [SerializeField]
         private Transform player;
         [SerializeField, Min(2)]
-        private int drawDistance = 4;
+        private int drawDistance = 2;
         [SerializeField]
         private float loadCountdown = 0.5f;
 
         private Vector3Int lastPlayerChunk;
-        private readonly ConcurrentStack<Vector3Int> chunkToRemoveCoordinates = new();
+        private readonly ConcurrentStack<Vector3Int> chunkToDestroyCoordinates = new();
+        private readonly ConcurrentStack<Vector3Int> rendererToDestroyCoordinates = new();
         private readonly ConcurrentStack<Vector3Int> chunkToCreateCoordinates = new();
-        private readonly ConcurrentStack<Vector3Int> chunkDataToRemoveCoordinates = new();
-        private readonly ConcurrentStack<Vector3Int> chunkDataToCreateCoordinates = new();
+        private readonly ConcurrentStack<Vector3Int> rendererToCreateCoordinates = new();
         private readonly ConcurrentStack<Vector2Int> sunlightCoordinatesToCalculate = new();
 
         bool generateChunks = false;
@@ -47,11 +46,11 @@ namespace Minecraft {
             return CoordinateUtility.ToChunk(coordinate);
         }
 
-        private void GenerateLoadData(World world) {
-            chunkToRemoveCoordinates.Clear();
+        private void GenerateLoadData() {
+            chunkToDestroyCoordinates.Clear();
+            rendererToDestroyCoordinates.Clear();
             chunkToCreateCoordinates.Clear();
-            chunkDataToRemoveCoordinates.Clear();
-            chunkDataToCreateCoordinates.Clear();
+            rendererToCreateCoordinates.Clear();
             sunlightCoordinatesToCalculate.Clear();
             ConcurrentStack<Vector3Int> loadedCoordinates = new();
             ConcurrentStack<Vector3Int> visibleCoordinates = new();
@@ -67,12 +66,12 @@ namespace Minecraft {
                         loadedCoordinates.Push(chunkCoordinate);
                         if (x != startX && x != endX && z != startZ && z != endZ) {
                             visibleCoordinates.Push(chunkCoordinate);
-                            if (!world.Chunks.ContainsKey(chunkCoordinate))
-                                chunkToCreateCoordinates.Push(chunkCoordinate);
+                            if (!World.HasRenderer(chunkCoordinate))
+                                rendererToCreateCoordinates.Push(chunkCoordinate);
                         }
 
-                        if (!world.ChunksData.ContainsKey(chunkCoordinate)) {
-                            chunkDataToCreateCoordinates.Push(chunkCoordinate);
+                        if (!World.HasChunk(chunkCoordinate)) {
+                            chunkToCreateCoordinates.Push(chunkCoordinate);
                             sunlight = true;
                         }
                     }
@@ -82,22 +81,32 @@ namespace Minecraft {
                     }
                 }
 
-            foreach (var item in world.ChunksData.Keys) {
-                if (!loadedCoordinates.Contains(item))
-                    chunkDataToRemoveCoordinates.Push(item);
+            foreach (var item in World.Renderers) {
+                if (!visibleCoordinates.Contains(item.Key))
+                    rendererToDestroyCoordinates.Push(item.Key);
             }
 
-            foreach (var item in world.Chunks.Keys) {
-                if (!visibleCoordinates.Contains(item))
-                    chunkToRemoveCoordinates.Push(item);
-            }
-        }
+			foreach (var item in World.Chunks) {
+				if (!loadedCoordinates.Contains(item.Key))
+					chunkToDestroyCoordinates.Push(item.Key);
+			}
+		}
 
         private IEnumerator GenerateChunks(World world, ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> meshDatas) {
             generateChunks = true;
 
-            foreach (var item in meshDatas) {
-                Chunk chunk = world.GetOrCreateChunk(item.Key);
+			foreach (var item in chunkToDestroyCoordinates) {
+				World.DestroyChunk(item);
+                yield return null;
+			}
+
+			foreach (var item in rendererToDestroyCoordinates) {
+				World.DestroyRenderer(item);
+                yield return null;
+			}
+
+			foreach (var item in meshDatas) {
+                ChunkRenderer chunk = world.GetOrCreateRenderer(item.Key);
                 chunk.UpdateMesh(item.Value, MaterialManager);
                 yield return null;
             }
@@ -110,24 +119,16 @@ namespace Minecraft {
         }
 
         private async void LoadChunks() {
-            await Task.Run(() => GenerateLoadData(World));
+            await Task.Run(() => GenerateLoadData());
 
-            foreach (var item in chunkDataToRemoveCoordinates)
-                World.ChunksData.Remove(item);
-
-            foreach (var item in chunkToRemoveCoordinates) {
-                World.Chunks.Remove(item, out Chunk chunk);
-                Destroy(chunk.gameObject);
-            }
-
-            ConcurrentDictionary<Vector3Int, ChunkData> generatedData = new();
+			ConcurrentDictionary<Vector3Int, Chunk> generatedData = new();
             await Task.Run(() => {
-                foreach (var item in chunkDataToCreateCoordinates)
+                foreach (var item in chunkToCreateCoordinates)
                     generatedData.TryAdd(item, ChunkDataGenerator.GenerateChunkData(item));
             });
 
             foreach (var item in generatedData)
-                World.ChunksData.Add(item.Key, item.Value);
+                World.SetChunk(item.Key, item.Value);
 
             await Task.Run(() => { 
                 foreach (var item in generatedData) {
@@ -156,8 +157,8 @@ namespace Minecraft {
 
             ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => {
-                foreach (var item in chunkToCreateCoordinates)
-                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.ChunksData[item], BlockDataProvider));
+                foreach (var item in rendererToCreateCoordinates)
+                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.GetChunk(item), BlockDataProvider));
             });
 
             StartCoroutine(GenerateChunks(World, generatedMeshDatas));
@@ -166,9 +167,9 @@ namespace Minecraft {
         private void GenerateTree(Vector3Int blockCoordinate) {
             for (int i = 0; i < 5; i++) {
                 Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                if (World.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+                if (World.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                     Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                    chunkData.BlockMap[localBlockCoordinate] = BlockType.Log;
+                    chunk.BlockMap[localBlockCoordinate] = BlockType.Log;
                 }
 
                 blockCoordinate += Vector3Int.up;
@@ -179,10 +180,10 @@ namespace Minecraft {
                     for (int z = -2; z <= 2; z++) {
                         Vector3Int leavesCoordinate = blockCoordinate + new Vector3Int(x, y, z);
 						Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
-						if (World.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+						if (World.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 							Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
-                            if (!BlockDataProvider.Get(chunkData.BlockMap[localBlockCoordinate]).IsSolid)
-							    chunkData.BlockMap[localBlockCoordinate] = BlockType.Leaves;
+                            if (!BlockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
+							    chunk.BlockMap[localBlockCoordinate] = BlockType.Leaves;
 						}
 					}
         }

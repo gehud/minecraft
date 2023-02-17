@@ -1,26 +1,26 @@
-﻿using System.Collections.Concurrent;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Minecraft {
-    [RequireComponent(typeof(ChunkRenderer))]
-    public class Chunk : MonoBehaviour {
-        public const int SIZE = 16;
-        public const int VOLUME = SIZE * SIZE * SIZE;
+    public class Chunk {
+		public const int SIZE = 16;
+		public const int VOLUME = SIZE * SIZE * SIZE;
 
-        public ChunkData Data { get; set; }
+		public Vector3Int Coordinate { get; set; } = Vector3Int.zero;
 
-        [SerializeField]
-        private new ChunkRenderer renderer;
+        public BlockMap BlockMap { get; set; } = new();
 
-        public void Initialize(ChunkData data) {
-            Data = data;
-            transform.position = data.Coordinate * SIZE;
-        }
+        public LiquidMap LiquidMap { get; set; } = new();
 
-        public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshDatas, MaterialManager materialManager) {
-            renderer.UpdateMesh(meshDatas, materialManager);
-            Data.IsDirty = false;
-            Data.IsComplete = true;
-        }
+        public LightMap LightMap { get; set; } = new();
+
+        public TreeData TreeData { get; set; } = new();
+
+        public bool IsDirty { get; set; } = true;
+
+        public bool IsComplete { get; set; } = false;
+
+        public void MarkDirty() => IsDirty = true;
+
+        public void MarkComplete() => IsComplete = true;
     }
 }

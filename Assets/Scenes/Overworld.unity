@@ -287,7 +287,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cd18890c44ff10847afa8fabdd55bed7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chunk: {fileID: 3953143431036703439, guid: 64a4a310bdabce14aabccd5228774dc3, type: 3}
+  renderer: {fileID: 3682535211841024476, guid: 64a4a310bdabce14aabccd5228774dc3, type: 3}
   tick: 0.25
 --- !u!4 &162616925
 Transform:
@@ -2329,6 +2329,7 @@ MonoBehaviour:
   speedDelta: 1
   jumpingHeight: 1.125
   doubleTapTime: 0.25
+  skinWidth: 0.08
   jumpKey: 32
   sneakKey: 304
   sprintKey: 306
@@ -2412,11 +2413,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1316329367}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fd61e74c79d6b364b82a759d580b60b0, type: 3}
+  m_Script: {fileID: 11500000, guid: 149e41cd8ac9a5d458c15dedfa1acf7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   center: {x: 0, y: 0.9, z: 0}
-  size: {x: 0.45, y: 1.8, z: 0.45}
+  size: {x: 0.5, y: 1.8, z: 0.5}
+  isKinematic: 0
 --- !u!1001 &1330401041
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3816,7 +3818,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1999737148}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0e6e6cb5edc6f994da7cf7493a231cc1, type: 3}
+  m_Script: {fileID: 11500000, guid: 762b960ea9fca4c4fa835d80a414efcb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   physicsSolver: {fileID: 2073263357}
@@ -3946,7 +3948,7 @@ GameObject:
   - component: {fileID: 2073263356}
   - component: {fileID: 2073263357}
   m_Layer: 0
-  m_Name: Physics Solver
+  m_Name: Physics World
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3976,11 +3978,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 2073263355}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 04671aaf6d017744486e7618d43210d4, type: 3}
+  m_Script: {fileID: 11500000, guid: 49f964a2036b4c8419613a07c8b2dc3c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   gravity: {x: 0, y: -16, z: 0}
-  contactOffset: 0.06
+  contactOffset: 0.01
 --- !u!1 &2076756550
 GameObject:
   m_ObjectHideFlags: 0

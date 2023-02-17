@@ -33,7 +33,7 @@ namespace Minecraft.Utilities {
             });
         }
 
-        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData, BlockDataProvider blockDataProvider) {
+        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunkData, BlockDataProvider blockDataProvider) {
             BlockType GetBlock(int x, int y, int z) {
                 Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
                 return world.GetBlock(blockCoordinate);

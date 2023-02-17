@@ -1,13 +1,13 @@
 ﻿using UnityEngine;
 using Zenject;
 
-namespace Minecraft {
-	public class PhysicsSolverInstaller : MonoInstaller {
-		[SerializeField] private PhysicsSolver physicsSolver;
+namespace Minecraft.Physics {
+	public class PhysicsWorldInstaller : MonoInstaller {
+		[SerializeField] private PhysicsWorld physicsSolver;
 
 		public override void InstallBindings() {
 			Container
-				.Bind<PhysicsSolver>()
+				.Bind<PhysicsWorld>()
 				.FromInstance(physicsSolver)
 				.AsSingle()
 				.NonLazy();
