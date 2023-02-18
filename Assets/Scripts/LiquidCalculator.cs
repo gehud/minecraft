@@ -20,8 +20,8 @@ namespace Minecraft {
 
 		private readonly World world;
 		private readonly BlockType liquidType;
-		private readonly ConcurrentQueue<Entry> removeQueue = new();
-		private readonly ConcurrentQueue<Entry> addQueue = new();
+		private readonly Queue<Entry> removeQueue = new();
+		private readonly Queue<Entry> addQueue = new();
 
 		private static BlockDataProvider BlockDataProvider { get; set; }
 

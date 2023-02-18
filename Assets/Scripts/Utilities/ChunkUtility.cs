@@ -7,15 +7,15 @@ using UnityEngine;
 namespace Minecraft.Utilities {
     public static class ChunkUtility {
         public static void For(Action<int, int, int> action) {
-            for (int y = 0; y < Chunk.SIZE; y++)
-                for (int x = 0; x < Chunk.SIZE; x++)
+            for (int x = 0; x < Chunk.SIZE; x++)
+                for (int y = 0; y < Chunk.SIZE; y++)
                     for (int z = 0; z < Chunk.SIZE; z++)
                         action(y, x, z);
         }
 
         public static void For(Action<Vector3Int> action) {
-            for (int y = 0; y < Chunk.SIZE; y++)
-                for (int x = 0; x < Chunk.SIZE; x++)
+            for (int x = 0; x < Chunk.SIZE; x++)
+                for (int y = 0; y < Chunk.SIZE; y++)
                     for (int z = 0; z < Chunk.SIZE; z++)
                         action(new Vector3Int(x, y, z));
         }
@@ -35,9 +35,6 @@ namespace Minecraft.Utilities {
         }
 
         public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunk, BlockDataProvider blockDataProvider) {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
                 int vertexCount = meshData.Vertices.Count;
                 if (force && fliped || aof1 + aof3 < aof2 + aof4) {
@@ -1134,9 +1131,6 @@ namespace Minecraft.Utilities {
 					}
 				}
             });
-
-            stopwatch.Stop();
-            UnityEngine.Debug.Log(stopwatch.ElapsedTicks);
 
             return result;
         }

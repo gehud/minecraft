@@ -1,5 +1,7 @@
 ﻿using Minecraft.Utilities;
+using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
@@ -11,9 +13,26 @@ namespace Minecraft {
         /// </summary>
         public const int HEIGHT = 16;
 
-        public Dictionary<Vector3Int, Chunk> Chunks => chunks;
+        public int DrawDistance => drawDistance;
 
-        public Dictionary<Vector3Int, ChunkRenderer> Renderers => renderers;
+        private int drawDistance = 2;
+
+        public Vector2Int Center {
+            get => center;
+            set {
+                UpdateCenter(value);
+            }
+        }
+
+        private Vector2Int center = Vector2Int.zero;
+
+        public int RenderersSize => DrawDistance * 2 + 1;
+
+        public int ChunksSize => DrawDistance * 2 + 3;
+
+        public int RenderersVolume => RenderersSize * RenderersSize * HEIGHT;
+
+        public int ChunksVolume => ChunksSize * ChunksSize * HEIGHT;
 
         public LightCalculator LightCalculatorSun { get; set; }
 
@@ -37,52 +56,139 @@ namespace Minecraft {
         [Inject]
         private MaterialManager MaterialManager { get; }
 
-        private Dictionary<Vector3Int, Chunk> chunks = new();
-        private Dictionary<Vector3Int, ChunkRenderer> renderers = new();
+        private Chunk[] chunks;
+        private Chunk[] chunksBuffer;
+        private ChunkRenderer[] renderers;
+        private ChunkRenderer[] renderersBuffer;
 
-		public bool HasChunk(Vector3Int coordinate) {
-            return chunks.ContainsKey(coordinate);
+        public int RendererToIndex(Vector3Int coordinate) {
+            return Array3DUtility.To1D(coordinate.x - Center.x + DrawDistance,
+                coordinate.y, coordinate.z - Center.y + DrawDistance, RenderersSize, HEIGHT);
+        }
+
+        public int ChunkToIndex(Vector3Int coordinate) {
+            return Array3DUtility.To1D(coordinate.x - Center.x + DrawDistance + 1,
+                coordinate.y, coordinate.z - Center.y + DrawDistance + 1, ChunksSize, HEIGHT);
+        }
+
+        private ConcurrentStack<ChunkRenderer> renderersToDestroy = new();
+
+        private void UpdateCenter(Vector2Int center) {
+            Array.Fill(chunksBuffer, null);
+            Array.Fill(renderersBuffer, null);
+
+            var d = center - this.center;
+            for (int x = 0; x < ChunksSize; x++) {
+                for (int z = 0; z < ChunksSize; z++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+                        var index = Array3DUtility.To1D(x, y, z, ChunksSize, HEIGHT);
+						var chunk = chunks[index];
+                        if (chunk == null)
+                            continue;
+                        int nx = x - d.x;
+                        int nz = z - d.y;
+                        if (nx < 0 || nz < 0 || nx >= ChunksSize || nz >= ChunksSize) {
+                            chunks[index] = null;
+                            continue;
+                        }
+                        chunksBuffer[Array3DUtility.To1D(nx, y, nz, ChunksSize, HEIGHT)] = chunk;
+
+                        if (x > 0 && x < ChunksSize - 1 && z > 0 && z < ChunksSize - 1) {
+                            int sx = x - 1;
+                            int sz = z - 1;
+                            var rindex = Array3DUtility.To1D(sx, y, sz, RenderersSize, HEIGHT);
+							var renderer = renderers[rindex];
+                            if (renderer == null)
+                                continue;
+						    nx = sx - d.x;
+						    nz = sz - d.y;
+                            if (nx < 0 || nz < 0 || nx >= RenderersSize || nz >= RenderersSize) {
+                                renderersToDestroy.Push(renderer);
+                                renderers[rindex] = null;
+                                continue;
+                            }
+                            renderersBuffer[Array3DUtility.To1D(nx, y, nz, RenderersSize, HEIGHT)] = renderer;
+                        }
+                    }
+                }
+            }
+
+            (chunks, chunksBuffer) = (chunksBuffer, chunks);
+            (renderers, renderersBuffer) = (renderersBuffer, renderers);
+
+            this.center = center;
+        }
+
+        public IEnumerator CleanRenderers() {
+            while (true) {
+                while (renderersToDestroy.TryPop(out ChunkRenderer chunkRenderer)) {
+                    Destroy(chunkRenderer.gameObject);
+                    yield return null;
+                }
+                yield return null;
+            }
+        }
+
+        public bool HasChunk(Vector3Int coordinate) {
+            int index = ChunkToIndex(coordinate);
+            return index >= 0 && index < ChunksVolume && chunks[index] != null;
 		}
 
         public bool HasRenderer(Vector3Int coordinate) {
-            return renderers.ContainsKey(coordinate);
+            int index = RendererToIndex(coordinate);
+            return index > 0 && index < RenderersVolume && renderers[index] != null;
 		}
 
         public Chunk CreateChunk(Vector3Int coordinate) {
             var chunk = new Chunk();
             chunk.Coordinate = coordinate;
-            chunks[coordinate] = chunk;
+            chunks[ChunkToIndex(coordinate)] = chunk;
             return chunk;
         }
 
         public Chunk GetChunk(Vector3Int coordinate) {
-            return chunks[coordinate];
+            return chunks[ChunkToIndex(coordinate)];
 		}
 
 		public Chunk TryGetChunk(Vector3Int coordinate) {
-            if (chunks.TryGetValue(coordinate, out Chunk chunk))
-                return chunk;
+			int index = ChunkToIndex(coordinate);
+			if (index > 0 && index < ChunksVolume)
+                return chunks[index];
             return null;
 		}
 
 		public void SetChunk(Vector3Int coordinate, Chunk chunk) {
-			chunks[coordinate] = chunk;
+			chunks[ChunkToIndex(coordinate)] = chunk;
 		}
 
         public ChunkRenderer CreateRenderer(Vector3Int coordinate) {
             var renderer = Instantiate(this.renderer, transform);
             var chunk = GetOrCreateChunk(coordinate);
             renderer.Initialize(chunk);
-            renderers[coordinate] = renderer;
+            renderers[RendererToIndex(coordinate)] = renderer;
             return renderer;
         }
 
 		public bool TryGetChunk(Vector3Int coordinate, out Chunk chunk) {
-            return chunks.TryGetValue(coordinate, out chunk);
+			int index = ChunkToIndex(coordinate);
+			if (index > 0 && index < ChunksVolume) {
+                chunk = chunks[index];
+                return chunk != null;
+            }
+
+            chunk = null;
+            return false;
 		}
 
 		public bool TryGetRenderer(Vector3Int coordinate, out ChunkRenderer renderer) {
-			return renderers.TryGetValue(coordinate, out renderer);
+			int index = RendererToIndex(coordinate);
+			if (index > 0 && index < RenderersVolume) {
+				renderer = renderers[index];
+				return renderer != null;
+			}
+
+			renderer = null;
+			return false;
 		}
 
 		public Chunk GetOrCreateChunk(Vector3Int coordinate) {
@@ -98,12 +204,13 @@ namespace Minecraft {
         }
 
         public void DestroyChunk(Vector3Int coordinate) {
-            chunks.Remove(coordinate);
+            chunks[ChunkToIndex(coordinate)] = null;
         }
 
         public void DestroyRenderer(Vector3Int coordinate) {
-            Destroy(renderers[coordinate].gameObject);
-            renderers.Remove(coordinate);
+            var index = RendererToIndex(coordinate);
+            Destroy(renderers[index]);
+            renderers[index] = null;
         }
 
         /// <summary>
@@ -306,6 +413,15 @@ namespace Minecraft {
         }
 
         private void Awake() {
+            chunks = new Chunk[(DrawDistance * 2 + 3) * (DrawDistance * 2 + 3) * HEIGHT];
+            Array.Fill(chunks, null);
+            chunksBuffer = new Chunk[(DrawDistance * 2 + 3) * (DrawDistance * 2 + 3) * HEIGHT];
+            Array.Fill(chunksBuffer, null);
+            renderers = new ChunkRenderer[RenderersVolume];
+            Array.Fill(renderers, null);
+            renderersBuffer = new ChunkRenderer[RenderersVolume];
+            Array.Fill(renderersBuffer, null);
+
             LightCalculator.SetBlockDataManager(BlockDataProvider);
             LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
             LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
@@ -323,11 +439,12 @@ namespace Minecraft {
                 yield return new WaitForSeconds(tick);
             }
         }
-
         private void Update() {
             foreach (var renderer in renderers) {
-                if (renderer.Value.Data.IsComplete && renderer.Value.Data.IsDirty)
-                    renderer.Value.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Value.Data, BlockDataProvider), MaterialManager);
+                if (renderer == null)
+                    continue;
+                if (renderer.Data.IsComplete && renderer.Data.IsDirty)
+                    renderer.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Data, BlockDataProvider), MaterialManager);
             }
         }
 	}

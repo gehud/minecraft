@@ -2325,7 +2325,7 @@ MonoBehaviour:
   camera: {fileID: 963194228}
   walkSpeed: 4
   sneakSpeed: 2
-  sprintSpeed: 5
+  sprintSpeed: 6
   speedDelta: 1
   jumpingHeight: 1.125
   doubleTapTime: 0.25
@@ -2902,7 +2902,6 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   player: {fileID: 1316329371}
-  drawDistance: 2
   loadCountdown: 0.5
 --- !u!4 &1689205756
 Transform:
