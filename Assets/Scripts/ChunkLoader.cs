@@ -139,7 +139,7 @@ namespace Minecraft {
 						Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
 						if (World.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                             if (chunk.Coordinate != chunkCoordinate)
-                                Debug.Log("Err");
+                                Debug.Log($"Expected: {new Vector3Int(chunkCoordinate.x - World.Center.x + World.DrawDistance + 1, chunkCoordinate.y, chunkCoordinate.z - World.Center.y + World.DrawDistance + 1)}, Actual: {new Vector3Int(chunk.Coordinate.x - World.Center.x + World.DrawDistance + 1, chunk.Coordinate.y, chunk.Coordinate.z - World.Center.y + World.DrawDistance + 1)}");
 							Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
                             if (!BlockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
 							    chunk.BlockMap[localBlockCoordinate] = BlockType.Leaves;

@@ -9,7 +9,7 @@ namespace Minecraft.Utilities {
             for (int x = 0; x < Chunk.SIZE; x++)
                 for (int y = 0; y < Chunk.SIZE; y++)
                     for (int z = 0; z < Chunk.SIZE; z++)
-                        action(y, x, z);
+                        action(x, y, z);
         }
 
         public static void For(Action<Vector3Int> action) {

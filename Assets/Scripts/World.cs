@@ -63,17 +63,48 @@ namespace Minecraft {
         private ChunkRenderer[] renderers;
         private ChunkRenderer[] renderersBuffer;
 
-        private int RendererToIndex(Vector3Int coordinate) {
-            return Array3DUtility.To1D(coordinate.x - Center.x + DrawDistance,
-                coordinate.y, coordinate.z - Center.y + DrawDistance, RenderersSize, HEIGHT);
+        public int RendererToIndex(Vector3Int coordinate) {
+            var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance,
+				coordinate.y, coordinate.z - Center.y + DrawDistance);
+            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= RenderersSize
+                || arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
+                || arrayCoordinate.z < 0 || arrayCoordinate.z >= RenderersSize)
+                throw new Exception("Coordinate out of range.");
+			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, RenderersSize, HEIGHT);
         }
 
-        private int ChunkToIndex(Vector3Int coordinate) {
-			return Array3DUtility.To1D(coordinate.x - Center.x + DrawDistance + 1,
-                coordinate.y, coordinate.z - Center.y + DrawDistance + 1, ChunksSize, HEIGHT);
+        public int ChunkToIndex(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
+				coordinate.y, coordinate.z - Center.y + DrawDistance + 1);
+			if (arrayCoordinate.x < 0 || arrayCoordinate.x >= ChunksSize
+				|| arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
+				|| arrayCoordinate.z < 0 || arrayCoordinate.z >= ChunksSize)
+				throw new Exception("Coordinate out of range.");
+			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, ChunksSize, HEIGHT);
         }
 
-        private ConcurrentStack<ChunkRenderer> renderersToDestroy = new();
+		public bool HasChunk(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
+				coordinate.y, coordinate.z - Center.y + DrawDistance + 1);
+            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= ChunksSize
+                || arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
+                || arrayCoordinate.z < 0 || arrayCoordinate.z >= ChunksSize)
+                return false;
+
+			return chunks[ChunkToIndex(coordinate)] != null;
+		}
+
+		public bool HasRenderer(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance,
+				coordinate.y, coordinate.z - Center.y + DrawDistance);
+            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= RenderersSize
+                || arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
+                || arrayCoordinate.z < 0 || arrayCoordinate.z >= RenderersSize)
+                return false;
+			return renderers[RendererToIndex(coordinate)] != null;
+		}
+
+		private ConcurrentStack<ChunkRenderer> renderersToDestroy = new();
 
         private void UpdateCenter(Vector2Int center) {
             Array.Fill(chunksBuffer, null);
@@ -134,23 +165,9 @@ namespace Minecraft {
             }
         }
 
-        public bool HasChunk(Vector3Int coordinate) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
-				return false;
-			int index = ChunkToIndex(coordinate);
-            return index >= 0 && index < ChunksVolume && chunks[index] != null;
-		}
-
-        public bool HasRenderer(Vector3Int coordinate) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
-				return false;
-			int index = RendererToIndex(coordinate);
-            return index >= 0 && index < RenderersVolume && renderers[index] != null;
-		}
-
         public Chunk CreateChunk(Vector3Int coordinate) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
-				throw new Exception("Coordinate is out of range");
+            if (HasChunk(coordinate))
+                throw new Exception("Chunk allready exists.");
 			var chunk = new Chunk();
             chunk.Coordinate = coordinate;
             chunks[ChunkToIndex(coordinate)] = chunk;
@@ -158,23 +175,18 @@ namespace Minecraft {
         }
 
         public Chunk GetChunk(Vector3Int coordinate) {
-            if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+            if (!HasChunk(coordinate))
                 return null;
-			int index = ChunkToIndex(coordinate);
-			if (index >= 0 && index < ChunksVolume)
-				return chunks[index];
-            return null;
+			return chunks[ChunkToIndex(coordinate)];
 		}
 
 		public void SetChunk(Vector3Int coordinate, Chunk chunk) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
-				throw new Exception("Coordinate is out of range");
 			chunks[ChunkToIndex(coordinate)] = chunk;
 		}
 
         public ChunkRenderer CreateRenderer(Vector3Int coordinate) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
-				throw new Exception("Coordinate is out of range");
+			if (HasRenderer(coordinate))
+				throw new Exception("Renderer allready exists.");
 			var renderer = Instantiate(this.renderer, transform);
             var chunk = GetOrCreateChunk(coordinate);
             renderer.Initialize(chunk);
@@ -183,35 +195,19 @@ namespace Minecraft {
         }
 
 		public bool TryGetChunk(Vector3Int coordinate, out Chunk chunk) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE) {
-                chunk = null;
-                return false;
-            }
+            chunk = GetChunk(coordinate);
+            return chunk != null;
+		}
 
-			int index = ChunkToIndex(coordinate);
-			if (index >= 0 && index < ChunksVolume) {
-                chunk = chunks[index];
-                return chunk != null;
-            }
-
-            chunk = null;
-            return false;
+		public ChunkRenderer GetRenderer(Vector3Int coordinate) {
+			if (!HasRenderer(coordinate))
+				return null;
+			return renderers[RendererToIndex(coordinate)];
 		}
 
 		public bool TryGetRenderer(Vector3Int coordinate, out ChunkRenderer renderer) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE) {
-				renderer = null;
-				return false;
-			}
-
-			int index = RendererToIndex(coordinate);
-			if (index >= 0 && index < RenderersVolume) {
-				renderer = renderers[index];
-				return renderer != null;
-			}
-
-			renderer = null;
-			return false;
+            renderer = GetRenderer(coordinate);
+			return renderer != null;
 		}
 
 		public Chunk GetOrCreateChunk(Vector3Int coordinate) {
@@ -224,20 +220,6 @@ namespace Minecraft {
             if (TryGetRenderer(coordinate, out ChunkRenderer renderer))
                 return renderer;
             return CreateRenderer(coordinate);
-        }
-
-        public void DestroyChunk(Vector3Int coordinate) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
-				throw new Exception("Coordinate is out of range");
-			chunks[ChunkToIndex(coordinate)] = null;
-        }
-
-        public void DestroyRenderer(Vector3Int coordinate) {
-			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
-				throw new Exception("Coordinate is out of range");
-			var index = RendererToIndex(coordinate);
-            Destroy(renderers[index]);
-            renderers[index] = null;
         }
 
         /// <summary>
