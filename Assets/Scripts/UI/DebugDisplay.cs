@@ -23,9 +23,13 @@ namespace Minecraft.UI {
 		private TMP_Text peaksAndValleysText;
 		[SerializeField]
 		private TMP_Text erosionText;
+		[SerializeField]
+		private TMP_Text temperatureText;
+		[SerializeField]
+		private TMP_Text humidityText;
 
 		[Inject]
-		private ChunkGenerator ChunkDataGenerator { get; }
+		private readonly ChunkGenerator chunkGenerator;
 
 		private int framerate;
 
@@ -37,9 +41,11 @@ namespace Minecraft.UI {
 			framerateText.text = framerate.ToString();
 			positionText.text = player.position.ToString();
 			var playerCoordinate = CoordinateUtility.ToCoordinate(player.position);
-			continentalnessText.text = ChunkDataGenerator.GetContinentalness(playerCoordinate).ToString("F2");
-			peaksAndValleysText.text = ChunkDataGenerator.GetPeaksAndValleys(playerCoordinate).ToString("F2");
-			erosionText.text = ChunkDataGenerator.GetErosion(playerCoordinate).ToString("F2");
+			continentalnessText.text = chunkGenerator.GetContinentalness(playerCoordinate).ToString("F2");
+			peaksAndValleysText.text = chunkGenerator.GetPeaksAndValleys(playerCoordinate).ToString("F2");
+			erosionText.text = chunkGenerator.GetErosion(playerCoordinate).ToString("F2");
+			temperatureText.text = chunkGenerator.GetTemperature(playerCoordinate).ToString("F2");
+			humidityText.text = chunkGenerator.GetHumidity(playerCoordinate).ToString("F2");
 		}
 
 		private void OnEnable() {

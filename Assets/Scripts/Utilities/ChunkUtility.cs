@@ -19,21 +19,23 @@ namespace Minecraft.Utilities {
                         action(new Vector3Int(x, y, z));
         }
 
-        private const int SIZE_X_SIZE = Chunk.SIZE * Chunk.SIZE;
-
         private static readonly object lockObject = new();
 
         public static void ParallelFor(Action<int, int, int> action) {
             Parallel.For(0, Chunk.VOLUME, (index, state) => {
-                int z = index / SIZE_X_SIZE;
-                index -= z * SIZE_X_SIZE;
-                int y = index / Chunk.SIZE;
-                int x = index % Chunk.SIZE;
-                action(x, y, z);
+                var coordinate = Array3DUtility.To3D(index, Chunk.SIZE, Chunk.SIZE);
+                action(coordinate.x, coordinate.y, coordinate.z);
             });
         }
 
-        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunk, BlockProvider blockProvider) {
+		public static void ParallelFor(Action<Vector3Int> action) {
+			Parallel.For(0, Chunk.VOLUME, (index, state) => {
+				var coordinate = Array3DUtility.To3D(index, Chunk.SIZE, Chunk.SIZE);
+				action(coordinate);
+			});
+		}
+
+		public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunk, BlockProvider blockProvider) {
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
                 int vertexCount = meshData.Vertices.Count;
                 if (force && fliped || aof1 + aof3 < aof2 + aof4) {

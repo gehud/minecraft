@@ -24,16 +24,16 @@ namespace Minecraft {
         bool worldGenerated = false;
 
         [Inject]
-        private readonly World World;
+        private readonly World world;
 
         [Inject]
-        private readonly BlockProvider BlockDataProvider;
+        private readonly BlockProvider blockDataProvider;
 
         [Inject]
-        private readonly MaterialProvider MaterialManager;
+        private readonly MaterialProvider materialManager;
 
         [Inject]
-        private readonly ChunkGenerator ChunkDataGenerator;
+        private readonly ChunkGenerator chunkGenerator;
 
         private Vector3Int GetPlayerChunk() {
             Vector3Int coordinate = CoordinateUtility.ToCoordinate(player.position);
@@ -44,22 +44,22 @@ namespace Minecraft {
             chunkToCreateCoordinates.Clear();
             rendererToCreateCoordinates.Clear();
             sunlightCoordinatesToCalculate.Clear();
-            World.Center = new Vector2Int(lastPlayerChunk.x, lastPlayerChunk.z);
-            int startX = lastPlayerChunk.x - World.DrawDistance - 1;
-            int endX = lastPlayerChunk.x + World.DrawDistance + 1;
-            int startZ = lastPlayerChunk.z - World.DrawDistance - 1;
-            int endZ = lastPlayerChunk.z + World.DrawDistance + 1;
+            world.Center = new Vector2Int(lastPlayerChunk.x, lastPlayerChunk.z);
+            int startX = lastPlayerChunk.x - world.DrawDistance - 1;
+            int endX = lastPlayerChunk.x + world.DrawDistance + 1;
+            int startZ = lastPlayerChunk.z - world.DrawDistance - 1;
+            int endZ = lastPlayerChunk.z + world.DrawDistance + 1;
             for (int x = startX; x <= endX; x++)
                 for (int z = startZ; z <= endZ; z++) {
                     bool sunlight = false;
                     for (int y = 0; y < World.HEIGHT; y++) {
                         Vector3Int chunkCoordinate = new Vector3Int(x, y, z);
                         if (x != startX && x != endX && z != startZ && z != endZ) {
-                            if (!World.HasRenderer(chunkCoordinate))
+                            if (!world.HasRenderer(chunkCoordinate))
                                 rendererToCreateCoordinates.Push(chunkCoordinate);
                         }
 
-                        if (!World.HasChunk(chunkCoordinate)) {
+                        if (!world.HasChunk(chunkCoordinate)) {
                             chunkToCreateCoordinates.Push(chunkCoordinate);
                             sunlight = true;
                         }
@@ -76,7 +76,7 @@ namespace Minecraft {
 
 			foreach (var item in meshDatas) {
                 ChunkRenderer chunk = world.GetOrCreateRenderer(item.Key);
-                chunk.UpdateMesh(item.Value, MaterialManager);
+                chunk.UpdateMesh(item.Value, materialManager);
                 yield return null;
             }
 
@@ -94,10 +94,7 @@ namespace Minecraft {
             ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => {
                 foreach (var item in chunkToCreateCoordinates)
-                    generatedData.TryAdd(item, ChunkDataGenerator.GenerateChunkData(item));
-                foreach (var item in generatedData) {
-                    World.SetChunk(item.Key, item.Value);
-                }
+                    generatedData.TryAdd(item, chunkGenerator.Generate(item));
                 foreach (var item in generatedData) {
                     foreach (var treeRoot in item.Value.TreeData.Positions) {
                         GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
@@ -107,24 +104,24 @@ namespace Minecraft {
                     ChunkUtility.For((localBlockCoordinate) => {
                         if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
                             Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
-                            World.LiquidCalculatorWater.Add(blockCoordinate);
+                            world.LiquidCalculatorWater.Add(blockCoordinate);
                         }
                     });
                 }
                 foreach (var item in sunlightCoordinatesToCalculate)
-                    LightCalculator.AddSunlight(World, item);
-                World.LightCalculatorSun.Calculate();
+                    LightCalculator.AddSunlight(world, item);
+                world.LightCalculatorSun.Calculate();
                 foreach (var item in rendererToCreateCoordinates)
-                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.GetChunk(item), BlockDataProvider));
+                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.GetChunk(item), blockDataProvider));
             });
 
-            StartCoroutine(GenerateChunks(World, generatedMeshDatas));
+            StartCoroutine(GenerateChunks(world, generatedMeshDatas));
         }
 
         private void GenerateTree(Vector3Int blockCoordinate) {
             for (int i = 0; i < 5; i++) {
                 Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                if (World.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
+                if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                     Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                     chunk.BlockMap[localBlockCoordinate] = BlockType.Log;
                 }
@@ -137,11 +134,9 @@ namespace Minecraft {
                     for (int z = -2; z <= 2; z++) {
                         Vector3Int leavesCoordinate = blockCoordinate + new Vector3Int(x, y, z);
 						Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
-						if (World.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
-                            if (chunk.Coordinate != chunkCoordinate)
-                                Debug.Log($"Expected: {new Vector3Int(chunkCoordinate.x - World.Center.x + World.DrawDistance + 1, chunkCoordinate.y, chunkCoordinate.z - World.Center.y + World.DrawDistance + 1)}, Actual: {new Vector3Int(chunk.Coordinate.x - World.Center.x + World.DrawDistance + 1, chunk.Coordinate.y, chunk.Coordinate.z - World.Center.y + World.DrawDistance + 1)}");
+						if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 							Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
-                            if (!BlockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
+                            if (!blockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
 							    chunk.BlockMap[localBlockCoordinate] = BlockType.Leaves;
 						}
 					}
@@ -169,7 +164,6 @@ namespace Minecraft {
 
         private void Start() {
             StartCoroutine(WaitForWorldStartGeneration());
-            StartCoroutine(World.CleanRenderers());
         }
     }
 }

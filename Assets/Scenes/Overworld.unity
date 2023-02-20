@@ -290,6 +290,7 @@ MonoBehaviour:
   renderer: {fileID: 3682535211841024476, guid: 64a4a310bdabce14aabccd5228774dc3, type: 3}
   debugChunks: 0
   tick: 0.25
+  renderersSize: 0
 --- !u!4 &162616925
 Transform:
   m_ObjectHideFlags: 0
@@ -418,6 +419,8 @@ MonoBehaviour:
   continentalnessText: {fileID: 1181730287}
   peaksAndValleysText: {fileID: 1508912168}
   erosionText: {fileID: 120033579}
+  temperatureText: {fileID: 2022449809}
+  humidityText: {fileID: 2128295472}
 --- !u!114 &319222601
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1786,57 +1789,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8a71610ed938f141b53ddedf754a511, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1 &978890317
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 978890319}
-  - component: {fileID: 978890318}
-  m_Layer: 0
-  m_Name: Chunk Generator
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &978890318
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 978890317}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a09412b2550d3c40ba7fede05b4ae44, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  offset: {x: 999, y: 999}
-  surfaceOffset: 0
-  waterLevel: 37
-  continentalnessNoise: {fileID: 11400000, guid: a1180c05c8e0630448dec81364957529, type: 2}
-  peaksAndValleysNoise: {fileID: 11400000, guid: 75e944f37edc3c74d9cfcad4ba28c859, type: 2}
-  erosionNoise: {fileID: 11400000, guid: 52cca0643282b5b45a4cf6807e74c18d, type: 2}
-  treeNoise: {fileID: 11400000, guid: c12518491aa9a574a95cba93b9e7b0e9, type: 2}
---- !u!4 &978890319
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 978890317}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1999737151}
-  m_RootOrder: 6
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1068367480
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2252,6 +2204,58 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1278507320
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1278507321}
+  - component: {fileID: 1278507322}
+  m_Layer: 0
+  m_Name: Chunk Generator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1278507321
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1278507320}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1999737151}
+  m_RootOrder: 6
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1278507322
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1278507320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a09412b2550d3c40ba7fede05b4ae44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  offset: {x: 3529.2, y: 3529.2}
+  waterLevel: 45
+  continentalness: {fileID: 11400000, guid: a1180c05c8e0630448dec81364957529, type: 2}
+  peaksAndValleys: {fileID: 11400000, guid: 75e944f37edc3c74d9cfcad4ba28c859, type: 2}
+  erosion: {fileID: 11400000, guid: 52cca0643282b5b45a4cf6807e74c18d, type: 2}
+  temperature: {fileID: 11400000, guid: a1e5e700b7974564a856229a12329924, type: 2}
+  humidity: {fileID: 11400000, guid: 027c92ec393335a47acfa53d868ae181, type: 2}
+  trees: {fileID: 11400000, guid: c12518491aa9a574a95cba93b9e7b0e9, type: 2}
 --- !u!1 &1305005596
 GameObject:
   m_ObjectHideFlags: 0
@@ -2864,18 +2868,6 @@ MonoBehaviour:
   OnWorldCreate:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 162616924}
-        m_TargetAssemblyTypeName: Minecraft.World, Minecraft
-        m_MethodName: StartLiquidCalculation
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 1
-        m_CallState: 2
       - m_Target: {fileID: 1316329367}
         m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
         m_MethodName: SetActive
@@ -3645,7 +3637,7 @@ GameObject:
   - component: {fileID: 1999737149}
   - component: {fileID: 1999737155}
   - component: {fileID: 1999737154}
-  - component: {fileID: 1999737153}
+  - component: {fileID: 1999737159}
   - component: {fileID: 1999737152}
   m_Layer: 0
   m_Name: Context
@@ -3687,7 +3679,7 @@ MonoBehaviour:
   - {fileID: 1999737149}
   - {fileID: 1999737155}
   - {fileID: 1999737154}
-  - {fileID: 1999737153}
+  - {fileID: 1999737159}
   - {fileID: 1999737152}
   _installerPrefabs: []
   _autoRun: 1
@@ -3724,7 +3716,7 @@ Transform:
   - {fileID: 1392060669}
   - {fileID: 257367469}
   - {fileID: 1388594961}
-  - {fileID: 978890319}
+  - {fileID: 1278507321}
   - {fileID: 1689205756}
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -3742,19 +3734,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   chunkLoader: {fileID: 1689205755}
---- !u!114 &1999737153
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1999737148}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ff0f47505ebb72e4ba20e5a90e82fa00, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  chunkDataGenerator: {fileID: 978890318}
 --- !u!114 &1999737154
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3820,6 +3799,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   physicsSolver: {fileID: 2073263357}
+--- !u!114 &1999737159
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1999737148}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff0f47505ebb72e4ba20e5a90e82fa00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  chunkDataGenerator: {fileID: 1278507322}
 --- !u!1 &2018518653 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5152690321446478625, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
@@ -3858,6 +3850,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 2
   m_VerticalFit: 2
+--- !u!114 &2022449809 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+  m_PrefabInstance: {fileID: 501174467}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2022449804}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2031302652
 GameObject:
   m_ObjectHideFlags: 0
@@ -4124,6 +4127,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 2
   m_VerticalFit: 2
+--- !u!114 &2128295472 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+  m_PrefabInstance: {fileID: 1106246609}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2128295467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2133633142
 GameObject:
   m_ObjectHideFlags: 0

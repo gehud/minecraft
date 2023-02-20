@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
@@ -13,10 +12,9 @@ namespace Minecraft {
         /// </summary>
         public const int HEIGHT = 16;
 
-        public int DrawDistance => drawDistance;
-
-        private static int drawDistance = 2;
-
+        /// <summary>
+        /// Center of world rendering.
+        /// </summary>
         public Vector2Int Center {
             get => center;
             set {
@@ -24,17 +22,17 @@ namespace Minecraft {
             }
         }
 
+        /// <summary>
+        /// Radius in chunks of rendering area.
+        /// </summary>
+        public int DrawDistance => drawDistance;
+
+        // TODO: Be editable.
+        private static int drawDistance = 4;
+
         private Vector2Int center = Vector2Int.zero;
 
-        public int RenderersSize => DrawDistance * 2 + 1;
-
-        public int ChunksSize => DrawDistance * 2 + 3;
-
-        public int RenderersVolume => RenderersSize * RenderersSize * HEIGHT;
-
-        public int ChunksVolume => ChunksSize * ChunksSize * HEIGHT;
-
-        public LightCalculator LightCalculatorSun { get; set; }
+		public LightCalculator LightCalculatorSun { get; set; }
 
         public LightCalculator LightCalculatorRed { get; set; }
 
@@ -58,112 +56,35 @@ namespace Minecraft {
         [Inject]
         private MaterialProvider MaterialManager { get; }
 
+		private int chunksSize;
+		private int chunksVolume;
         private Chunk[] chunks;
         private Chunk[] chunksBuffer;
+		public int renderersSize;
+		private int renderersVolume;
         private ChunkRenderer[] renderers;
         private ChunkRenderer[] renderersBuffer;
-
-        public int RendererToIndex(Vector3Int coordinate) {
-            var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance,
-				coordinate.y, coordinate.z - Center.y + DrawDistance);
-            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= RenderersSize
-                || arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
-                || arrayCoordinate.z < 0 || arrayCoordinate.z >= RenderersSize)
-                throw new Exception("Coordinate out of range.");
-			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, RenderersSize, HEIGHT);
-        }
-
-        public int ChunkToIndex(Vector3Int coordinate) {
-			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
-				coordinate.y, coordinate.z - Center.y + DrawDistance + 1);
-			if (arrayCoordinate.x < 0 || arrayCoordinate.x >= ChunksSize
-				|| arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
-				|| arrayCoordinate.z < 0 || arrayCoordinate.z >= ChunksSize)
-				throw new Exception("Coordinate out of range.");
-			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, ChunksSize, HEIGHT);
-        }
+		private ConcurrentStack<ChunkRenderer> renderersToDestroy = new();
 
 		public bool HasChunk(Vector3Int coordinate) {
 			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
 				coordinate.y, coordinate.z - Center.y + DrawDistance + 1);
-            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= ChunksSize
+            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= chunksSize
                 || arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
-                || arrayCoordinate.z < 0 || arrayCoordinate.z >= ChunksSize)
+                || arrayCoordinate.z < 0 || arrayCoordinate.z >= chunksSize)
                 return false;
-
 			return chunks[ChunkToIndex(coordinate)] != null;
 		}
 
 		public bool HasRenderer(Vector3Int coordinate) {
 			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance,
 				coordinate.y, coordinate.z - Center.y + DrawDistance);
-            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= RenderersSize
+            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= renderersSize
                 || arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
-                || arrayCoordinate.z < 0 || arrayCoordinate.z >= RenderersSize)
+                || arrayCoordinate.z < 0 || arrayCoordinate.z >= renderersSize)
                 return false;
 			return renderers[RendererToIndex(coordinate)] != null;
 		}
-
-		private ConcurrentStack<ChunkRenderer> renderersToDestroy = new();
-
-        private void UpdateCenter(Vector2Int center) {
-            Array.Fill(chunksBuffer, null);
-            Array.Fill(renderersBuffer, null);
-
-            var d = center - this.center;
-            for (int x = 0; x < ChunksSize; x++) {
-                for (int z = 0; z < ChunksSize; z++) {
-                    for (int y = 0; y < HEIGHT; y++) {
-                        var index = Array3DUtility.To1D(x, y, z, ChunksSize, HEIGHT);
-						var chunk = chunks[index];
-                        if (chunk == null)
-                            continue;
-                        int nx = x - d.x;
-                        int nz = z - d.y;
-                        if (nx < 0 || nz < 0 || nx >= ChunksSize || nz >= ChunksSize) {
-                            chunks[index] = null;
-                            continue;
-                        }
-                        chunksBuffer[Array3DUtility.To1D(nx, y, nz, ChunksSize, HEIGHT)] = chunk;
-                    }
-                }
-            }
-
-            for (int x = 0; x < RenderersSize; x++) {
-                for (int z = 0; z < RenderersSize; z++) {
-                    for (int y = 0; y < HEIGHT; y++) {
-						var rindex = Array3DUtility.To1D(x, y, z, RenderersSize, HEIGHT);
-						var renderer = renderers[rindex];
-						if (renderer == null)
-							continue;
-						int nx = x - d.x;
-						int nz = z - d.y;
-						if (nx < 0 || nz < 0 || nx >= RenderersSize || nz >= RenderersSize) {
-							renderersToDestroy.Push(renderer);
-							renderers[rindex] = null;
-							continue;
-						}
-						renderersBuffer[Array3DUtility.To1D(nx, y, nz, RenderersSize, HEIGHT)] = renderer;
-					}
-                }
-            }
-
-			(chunks, chunksBuffer) = (chunksBuffer, chunks);
-            (renderers, renderersBuffer) = (renderersBuffer, renderers);
-
-            this.center = center;
-        }
-
-        public IEnumerator CleanRenderers() {
-            while (true) {
-                while (renderersToDestroy.TryPop(out ChunkRenderer chunkRenderer)) {
-                    Destroy(chunkRenderer.gameObject);
-                    yield return null;
-                }
-
-                yield return null;
-            }
-        }
 
         public Chunk CreateChunk(Vector3Int coordinate) {
             if (HasChunk(coordinate))
@@ -180,14 +101,10 @@ namespace Minecraft {
 			return chunks[ChunkToIndex(coordinate)];
 		}
 
-		public void SetChunk(Vector3Int coordinate, Chunk chunk) {
-			chunks[ChunkToIndex(coordinate)] = chunk;
-		}
-
         public ChunkRenderer CreateRenderer(Vector3Int coordinate) {
 			if (HasRenderer(coordinate))
 				throw new Exception("Renderer allready exists.");
-			var renderer = Instantiate(this.renderer, transform);
+			var renderer = Instantiate(this.renderer);
             var chunk = GetOrCreateChunk(coordinate);
             renderer.Initialize(chunk);
             renderers[RendererToIndex(coordinate)] = renderer;
@@ -223,7 +140,7 @@ namespace Minecraft {
         }
 
         /// <summary>
-        /// Marks chunk as dirty if needed.
+        /// Marks chunks as dirty if needed.
         /// </summary>
         public void ValidateChunk(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
 			if (localBlockCoordinate.x == 0 && TryGetChunk(chunkCoordinate + Vector3Int.left, out var chunk))
@@ -421,30 +338,113 @@ namespace Minecraft {
             }
         }
 
-        private void Awake() {
-            chunks = new Chunk[ChunksVolume];
-            chunksBuffer = new Chunk[ChunksVolume];
-            renderers = new ChunkRenderer[RenderersVolume];
-            renderersBuffer = new ChunkRenderer[RenderersVolume];
+		private void UpdateMetrics() {
+			renderersSize = DrawDistance * 2 + 1;
+			chunksSize = DrawDistance * 2 + 3;
+			renderersVolume = renderersSize * renderersSize * HEIGHT;
+			chunksVolume = chunksSize * chunksSize * HEIGHT;
+		}
 
-            LightCalculator.SetBlockDataManager(BlockDataProvider);
-            LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
-            LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
-            LightCalculatorBlue = new LightCalculator(this, LightChanel.Blue);
-            LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
-            LiquidCalculator.SetBlockDataManager(BlockDataProvider);
-            LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
-        }
+		private int RendererToIndex(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance,
+				coordinate.y, coordinate.z - Center.y + DrawDistance);
+			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, renderersSize, HEIGHT);
+		}
 
-        public void StartLiquidCalculation() => StartCoroutine(LiquidCalculation());
+		private int ChunkToIndex(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
+				coordinate.y, coordinate.z - Center.y + DrawDistance + 1);
+			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, chunksSize, HEIGHT);
+		}
 
-        private IEnumerator LiquidCalculation() {
-            while (true) {
-                LiquidCalculatorWater.Calculate();
-                yield return new WaitForSeconds(tick);
-            }
-        }
-        private void Update() {
+		private void UpdateCenter(Vector2Int center) {
+			Array.Fill(chunksBuffer, null);
+			Array.Fill(renderersBuffer, null);
+
+			var d = center - this.center;
+			for (int x = 0; x < chunksSize; x++) {
+				for (int z = 0; z < chunksSize; z++) {
+					for (int y = 0; y < HEIGHT; y++) {
+						var index = Array3DUtility.To1D(x, y, z, chunksSize, HEIGHT);
+						var chunk = chunks[index];
+						if (chunk == null)
+							continue;
+						int nx = x - d.x;
+						int nz = z - d.y;
+						if (nx < 0 || nz < 0 || nx >= chunksSize || nz >= chunksSize) {
+							chunks[index] = null;
+							continue;
+						}
+						chunksBuffer[Array3DUtility.To1D(nx, y, nz, chunksSize, HEIGHT)] = chunk;
+					}
+				}
+			}
+
+			for (int x = 0; x < renderersSize; x++) {
+				for (int z = 0; z < renderersSize; z++) {
+					for (int y = 0; y < HEIGHT; y++) {
+						var rindex = Array3DUtility.To1D(x, y, z, renderersSize, HEIGHT);
+						var renderer = renderers[rindex];
+						if (renderer == null)
+							continue;
+						int nx = x - d.x;
+						int nz = z - d.y;
+						if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
+							renderersToDestroy.Push(renderer);
+							renderers[rindex] = null;
+							continue;
+						}
+						renderersBuffer[Array3DUtility.To1D(nx, y, nz, renderersSize, HEIGHT)] = renderer;
+					}
+				}
+			}
+
+			(chunks, chunksBuffer) = (chunksBuffer, chunks);
+			(renderers, renderersBuffer) = (renderersBuffer, renderers);
+
+			this.center = center;
+		}
+
+		private IEnumerator SolveLiquid() {
+			while (true) {
+				LiquidCalculatorWater.Calculate();
+				yield return new WaitForSeconds(tick);
+			}
+		}
+
+		private IEnumerator CleanRenderers() {
+			while (true) {
+				while (renderersToDestroy.TryPop(out ChunkRenderer chunkRenderer)) {
+					Destroy(chunkRenderer.gameObject);
+					yield return null;
+				}
+
+				yield return null;
+			}
+		}
+
+		private void Awake() {
+			UpdateMetrics();
+			chunks = new Chunk[chunksVolume];
+			chunksBuffer = new Chunk[chunksVolume];
+			renderers = new ChunkRenderer[renderersVolume];
+			renderersBuffer = new ChunkRenderer[renderersVolume];
+
+			LightCalculator.SetBlockDataManager(BlockDataProvider);
+			LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
+			LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
+			LightCalculatorBlue = new LightCalculator(this, LightChanel.Blue);
+			LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
+			LiquidCalculator.SetBlockDataManager(BlockDataProvider);
+			LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
+		}
+
+		private void Start() {
+            StartCoroutine(SolveLiquid());
+            StartCoroutine(CleanRenderers());
+		}
+
+		private void Update() {
             foreach (var renderer in renderers) {
                 if (renderer == null)
                     continue;
@@ -453,16 +453,23 @@ namespace Minecraft {
             }
         }
 
+        private void DrawChunkGizmo(Vector3Int coordinate) {
+            var center = coordinate * Chunk.SIZE + Vector3.one * Chunk.SIZE / 2.0f;
+            var size = Vector3.one * Chunk.SIZE - Vector3.one * 0.01f;
+			Gizmos.DrawWireCube(center, size);
+		}
+
 		private void OnDrawGizmos() {
-			if (debugChunks) {
-                foreach (var chunk in chunks) {
-                    if (chunk == null)
-                        continue;
-                    Gizmos.color = Color.green;
-                    Gizmos.DrawWireCube(chunk.Coordinate * Chunk.SIZE + Vector3.one * Chunk.SIZE / 2.0f, 
-                        Vector3.one * Chunk.SIZE - Vector3.one * 0.01f);
-                }
-            }
+			if (!debugChunks) {
+				return;
+			}
+
+			foreach (var chunk in chunks) {
+				if (chunk == null)
+					continue;
+				Gizmos.color = Color.green;
+				DrawChunkGizmo(chunk.Coordinate);
+			}
 		}
 	}
 }

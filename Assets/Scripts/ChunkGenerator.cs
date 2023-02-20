@@ -1,68 +1,94 @@
-﻿using Minecraft.Noise;
+﻿using Minecraf;
+using Minecraft.Noise;
 using Minecraft.Utilities;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Zenject;
 
 namespace Minecraft {
     public class ChunkGenerator : MonoBehaviour {
         [SerializeField] private Vector2 offset;
-        [SerializeField, Min(0)] private int surfaceOffset = 64;
-        [SerializeField, Min(0)] private int waterLevel = 45;
-        [SerializeField] private Noise2D continentalnessNoise;
-        [SerializeField] private Noise2D peaksAndValleysNoise;
-        [SerializeField] private Noise2D erosionNoise;
-        [SerializeField] private Noise2D treeNoise;
+        [SerializeField, Min(0)] private int waterLevel = 32;
+        [Header("Surface")]
+        [SerializeField] private Noise2D continentalness;
+        [SerializeField] private Noise2D peaksAndValleys;
+        [SerializeField] private Noise2D erosion;
+        [Header("Biomes")]
+        [SerializeField] private Noise2D temperature;
+        [SerializeField] private Noise2D humidity;
+        [SerializeField] private Noise2D trees;
+
+        [Inject]
+        private readonly World world;
 
         public float GetContinentalness(Vector3Int blockCoordinate) {
-            return continentalnessNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+            return continentalness.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
 		}
 
 		public float GetErosion(Vector3Int blockCoordinate) {
-			return erosionNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+			return erosion.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
 		}
 
 		public float GetPeaksAndValleys(Vector3Int blockCoordinate) {
-			return peaksAndValleysNoise.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+			return peaksAndValleys.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
 		}
 
-		public Chunk GenerateChunkData(Vector3Int coordinate) {
-            Chunk result = new() {
-                Coordinate = coordinate
-            };
+		public float GetTemperature(Vector3Int blockCoordinate) {
+			return temperature.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+		}
+
+        public float GetHumidity(Vector3Int blockCoordinate) {
+            return humidity.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+        }
+
+		public Chunk Generate(Vector3Int coordinate) {
+            Chunk result = world.CreateChunk(coordinate);
 
             var treePositions = GetLocalMaxima(GenerateTreeNoise(new Vector2Int(coordinate.x, coordinate.z)));
 
             ChunkUtility.For((x, y, z) => {
                 Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(coordinate, new Vector3Int(x, y, z));
 
-                float continantalnessNoiseValue = GetContinentalness(blockCoordinate);
-                float peaksAndValleysNoiseValue = GetPeaksAndValleys(blockCoordinate);
-                float erosionNoiseValue = GetErosion(blockCoordinate);
-                int surfaceHeight = surfaceOffset + Mathf.FloorToInt((continantalnessNoiseValue
-                                                                    + peaksAndValleysNoiseValue
-                                                                    + erosionNoiseValue) / 3);
+                float continantalness = GetContinentalness(blockCoordinate);
+                float peaksAndValleys = GetPeaksAndValleys(blockCoordinate);
+                float erosion = GetErosion(blockCoordinate);
+                int surfaceHeight = Mathf.FloorToInt((continantalness + peaksAndValleys + erosion) / 3);
+
+                float temperature = GetTemperature(blockCoordinate);
+                float humidity = GetHumidity(blockCoordinate);
+
+                BiomeType biome;
+                if (temperature > 0.9f)
+                    biome = BiomeType.Desert;
+                else
+                    biome = BiomeType.Forest;
+
                 if (blockCoordinate.y > surfaceHeight) {
                     if (blockCoordinate.y <= waterLevel) {
                         result.BlockMap[x, y, z] = BlockType.Water;
                         result.LiquidMap.Set(x, y, z, BlockType.Water, LiquidMap.MAX);
                     } else {
                         result.BlockMap[x, y, z] = BlockType.Air;
-                        if (blockCoordinate.y == surfaceHeight + 1
+                        if (biome != BiomeType.Desert && blockCoordinate.y == surfaceHeight + 1
                         && blockCoordinate.y > waterLevel + 3
                         && treePositions.Contains(new Vector2Int(x, z))) {
                             result.TreeData.Positions.Add(new Vector3Int(x, y, z));
                         }
                     }
                 } else {
-                    if (blockCoordinate.y >= surfaceHeight - 4) {
-                        if (blockCoordinate.y <= waterLevel + 2) {
+                    if (blockCoordinate.y >= surfaceHeight - 5) {
+                        if (biome == BiomeType.Desert) {
                             result.BlockMap[x, y, z] = BlockType.Sand;
                         } else {
-                            if (blockCoordinate.y == surfaceHeight) {
-                                result.BlockMap[x, y, z] = BlockType.Grass;
+                            if (blockCoordinate.y <= waterLevel + 2) {
+                                result.BlockMap[x, y, z] = BlockType.Sand;
                             } else {
-                                result.BlockMap[x, y, z] = BlockType.Dirt;
+                                if (blockCoordinate.y == surfaceHeight) {
+                                    result.BlockMap[x, y, z] = BlockType.Grass;
+                                } else {
+                                    result.BlockMap[x, y, z] = BlockType.Dirt;
+                                }
                             }
                         }
                     } else {
@@ -79,7 +105,7 @@ namespace Minecraft {
 
             for (int x = 0; x < Chunk.SIZE; x++)
                 for (int y = 0; y < Chunk.SIZE; y++)
-                    result[x, y] = treeNoise.Sample(chunkColumn.x * Chunk.SIZE + x, 
+                    result[x, y] = trees.Sample(chunkColumn.x * Chunk.SIZE + x, 
                                                     chunkColumn.y * Chunk.SIZE + y);
 
             return result;
