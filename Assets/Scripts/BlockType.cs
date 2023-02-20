@@ -9,5 +9,6 @@
         Log,
         Leaves,
         JackOLantern,
+        Bedrock,
     }
 }

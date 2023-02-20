@@ -2,14 +2,14 @@
 using Zenject;
 
 namespace Minecraft {
-	public class AtlasManagerInstaller : MonoInstaller {
+	public class MaterialProviderInstaller : MonoInstaller {
 		[SerializeField]
-		private AtlasManager atlasManager;
+		private MaterialProvider materialManager;
 
 		public override void InstallBindings() {
 			Container
-				.Bind<AtlasManager>()
-				.FromInstance(atlasManager)
+				.Bind<MaterialProvider>()
+				.FromInstance(materialManager)
 				.AsSingle()
 				.NonLazy();
 		}

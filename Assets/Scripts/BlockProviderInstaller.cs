@@ -2,13 +2,13 @@
 using Zenject;
 
 namespace Minecraft {
-	public class BlockDataProviderInstaller : MonoInstaller {
+	public class BlockProviderInstaller : MonoInstaller {
 		[SerializeField]
-		private BlockDataProvider blockDataManager;
+		private BlockProvider blockDataManager;
 
 		public override void InstallBindings() {
 			Container
-				.Bind<BlockDataProvider>()
+				.Bind<BlockProvider>()
 				.FromInstance(blockDataManager)
 				.AsSingle()
 				.NonLazy();

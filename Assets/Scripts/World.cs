@@ -15,7 +15,7 @@ namespace Minecraft {
 
         public int DrawDistance => drawDistance;
 
-        private int drawDistance = 2;
+        private static int drawDistance = 2;
 
         public Vector2Int Center {
             get => center;
@@ -46,28 +46,30 @@ namespace Minecraft {
 
         [SerializeField]
         private new ChunkRenderer renderer;
+        [SerializeField]
+        private bool debugChunks = false;
 
         [SerializeField, Min(0)]
         private float tick = 0.25f;
 
         [Inject]
-        private BlockDataProvider BlockDataProvider { get; }
+        private BlockProvider BlockDataProvider { get; }
 
         [Inject]
-        private MaterialManager MaterialManager { get; }
+        private MaterialProvider MaterialManager { get; }
 
         private Chunk[] chunks;
         private Chunk[] chunksBuffer;
         private ChunkRenderer[] renderers;
         private ChunkRenderer[] renderersBuffer;
 
-        public int RendererToIndex(Vector3Int coordinate) {
+        private int RendererToIndex(Vector3Int coordinate) {
             return Array3DUtility.To1D(coordinate.x - Center.x + DrawDistance,
                 coordinate.y, coordinate.z - Center.y + DrawDistance, RenderersSize, HEIGHT);
         }
 
-        public int ChunkToIndex(Vector3Int coordinate) {
-            return Array3DUtility.To1D(coordinate.x - Center.x + DrawDistance + 1,
+        private int ChunkToIndex(Vector3Int coordinate) {
+			return Array3DUtility.To1D(coordinate.x - Center.x + DrawDistance + 1,
                 coordinate.y, coordinate.z - Center.y + DrawDistance + 1, ChunksSize, HEIGHT);
         }
 
@@ -92,28 +94,30 @@ namespace Minecraft {
                             continue;
                         }
                         chunksBuffer[Array3DUtility.To1D(nx, y, nz, ChunksSize, HEIGHT)] = chunk;
-
-                        if (x > 0 && x < ChunksSize - 1 && z > 0 && z < ChunksSize - 1) {
-                            int sx = x - 1;
-                            int sz = z - 1;
-                            var rindex = Array3DUtility.To1D(sx, y, sz, RenderersSize, HEIGHT);
-							var renderer = renderers[rindex];
-                            if (renderer == null)
-                                continue;
-						    nx = sx - d.x;
-						    nz = sz - d.y;
-                            if (nx < 0 || nz < 0 || nx >= RenderersSize || nz >= RenderersSize) {
-                                renderersToDestroy.Push(renderer);
-                                renderers[rindex] = null;
-                                continue;
-                            }
-                            renderersBuffer[Array3DUtility.To1D(nx, y, nz, RenderersSize, HEIGHT)] = renderer;
-                        }
                     }
                 }
             }
 
-            (chunks, chunksBuffer) = (chunksBuffer, chunks);
+            for (int x = 0; x < RenderersSize; x++) {
+                for (int z = 0; z < RenderersSize; z++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+						var rindex = Array3DUtility.To1D(x, y, z, RenderersSize, HEIGHT);
+						var renderer = renderers[rindex];
+						if (renderer == null)
+							continue;
+						int nx = x - d.x;
+						int nz = z - d.y;
+						if (nx < 0 || nz < 0 || nx >= RenderersSize || nz >= RenderersSize) {
+							renderersToDestroy.Push(renderer);
+							renderers[rindex] = null;
+							continue;
+						}
+						renderersBuffer[Array3DUtility.To1D(nx, y, nz, RenderersSize, HEIGHT)] = renderer;
+					}
+                }
+            }
+
+			(chunks, chunksBuffer) = (chunksBuffer, chunks);
             (renderers, renderersBuffer) = (renderersBuffer, renderers);
 
             this.center = center;
@@ -125,44 +129,53 @@ namespace Minecraft {
                     Destroy(chunkRenderer.gameObject);
                     yield return null;
                 }
+
                 yield return null;
             }
         }
 
         public bool HasChunk(Vector3Int coordinate) {
-            int index = ChunkToIndex(coordinate);
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+				return false;
+			int index = ChunkToIndex(coordinate);
             return index >= 0 && index < ChunksVolume && chunks[index] != null;
 		}
 
         public bool HasRenderer(Vector3Int coordinate) {
-            int index = RendererToIndex(coordinate);
-            return index > 0 && index < RenderersVolume && renderers[index] != null;
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+				return false;
+			int index = RendererToIndex(coordinate);
+            return index >= 0 && index < RenderersVolume && renderers[index] != null;
 		}
 
         public Chunk CreateChunk(Vector3Int coordinate) {
-            var chunk = new Chunk();
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+				throw new Exception("Coordinate is out of range");
+			var chunk = new Chunk();
             chunk.Coordinate = coordinate;
             chunks[ChunkToIndex(coordinate)] = chunk;
             return chunk;
         }
 
         public Chunk GetChunk(Vector3Int coordinate) {
-            return chunks[ChunkToIndex(coordinate)];
-		}
-
-		public Chunk TryGetChunk(Vector3Int coordinate) {
+            if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+                return null;
 			int index = ChunkToIndex(coordinate);
-			if (index > 0 && index < ChunksVolume)
-                return chunks[index];
+			if (index >= 0 && index < ChunksVolume)
+				return chunks[index];
             return null;
 		}
 
 		public void SetChunk(Vector3Int coordinate, Chunk chunk) {
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+				throw new Exception("Coordinate is out of range");
 			chunks[ChunkToIndex(coordinate)] = chunk;
 		}
 
         public ChunkRenderer CreateRenderer(Vector3Int coordinate) {
-            var renderer = Instantiate(this.renderer, transform);
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+				throw new Exception("Coordinate is out of range");
+			var renderer = Instantiate(this.renderer, transform);
             var chunk = GetOrCreateChunk(coordinate);
             renderer.Initialize(chunk);
             renderers[RendererToIndex(coordinate)] = renderer;
@@ -170,8 +183,13 @@ namespace Minecraft {
         }
 
 		public bool TryGetChunk(Vector3Int coordinate, out Chunk chunk) {
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE) {
+                chunk = null;
+                return false;
+            }
+
 			int index = ChunkToIndex(coordinate);
-			if (index > 0 && index < ChunksVolume) {
+			if (index >= 0 && index < ChunksVolume) {
                 chunk = chunks[index];
                 return chunk != null;
             }
@@ -181,8 +199,13 @@ namespace Minecraft {
 		}
 
 		public bool TryGetRenderer(Vector3Int coordinate, out ChunkRenderer renderer) {
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE) {
+				renderer = null;
+				return false;
+			}
+
 			int index = RendererToIndex(coordinate);
-			if (index > 0 && index < RenderersVolume) {
+			if (index >= 0 && index < RenderersVolume) {
 				renderer = renderers[index];
 				return renderer != null;
 			}
@@ -204,11 +227,15 @@ namespace Minecraft {
         }
 
         public void DestroyChunk(Vector3Int coordinate) {
-            chunks[ChunkToIndex(coordinate)] = null;
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+				throw new Exception("Coordinate is out of range");
+			chunks[ChunkToIndex(coordinate)] = null;
         }
 
         public void DestroyRenderer(Vector3Int coordinate) {
-            var index = RendererToIndex(coordinate);
+			if (coordinate.y == -1 || coordinate.y == HEIGHT * Chunk.SIZE)
+				throw new Exception("Coordinate is out of range");
+			var index = RendererToIndex(coordinate);
             Destroy(renderers[index]);
             renderers[index] = null;
         }
@@ -413,14 +440,10 @@ namespace Minecraft {
         }
 
         private void Awake() {
-            chunks = new Chunk[(DrawDistance * 2 + 3) * (DrawDistance * 2 + 3) * HEIGHT];
-            Array.Fill(chunks, null);
-            chunksBuffer = new Chunk[(DrawDistance * 2 + 3) * (DrawDistance * 2 + 3) * HEIGHT];
-            Array.Fill(chunksBuffer, null);
+            chunks = new Chunk[ChunksVolume];
+            chunksBuffer = new Chunk[ChunksVolume];
             renderers = new ChunkRenderer[RenderersVolume];
-            Array.Fill(renderers, null);
             renderersBuffer = new ChunkRenderer[RenderersVolume];
-            Array.Fill(renderersBuffer, null);
 
             LightCalculator.SetBlockDataManager(BlockDataProvider);
             LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
@@ -447,5 +470,17 @@ namespace Minecraft {
                     renderer.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Data, BlockDataProvider), MaterialManager);
             }
         }
+
+		private void OnDrawGizmos() {
+			if (debugChunks) {
+                foreach (var chunk in chunks) {
+                    if (chunk == null)
+                        continue;
+                    Gizmos.color = Color.green;
+                    Gizmos.DrawWireCube(chunk.Coordinate * Chunk.SIZE + Vector3.one * Chunk.SIZE / 2.0f, 
+                        Vector3.one * Chunk.SIZE - Vector3.one * 0.01f);
+                }
+            }
+		}
 	}
 }

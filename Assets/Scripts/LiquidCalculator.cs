@@ -1,8 +1,6 @@
 ﻿using Minecraft.Utilities;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace Minecraft {
 	public class LiquidCalculator {
@@ -23,7 +21,7 @@ namespace Minecraft {
 		private readonly Queue<Entry> removeQueue = new();
 		private readonly Queue<Entry> addQueue = new();
 
-		private static BlockDataProvider BlockDataProvider { get; set; }
+		private static BlockProvider BlockDataProvider { get; set; }
 
 		private static readonly Vector3Int[] blockSides = {
 			new Vector3Int( 0,  0,  1),
@@ -41,7 +39,7 @@ namespace Minecraft {
 			new Vector3Int(-1,  0,  0),
 		};
 
-		public static void SetBlockDataManager(BlockDataProvider blockDataManager) {
+		public static void SetBlockDataManager(BlockProvider blockDataManager) {
 			BlockDataProvider = blockDataManager;
 		}
 
@@ -144,8 +142,6 @@ namespace Minecraft {
 		}
 
 		public void Calculate() {
-			Profiler.BeginSample("LiquidCalculator.Calculate");
-
 			var toRemove = new Queue<Entry>();
 			var toAdd = new Queue<Entry>();
 
@@ -224,8 +220,6 @@ namespace Minecraft {
 				removeQueue.Enqueue(toRemove.Dequeue());
 			for (int i = 0; i < toAdd.Count; i++)
 				addQueue.Enqueue(toAdd.Dequeue());
-
-			Profiler.EndSample();
 		}
 	}
 }

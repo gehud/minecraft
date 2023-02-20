@@ -2,7 +2,7 @@
 
 namespace Minecraft {
     [CreateAssetMenu]
-    public class BlockData : ScriptableObject {
+    public class Block : ScriptableObject {
         public BlockTexturingData TexturingData => texturingData;
         [SerializeField] private BlockTexturingData texturingData;
 

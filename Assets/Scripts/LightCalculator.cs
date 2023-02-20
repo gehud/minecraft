@@ -23,7 +23,7 @@ namespace Minecraft {
         private readonly ConcurrentQueue<Entry> addQueue = new();
         private readonly ConcurrentQueue<Entry> removeQueue = new();
 
-		private static BlockDataProvider BlockDataProvider { get; set; }
+		private static BlockProvider BlockDataProvider { get; set; }
 
         private static readonly Vector3Int[] blockSides = {
             new Vector3Int( 0,  0,  1),
@@ -34,7 +34,7 @@ namespace Minecraft {
             new Vector3Int(-1,  0,  0),
         };
 
-        public static void SetBlockDataManager(BlockDataProvider blockDataManager) {
+        public static void SetBlockDataManager(BlockProvider blockDataManager) {
             BlockDataProvider = blockDataManager;
         }
 
@@ -106,11 +106,11 @@ namespace Minecraft {
 
         public static void AddSunlight(World world, Vector2Int column) {
             int startX = column.x * Chunk.SIZE;
-            int endX = column.x * Chunk.SIZE + Chunk.SIZE - 1;
+            int endX = column.x * Chunk.SIZE + Chunk.SIZE;
             int startZ = column.y * Chunk.SIZE;
-            int endZ = column.y * Chunk.SIZE + Chunk.SIZE - 1;
-            for (int x = startX; x <= endX; x++)
-                for (int z = startZ; z <= endZ; z++) {
+            int endZ = column.y * Chunk.SIZE + Chunk.SIZE;
+            for (int x = startX; x < endX; x++)
+                for (int z = startZ; z < endZ; z++) {
                     for (int y = World.HEIGHT * Chunk.SIZE - 1; y >= 0; y--) {
                         var blockCoordinate = new Vector3Int(x, y, z);
                         var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);

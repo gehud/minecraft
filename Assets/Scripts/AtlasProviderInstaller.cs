@@ -2,14 +2,14 @@
 using Zenject;
 
 namespace Minecraft {
-	public class ChunkDataGeneratorInstaller : MonoInstaller {
+	public class AtlasProviderInstaller : MonoInstaller {
 		[SerializeField]
-		private ChunkDataGenerator chunkDataGenerator;
+		private AtlasProvider atlasManager;
 
 		public override void InstallBindings() {
 			Container
-				.Bind<ChunkDataGenerator>()
-				.FromInstance(chunkDataGenerator)
+				.Bind<AtlasProvider>()
+				.FromInstance(atlasManager)
 				.AsSingle()
 				.NonLazy();
 		}

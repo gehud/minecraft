@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace Minecraft {
-    public class ChunkDataGenerator : MonoBehaviour {
+    public class ChunkGenerator : MonoBehaviour {
         [SerializeField] private Vector2 offset;
         [SerializeField, Min(0)] private int surfaceOffset = 64;
         [SerializeField, Min(0)] private int waterLevel = 45;
@@ -48,7 +48,7 @@ namespace Minecraft {
                         result.LiquidMap.Set(x, y, z, BlockType.Water, LiquidMap.MAX);
                     } else {
                         result.BlockMap[x, y, z] = BlockType.Air;
-                        if (blockCoordinate.y == surfaceHeight + 1 
+                        if (blockCoordinate.y == surfaceHeight + 1
                         && blockCoordinate.y > waterLevel + 3
                         && treePositions.Contains(new Vector2Int(x, z))) {
                             result.TreeData.Positions.Add(new Vector3Int(x, y, z));

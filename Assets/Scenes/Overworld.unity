@@ -288,6 +288,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   renderer: {fileID: 3682535211841024476, guid: 64a4a310bdabce14aabccd5228774dc3, type: 3}
+  debugChunks: 0
   tick: 0.25
 --- !u!4 &162616925
 Transform:
@@ -315,7 +316,7 @@ GameObject:
   - component: {fileID: 257367469}
   - component: {fileID: 257367470}
   m_Layer: 0
-  m_Name: Atlas Manager
+  m_Name: Atlas Provider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -334,7 +335,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1999737151}
-  m_RootOrder: 5
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &257367470
 MonoBehaviour:
@@ -1796,7 +1797,7 @@ GameObject:
   - component: {fileID: 978890319}
   - component: {fileID: 978890318}
   m_Layer: 0
-  m_Name: Chunk Data Generator
+  m_Name: Chunk Generator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2577,7 +2578,7 @@ GameObject:
   - component: {fileID: 1388594961}
   - component: {fileID: 1388594960}
   m_Layer: 0
-  m_Name: Material Manager
+  m_Name: Material Provider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2595,13 +2596,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4b0339368f5589488bd3d43afd4a5ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  materialPairs:
-  - Type: 0
-    Material: {fileID: 2100000, guid: 4411663840250d5478ad18e2080e01d6, type: 2}
-  - Type: 1
-    Material: {fileID: 2100000, guid: c7fb93f2fc85d54489a4477ecb16423f, type: 2}
-  - Type: 2
-    Material: {fileID: 2100000, guid: 423ed16c7e77a3d43984a4e09931a678, type: 2}
+  data:
+  - {fileID: 2100000, guid: 4411663840250d5478ad18e2080e01d6, type: 2}
+  - {fileID: 2100000, guid: c7fb93f2fc85d54489a4477ecb16423f, type: 2}
+  - {fileID: 2100000, guid: 423ed16c7e77a3d43984a4e09931a678, type: 2}
 --- !u!4 &1388594961
 Transform:
   m_ObjectHideFlags: 0
@@ -2615,7 +2613,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1999737151}
-  m_RootOrder: 4
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1392060667
 GameObject:
@@ -2628,7 +2626,7 @@ GameObject:
   - component: {fileID: 1392060669}
   - component: {fileID: 1392060668}
   m_Layer: 0
-  m_Name: Block Data Provider
+  m_Name: Block Provider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2656,6 +2654,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 169a609f5b1038f4ca1d8aaa8b92c5cb, type: 2}
   - {fileID: 11400000, guid: acc1e747c2e8f7b418cd455b99219012, type: 2}
   - {fileID: 11400000, guid: 7323c000b2c2e274c94956208b440fbe, type: 2}
+  - {fileID: 11400000, guid: 04379259ecc4a3d41a2b0d10b222a820, type: 2}
 --- !u!4 &1392060669
 Transform:
   m_ObjectHideFlags: 0
@@ -2866,7 +2865,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 162616924}
-        m_TargetAssemblyTypeName: Minecraft.World, Assembly-CSharp
+        m_TargetAssemblyTypeName: Minecraft.World, Minecraft
         m_MethodName: StartLiquidCalculation
         m_Mode: 1
         m_Arguments:
@@ -3723,8 +3722,8 @@ Transform:
   - {fileID: 2073263356}
   - {fileID: 1734139298}
   - {fileID: 1392060669}
-  - {fileID: 1388594961}
   - {fileID: 257367469}
+  - {fileID: 1388594961}
   - {fileID: 978890319}
   - {fileID: 1689205756}
   m_Father: {fileID: 0}

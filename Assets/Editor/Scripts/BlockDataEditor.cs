@@ -2,7 +2,7 @@
 using UnityEngine;
 
 namespace Minecraft.Editor {
-	[CustomEditor(typeof(BlockData))]
+	[CustomEditor(typeof(Block))]
 	public class BlockDataEditor : UnityEditor.Editor {
 		private SerializedProperty texturingData;
 		private SerializedProperty materialType;

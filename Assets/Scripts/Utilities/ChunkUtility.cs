@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -34,7 +33,7 @@ namespace Minecraft.Utilities {
             });
         }
 
-        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunk, BlockDataProvider blockDataProvider) {
+        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunk, BlockProvider blockProvider) {
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
                 int vertexCount = meshData.Vertices.Count;
                 if (force && fliped || aof1 + aof3 < aof2 + aof4) {
@@ -67,35 +66,35 @@ namespace Minecraft.Utilities {
             }
 
             var neighbours = new Chunk[3 * 3 * 3];
-            neighbours[0] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.back);
-            neighbours[1] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.back);
-            neighbours[2] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.back);
-            neighbours[3] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.back);
-            neighbours[4] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.back);
-            neighbours[5] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.back);
-            neighbours[6] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.back);
-            neighbours[7] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.back);
-            neighbours[8] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.back);
+            neighbours[0] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.back);
+            neighbours[1] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.back);
+            neighbours[2] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.back);
+            neighbours[3] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.back);
+            neighbours[4] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.back);
+            neighbours[5] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.back);
+            neighbours[6] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.back);
+            neighbours[7] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.back);
+            neighbours[8] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.back);
 
-            neighbours[9] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.zero);
-            neighbours[10] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.zero);
-            neighbours[11] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.zero);
-            neighbours[12] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.zero);
-            neighbours[13] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.zero);
-            neighbours[14] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.zero);
-            neighbours[15] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.zero);
-            neighbours[16] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.zero);
-            neighbours[17] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.zero);
+            neighbours[9] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.zero);
+            neighbours[10] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.zero);
+            neighbours[11] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.zero);
+            neighbours[12] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.zero);
+            neighbours[13] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.zero);
+            neighbours[14] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.zero);
+            neighbours[15] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.zero);
+            neighbours[16] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.zero);
+            neighbours[17] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.zero);
 
-            neighbours[18] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.forward);
-            neighbours[19] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.forward);
-            neighbours[20] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.forward);
-            neighbours[21] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.forward);
-            neighbours[22] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.forward);
-            neighbours[23] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.forward);
-            neighbours[24] = world.TryGetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.forward);
-            neighbours[25] = world.TryGetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.forward);
-            neighbours[26] = world.TryGetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.forward);
+            neighbours[18] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.forward);
+            neighbours[19] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.forward);
+            neighbours[20] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.forward);
+            neighbours[21] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.forward);
+            neighbours[22] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.forward);
+            neighbours[23] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.forward);
+            neighbours[24] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.forward);
+            neighbours[25] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.forward);
+            neighbours[26] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.forward);
 
             int CoordinateToIndex(Vector3Int coordinate) {
                 return Array3DUtility.To1D(
@@ -125,14 +124,14 @@ namespace Minecraft.Utilities {
 					return neighbour.LightMap.Get(localBlockCoordinate, chanel);
 				}
 
-				return LightMap.MIN;
-			}
+                return LightMap.MAX;
+            }
 
 			byte GetLiquidAmount(int x, int y, int z, BlockType liquidType) {
 				Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunk.Coordinate, new Vector3Int(x, y, z));
 				var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
 				var neighbour = neighbours[CoordinateToIndex(chunkCoordinate)];
-				if (neighbour != null) {
+				if (neighbour != null) {    
 					var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
 					return neighbour.LiquidMap.Get(localBlockCoordinate, liquidType);
 				}
@@ -141,15 +140,15 @@ namespace Minecraft.Utilities {
 			}
 
 			bool IsSolid(int x, int y, int z) {
-				return blockDataProvider.Get(GetBlock(x, y, z)).IsSolid;
+				return blockProvider.Get(GetBlock(x, y, z)).IsSolid;
 			}
 
 			bool IsLiquid(int x, int y, int z) {
-				return blockDataProvider.Get(GetBlock(x, y, z)).IsLiquid;
+				return blockProvider.Get(GetBlock(x, y, z)).IsLiquid;
 			}
 
 			bool IsVoxelTransparent(int x, int y, int z) {
-				return blockDataProvider.Get(GetBlock(x, y, z)).IsTransparent;
+				return blockProvider.Get(GetBlock(x, y, z)).IsTransparent;
 			}
 
 			ConcurrentDictionary<MaterialType, MeshData> result = new();
@@ -162,7 +161,7 @@ namespace Minecraft.Utilities {
 
                 if (blockType != BlockType.Air) {
                     var localBlockCoordinate = new Vector3Int(x, y, z);
-                    var blockData = blockDataProvider.Get(blockType);
+                    var blockData = blockProvider.Get(blockType);
 					MaterialType materialType = blockData.MaterialType;
                     if (!result.ContainsKey(materialType))
                         result.TryAdd(materialType, new MeshData());

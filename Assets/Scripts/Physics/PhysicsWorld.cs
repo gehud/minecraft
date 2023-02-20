@@ -22,7 +22,7 @@ namespace Minecraft.Physics {
 		private readonly World World;
 
 		[Inject]
-		private readonly BlockDataProvider BlockDataProvider;
+		private readonly BlockProvider BlockDataProvider;
 
 		private List<Hitbox> hitboxes = new();
 

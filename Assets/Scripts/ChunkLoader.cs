@@ -27,13 +27,13 @@ namespace Minecraft {
         private readonly World World;
 
         [Inject]
-        private readonly BlockDataProvider BlockDataProvider;
+        private readonly BlockProvider BlockDataProvider;
 
         [Inject]
-        private readonly MaterialManager MaterialManager;
+        private readonly MaterialProvider MaterialManager;
 
         [Inject]
-        private readonly ChunkDataGenerator ChunkDataGenerator;
+        private readonly ChunkGenerator ChunkDataGenerator;
 
         private Vector3Int GetPlayerChunk() {
             Vector3Int coordinate = CoordinateUtility.ToCoordinate(player.position);
@@ -45,8 +45,6 @@ namespace Minecraft {
             rendererToCreateCoordinates.Clear();
             sunlightCoordinatesToCalculate.Clear();
             World.Center = new Vector2Int(lastPlayerChunk.x, lastPlayerChunk.z);
-            ConcurrentStack<Vector3Int> loadedCoordinates = new();
-            ConcurrentStack<Vector3Int> visibleCoordinates = new();
             int startX = lastPlayerChunk.x - World.DrawDistance - 1;
             int endX = lastPlayerChunk.x + World.DrawDistance + 1;
             int startZ = lastPlayerChunk.z - World.DrawDistance - 1;
@@ -56,9 +54,7 @@ namespace Minecraft {
                     bool sunlight = false;
                     for (int y = 0; y < World.HEIGHT; y++) {
                         Vector3Int chunkCoordinate = new Vector3Int(x, y, z);
-                        loadedCoordinates.Push(chunkCoordinate);
                         if (x != startX && x != endX && z != startZ && z != endZ) {
-                            visibleCoordinates.Push(chunkCoordinate);
                             if (!World.HasRenderer(chunkCoordinate))
                                 rendererToCreateCoordinates.Push(chunkCoordinate);
                         }
@@ -95,24 +91,18 @@ namespace Minecraft {
             await Task.Run(() => GenerateLoadData());
 
 			ConcurrentDictionary<Vector3Int, Chunk> generatedData = new();
+            ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => {
                 foreach (var item in chunkToCreateCoordinates)
                     generatedData.TryAdd(item, ChunkDataGenerator.GenerateChunkData(item));
-            });
-
-            foreach (var item in generatedData) {
-                World.SetChunk(item.Key, item.Value);
-            }
-
-            await Task.Run(() => {
+                foreach (var item in generatedData) {
+                    World.SetChunk(item.Key, item.Value);
+                }
                 foreach (var item in generatedData) {
                     foreach (var treeRoot in item.Value.TreeData.Positions) {
                         GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
                     }
                 }
-            });
-
-            await Task.Run(() => { 
                 foreach (var item in generatedData) {
                     ChunkUtility.For((localBlockCoordinate) => {
                         if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
@@ -121,16 +111,9 @@ namespace Minecraft {
                         }
                     });
                 }
-            });
-
-            await Task.Run(() => {
                 foreach (var item in sunlightCoordinatesToCalculate)
                     LightCalculator.AddSunlight(World, item);
                 World.LightCalculatorSun.Calculate();
-            });
-
-            ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
-            await Task.Run(() => {
                 foreach (var item in rendererToCreateCoordinates)
                     generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.GetChunk(item), BlockDataProvider));
             });
@@ -149,17 +132,21 @@ namespace Minecraft {
                 blockCoordinate += Vector3Int.up;
             }
 
-            for (int x = -2; x <= 2; x++)
-                for (int y = -2; y <= 2; y++)
+            for (int x = -2; x <= 2; x++) {
+                for (int y = -2; y <= 2; y++) {
                     for (int z = -2; z <= 2; z++) {
                         Vector3Int leavesCoordinate = blockCoordinate + new Vector3Int(x, y, z);
 						Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
 						if (World.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
+                            if (chunk.Coordinate != chunkCoordinate)
+                                Debug.Log("Err");
 							Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
                             if (!BlockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
 							    chunk.BlockMap[localBlockCoordinate] = BlockType.Leaves;
 						}
 					}
+                }
+            }
         }
 
         private IEnumerator CheckLoadRequirement() {

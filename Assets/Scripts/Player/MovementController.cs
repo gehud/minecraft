@@ -52,7 +52,7 @@ namespace Minecraft.Player {
         private readonly World World;
 
         [Inject]
-        private readonly BlockDataProvider BlockDataProvider;
+        private readonly BlockProvider BlockDataProvider;
 
         [Inject]
         private readonly PhysicsWorld PhysicsWorld;

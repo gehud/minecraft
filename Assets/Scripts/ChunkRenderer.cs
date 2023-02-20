@@ -21,7 +21,7 @@ namespace Minecraft {
 			transform.position = data.Coordinate * Chunk.SIZE;
 		}
 
-		public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshData, MaterialManager materialManager) {
+		public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshData, MaterialProvider materialManager) {
             List<SubMeshDescriptor> subMeshDescriptors = new();
             List<ushort> indices = new();
             List<Vertex> vertices = new();
@@ -33,7 +33,7 @@ namespace Minecraft {
                     indices.Add((ushort)(pair.Value.Indices[i] + vertexCount));
                 }
                 vertices.AddRange(pair.Value.Vertices);
-                materials.Add(materialManager.Materials[pair.Key]);
+                materials.Add(materialManager.Get(pair.Key));
             }
 
             mesh.SetVertexBufferParams(vertices.Count,

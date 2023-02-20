@@ -25,7 +25,7 @@ namespace Minecraft.UI {
 		private TMP_Text erosionText;
 
 		[Inject]
-		private ChunkDataGenerator ChunkDataGenerator { get; }
+		private ChunkGenerator ChunkDataGenerator { get; }
 
 		private int framerate;
 

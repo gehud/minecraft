@@ -2,6 +2,9 @@
 
 namespace Minecraft {
     public class Chunk {
+        /// <summary>
+        /// Chunk size in blocks.
+        /// </summary>
 		public const int SIZE = 16;
 		public const int VOLUME = SIZE * SIZE * SIZE;
 

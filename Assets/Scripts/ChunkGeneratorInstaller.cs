@@ -2,14 +2,14 @@
 using Zenject;
 
 namespace Minecraft {
-	public class MaterialManagerInstaller : MonoInstaller {
+	public class ChunkGeneratorInstaller : MonoInstaller {
 		[SerializeField]
-		private MaterialManager materialManager;
+		private ChunkGenerator chunkDataGenerator;
 
 		public override void InstallBindings() {
 			Container
-				.Bind<MaterialManager>()
-				.FromInstance(materialManager)
+				.Bind<ChunkGenerator>()
+				.FromInstance(chunkDataGenerator)
 				.AsSingle()
 				.NonLazy();
 		}

@@ -7,12 +7,12 @@ namespace Minecraft {
         [SerializeField]
         private Image image;
         [SerializeField]
-        private BlockData block;
+        private Block block;
         [SerializeField, Min(1)]
         private int tiling = 10;
 
         [Inject]
-        private AtlasManager AtlasManager { get; }
+        private AtlasProvider AtlasManager { get; }
 
         private void Start() {
             var atlas = AtlasManager.GetAtlas(MaterialType.Opaque);
