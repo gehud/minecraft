@@ -1,6 +1,7 @@
 ﻿using Minecraft.Utilities;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
@@ -34,6 +35,8 @@ namespace Minecraft {
 
         [Inject]
         private readonly ChunkGenerator chunkGenerator;
+
+        private readonly CancellationTokenSource cancellationTokenSource = new();
 
         private Vector3Int GetPlayerChunk() {
             Vector3Int coordinate = CoordinateUtility.ToCoordinate(player.position);
@@ -88,18 +91,20 @@ namespace Minecraft {
         }
 
         private async void LoadChunks() {
-            await Task.Run(() => GenerateLoadData());
-
 			ConcurrentDictionary<Vector3Int, Chunk> generatedData = new();
             ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
             await Task.Run(() => {
-                foreach (var item in chunkToCreateCoordinates)
+                GenerateLoadData();
+
+				foreach (var item in chunkToCreateCoordinates)
                     generatedData.TryAdd(item, chunkGenerator.Generate(item));
+
                 foreach (var item in generatedData) {
                     foreach (var treeRoot in item.Value.TreeData.Positions) {
                         GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
                     }
                 }
+
                 foreach (var item in generatedData) {
                     ChunkUtility.For((localBlockCoordinate) => {
                         if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
@@ -108,14 +113,17 @@ namespace Minecraft {
                         }
                     });
                 }
+
                 foreach (var item in sunlightCoordinatesToCalculate)
                     LightCalculator.AddSunlight(world, item);
+
                 world.LightCalculatorSun.Calculate();
                 foreach (var item in rendererToCreateCoordinates)
                     generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.GetChunk(item), blockDataProvider));
-            });
+            }, cancellationTokenSource.Token);
 
-            StartCoroutine(GenerateChunks(world, generatedMeshDatas));
+            if (!cancellationTokenSource.IsCancellationRequested)
+                StartCoroutine(GenerateChunks(world, generatedMeshDatas));
         }
 
         private void GenerateTree(Vector3Int blockCoordinate) {
@@ -165,5 +173,13 @@ namespace Minecraft {
         private void Start() {
             StartCoroutine(WaitForWorldStartGeneration());
         }
-    }
+
+		private void OnDisable() {
+            cancellationTokenSource.Cancel();
+		}
+
+		private void OnDestroy() {
+            cancellationTokenSource.Dispose();
+		}
+	}
 }
