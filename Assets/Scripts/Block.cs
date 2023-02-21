@@ -15,7 +15,10 @@ namespace Minecraft {
         public bool IsLiquid => isLiquid;
         [SerializeField] private bool isLiquid = false;
 
-        public LightColor Emission => emission;
+		public bool IsVegetation => isVegetation;
+		[SerializeField] private bool isVegetation = false;
+
+		public LightColor Emission => emission;
         [SerializeField] private LightColor emission;
 
         public bool IsTransparent => isTransparent;

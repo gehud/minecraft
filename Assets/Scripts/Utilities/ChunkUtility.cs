@@ -29,11 +29,11 @@ namespace Minecraft.Utilities {
         }
 
 		public static void ParallelFor(Action<Vector3Int> action) {
-			Parallel.For(0, Chunk.VOLUME, (index, state) => {
+            Parallel.For(0, Chunk.VOLUME, (index, state) => {
 				var coordinate = Array3DUtility.To3D(index, Chunk.SIZE, Chunk.SIZE);
 				action(coordinate);
 			});
-		}
+        }
 
 		public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunk, BlockProvider blockProvider) {
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
@@ -55,16 +55,6 @@ namespace Minecraft.Utilities {
                     meshData.Indices.Add((ushort)(2 + vertexCount));
                     meshData.Indices.Add((ushort)(3 + vertexCount));
                 }
-            }
-
-            void AddFaceColliderIndices(MeshData meshData) {
-                int vertexCount = meshData.ColliderVertices.Count;
-                meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(1 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(3 + vertexCount));
             }
 
             var neighbours = new Chunk[3 * 3 * 3];
@@ -154,14 +144,50 @@ namespace Minecraft.Utilities {
 			}
 
 			ConcurrentDictionary<MaterialType, MeshData> result = new();
-#if CHUNK_UTILITY_PARALLEL_FOR
             ParallelFor((x, y, z) => {
-#else
-            For((x, y, z) => { 
-#endif
                 BlockType blockType = chunk.BlockMap[x, y, z];
 
-                if (blockType != BlockType.Air) {
+                if (blockProvider.Get(blockType).IsVegetation) {
+					var localBlockCoordinate = new Vector3Int(x, y, z);
+					var blockData = blockProvider.Get(blockType);
+					MaterialType materialType = blockData.MaterialType;
+					if (!result.ContainsKey(materialType))
+						result.TryAdd(materialType, new MeshData());
+
+					float atlasStep = 16.0f / 256.0f;
+					bool isLiquid = blockData.IsLiquid;
+					var meshData = result[materialType];
+
+					Vector2 atlasPosition = (Vector2)blockData.TexturingData.FrontFace * atlasStep;
+                    float r = GetLight(x, y, z, LightChanel.Red) / (float)LightMap.MAX;
+                    float g = GetLight(x, y, z, LightChanel.Green) / (float)LightMap.MAX;
+                    float b = GetLight(x, y, z, LightChanel.Blue) / (float)LightMap.MAX;
+                    float s = GetLight(x, y, z, LightChanel.Sun) / (float)LightMap.MAX;
+
+					lock (lockObject) {
+                        var vertexCount = meshData.Vertices.Count;
+                        meshData.Indices.Add((ushort)(vertexCount + 0));
+                        meshData.Indices.Add((ushort)(vertexCount + 1));
+                        meshData.Indices.Add((ushort)(vertexCount + 2));
+                        meshData.Indices.Add((ushort)(vertexCount + 0));
+                        meshData.Indices.Add((ushort)(vertexCount + 2));
+                        meshData.Indices.Add((ushort)(vertexCount + 3));
+                        meshData.Vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 0.0f, atlasPosition.x + 0.0f * atlasStep, atlasPosition.y + 0.0f * atlasStep, r, g, b, s, 0.0f));
+                        meshData.Vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 0.0f, atlasPosition.x + 0.0f * atlasStep, atlasPosition.y + 1.0f * atlasStep, r, g, b, s, 0.0f));
+                        meshData.Vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 1.0f, atlasPosition.x + 1.0f * atlasStep, atlasPosition.y + 1.0f * atlasStep, r, g, b, s, 0.0f));
+                        meshData.Vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 1.0f, atlasPosition.x + 1.0f * atlasStep, atlasPosition.y + 0.0f * atlasStep, r, g, b, s, 0.0f));
+						meshData.Indices.Add((ushort)(vertexCount + 4));
+						meshData.Indices.Add((ushort)(vertexCount + 5));
+						meshData.Indices.Add((ushort)(vertexCount + 6));
+						meshData.Indices.Add((ushort)(vertexCount + 4));
+						meshData.Indices.Add((ushort)(vertexCount + 6));
+						meshData.Indices.Add((ushort)(vertexCount + 7));
+						meshData.Vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 1.0f, atlasPosition.x + 0.0f * atlasStep, atlasPosition.y + 0.0f * atlasStep, r, g, b, s, 0.0f));
+						meshData.Vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 1.0f, atlasPosition.x + 0.0f * atlasStep, atlasPosition.y + 1.0f * atlasStep, r, g, b, s, 0.0f));
+						meshData.Vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 0.0f, atlasPosition.x + 1.0f * atlasStep, atlasPosition.y + 1.0f * atlasStep, r, g, b, s, 0.0f));
+						meshData.Vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 0.0f, atlasPosition.x + 1.0f * atlasStep, atlasPosition.y + 0.0f * atlasStep, r, g, b, s, 0.0f));
+					}
+                } else if (blockType != BlockType.Air) {
                     var localBlockCoordinate = new Vector3Int(x, y, z);
                     var blockData = blockProvider.Get(blockType);
 					MaterialType materialType = blockData.MaterialType;
@@ -169,7 +195,6 @@ namespace Minecraft.Utilities {
                         result.TryAdd(materialType, new MeshData());
 
                     float atlasStep = 16.0f / 256.0f;
-                    bool isSolid = IsSolid(x, y, z);
                     bool isLiquid = blockData.IsLiquid;
                     var meshData = result[materialType];
 
@@ -351,25 +376,13 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 				    }
 
                     // Left face.
@@ -499,25 +512,13 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-						AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+						    AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 
 					// Top face.
@@ -701,26 +702,14 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
-                        lock (lockObject) {
-#endif
 					    bool fliped = isLiquid && (lqt045 || lqt225);
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4, true, fliped);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
+                        lock (lockObject) {
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4, true, fliped);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 
 					// Bottom face.
@@ -814,25 +803,13 @@ namespace Minecraft.Utilities {
 							uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep);
 						}
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-				        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir1));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir2));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir3));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir4));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+				            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir1));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir2));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir3));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir4));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 
 					// Front face.
@@ -962,25 +939,13 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 
 					// Back face.
@@ -1110,25 +1075,13 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-	                    AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
+	                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 				}
             });

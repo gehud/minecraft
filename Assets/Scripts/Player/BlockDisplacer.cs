@@ -15,10 +15,13 @@ namespace Minecraft.Player {
         private BlockType currentBlock = BlockType.Stone;
 
         [Inject]
-        private World World { get; }
+        private readonly World world;
 
         [Inject]
-        private PhysicsWorld PhysicsSolver { get; }
+        private readonly PhysicsWorld physicsSolver;
+
+        [Inject]
+        private readonly BlockProvider blockProvider;
 
         private void Awake() {
             voxelTypeText.text = currentBlock.ToString();
@@ -27,17 +30,21 @@ namespace Minecraft.Player {
         private void Update() {
             Camera camera = Camera.main;
             if (Input.GetMouseButtonDown(0)) {
-                if (PhysicsSolver.Raycast(camera.ScreenPointToRay(Input.mousePosition), placementDistance, out RaycastHit hitInfo)) {
+                if (physicsSolver.Raycast(camera.ScreenPointToRay(Input.mousePosition), placementDistance, out RaycastHit hitInfo)) {
                     Vector3Int blockCoordinate = Vector3Int.FloorToInt(hitInfo.point);
-                    World.DestroyVoxel(blockCoordinate);
+                    Vector3Int normal = Vector3Int.RoundToInt(hitInfo.normal);
+					if (blockProvider.Get(world.GetBlock(blockCoordinate + normal)).IsVegetation)
+                        world.DestroyVoxel(blockCoordinate + normal);
+                    else
+                        world.DestroyVoxel(blockCoordinate);
                 }
             } else if (Input.GetMouseButtonDown(1)) {
-                if (PhysicsSolver.Raycast(camera.ScreenPointToRay(Input.mousePosition), placementDistance, out RaycastHit hitInfo)) {
+                if (physicsSolver.Raycast(camera.ScreenPointToRay(Input.mousePosition), placementDistance, out RaycastHit hitInfo)) {
                     Vector3Int blockCoordinate = Vector3Int.FloorToInt(hitInfo.point + hitInfo.normal);
 					bool overlapPlayer = blockCoordinate == Vector3Int.FloorToInt(player.position)
                         || blockCoordinate == Vector3Int.FloorToInt(player.position + Vector3.up);
                     if (!overlapPlayer)
-                        World.PlaceVoxel(blockCoordinate, currentBlock);
+                        world.PlaceVoxel(blockCoordinate, currentBlock);
                 }
             }
 

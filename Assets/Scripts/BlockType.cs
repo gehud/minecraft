@@ -10,5 +10,9 @@
         Leaves,
         JackOLantern,
         Bedrock,
+        Gravel,
+        TallGrass,
+        RedFlower,
+        YellowFlower,
     }
 }

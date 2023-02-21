@@ -419,8 +419,8 @@ MonoBehaviour:
   continentalnessText: {fileID: 1181730287}
   peaksAndValleysText: {fileID: 1508912168}
   erosionText: {fileID: 120033579}
-  temperatureText: {fileID: 2022449809}
-  humidityText: {fileID: 2128295472}
+  temperatureText: {fileID: 2018518660}
+  humidityText: {fileID: 1459545198}
 --- !u!114 &319222601
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2256,6 +2256,9 @@ MonoBehaviour:
   temperature: {fileID: 11400000, guid: a1e5e700b7974564a856229a12329924, type: 2}
   humidity: {fileID: 11400000, guid: 027c92ec393335a47acfa53d868ae181, type: 2}
   trees: {fileID: 11400000, guid: c12518491aa9a574a95cba93b9e7b0e9, type: 2}
+  beachOffset: {fileID: 11400000, guid: 08cfa5a5fdb514c4c994b8e1691cdddd, type: 2}
+  waterDetails: {fileID: 11400000, guid: b63c21cf4fe692c4793bfe08da102a24, type: 2}
+  vegetation: {fileID: 11400000, guid: 5ed0270fdb3a24b4eb3dac9d1d0fcd72, type: 2}
 --- !u!1 &1305005596
 GameObject:
   m_ObjectHideFlags: 0
@@ -2602,7 +2605,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   data:
   - {fileID: 2100000, guid: 4411663840250d5478ad18e2080e01d6, type: 2}
-  - {fileID: 2100000, guid: c7fb93f2fc85d54489a4477ecb16423f, type: 2}
+  - {fileID: 2100000, guid: d5b4f82d58e21d543b7dd559b529f729, type: 2}
   - {fileID: 2100000, guid: 423ed16c7e77a3d43984a4e09931a678, type: 2}
 --- !u!4 &1388594961
 Transform:
@@ -2659,6 +2662,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: acc1e747c2e8f7b418cd455b99219012, type: 2}
   - {fileID: 11400000, guid: 7323c000b2c2e274c94956208b440fbe, type: 2}
   - {fileID: 11400000, guid: 04379259ecc4a3d41a2b0d10b222a820, type: 2}
+  - {fileID: 11400000, guid: 12634407f21f94a43ad1c64455a17ad4, type: 2}
+  - {fileID: 11400000, guid: 88beb02324366694b999dea58a90a49b, type: 2}
+  - {fileID: 11400000, guid: 51b8dd153eda75e41b162cd6d7bbce76, type: 2}
+  - {fileID: 11400000, guid: 092f24bdde83a5d4b8007563eca8d0ba, type: 2}
 --- !u!4 &1392060669
 Transform:
   m_ObjectHideFlags: 0
@@ -2730,6 +2737,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 2
   m_VerticalFit: 2
+--- !u!114 &1459545198 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+  m_PrefabInstance: {fileID: 915754632}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1459545191}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1508912166 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5152690321446478625, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
@@ -3831,6 +3849,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 2
   m_VerticalFit: 2
+--- !u!114 &2018518660 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+  m_PrefabInstance: {fileID: 1831004959}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018518653}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2022449804 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5152690321446478625, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
@@ -3850,17 +3879,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 2
   m_VerticalFit: 2
---- !u!114 &2022449809 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
-  m_PrefabInstance: {fileID: 501174467}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2022449804}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &2031302652
 GameObject:
   m_ObjectHideFlags: 0
@@ -4127,17 +4145,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 2
   m_VerticalFit: 2
---- !u!114 &2128295472 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
-  m_PrefabInstance: {fileID: 1106246609}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2128295467}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &2133633142
 GameObject:
   m_ObjectHideFlags: 0

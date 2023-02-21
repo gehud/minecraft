@@ -18,6 +18,9 @@ namespace Minecraft {
         [SerializeField] private Noise2D temperature;
         [SerializeField] private Noise2D humidity;
         [SerializeField] private Noise2D trees;
+        [SerializeField] private Noise2D beachOffset;
+        [SerializeField] private Noise2D waterDetails;
+        [SerializeField] private Noise2D vegetation;
 
         [Inject]
         private readonly World world;
@@ -45,7 +48,7 @@ namespace Minecraft {
 		public Chunk Generate(Vector3Int coordinate) {
             Chunk result = world.CreateChunk(coordinate);
 
-            var treePositions = GetLocalMaxima(GenerateTreeNoise(new Vector2Int(coordinate.x, coordinate.z)));
+            var treePositions = GetLocalMaxima(GenerateColumnNoise(new Vector2Int(coordinate.x, coordinate.z), trees));
 
             ChunkUtility.For((x, y, z) => {
                 Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(coordinate, new Vector3Int(x, y, z));
@@ -59,7 +62,7 @@ namespace Minecraft {
                 float humidity = GetHumidity(blockCoordinate);
 
                 BiomeType biome;
-                if (temperature > 0.9f)
+                if (temperature > 0.8f)
                     biome = BiomeType.Desert;
                 else
                     biome = BiomeType.Forest;
@@ -70,10 +73,21 @@ namespace Minecraft {
                         result.LiquidMap.Set(x, y, z, BlockType.Water, LiquidMap.MAX);
                     } else {
                         result.BlockMap[x, y, z] = BlockType.Air;
-                        if (biome != BiomeType.Desert && blockCoordinate.y == surfaceHeight + 1
-                        && blockCoordinate.y > waterLevel + 3
-                        && treePositions.Contains(new Vector2Int(x, z))) {
-                            result.TreeData.Positions.Add(new Vector3Int(x, y, z));
+                        if (biome != BiomeType.Desert && blockCoordinate.y == surfaceHeight + 1 && blockCoordinate.y > waterLevel + 3) {
+                            if (treePositions.Contains(new Vector2Int(x, z)))
+                                result.TreeData.Positions.Add(new Vector3Int(x, y, z));
+                            else {
+								var vegetation = this.vegetation.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+								if (vegetation >= 0.5f) {
+									if (vegetation <= 0.9f) {
+										result.BlockMap[x, y, z] = BlockType.TallGrass;
+									} else if (vegetation > 0.9f && vegetation <= 0.95f) {
+										result.BlockMap[x, y, z] = BlockType.RedFlower;
+									} else {
+										result.BlockMap[x, y, z] = BlockType.YellowFlower;
+									}
+								}
+							}
                         }
                     }
                 } else {
@@ -81,9 +95,19 @@ namespace Minecraft {
                         if (biome == BiomeType.Desert) {
                             result.BlockMap[x, y, z] = BlockType.Sand;
                         } else {
-                            if (blockCoordinate.y <= waterLevel + 2) {
-                                result.BlockMap[x, y, z] = BlockType.Sand;
-                            } else {
+                            float beachOffset = this.beachOffset.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+                            if (blockCoordinate.y <= waterLevel + (int)(beachOffset * 3)) {
+								float waterDetails = this.waterDetails.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
+								if (waterDetails <= 0.3f) {
+                                    if (blockCoordinate.y == surfaceHeight && blockCoordinate.y > waterLevel - 1)
+									    result.BlockMap[x, y, z] = BlockType.Grass;
+                                    else
+									    result.BlockMap[x, y, z] = BlockType.Dirt;
+                                } else if (waterDetails <= 0.6f && waterDetails >= 0.3f)
+									result.BlockMap[x, y, z] = BlockType.Gravel;
+								else
+									result.BlockMap[x, y, z] = BlockType.Sand;
+							} else {
                                 if (blockCoordinate.y == surfaceHeight) {
                                     result.BlockMap[x, y, z] = BlockType.Grass;
                                 } else {
@@ -100,16 +124,16 @@ namespace Minecraft {
             return result;
         }
 
-        private float[,] GenerateTreeNoise(Vector2Int chunkColumn) {
-            var result = new float[Chunk.SIZE, Chunk.SIZE];
+        public float[,] GenerateColumnNoise(Vector2Int column, Noise2D noise) {
+			var result = new float[Chunk.SIZE, Chunk.SIZE];
 
-            for (int x = 0; x < Chunk.SIZE; x++)
-                for (int y = 0; y < Chunk.SIZE; y++)
-                    result[x, y] = trees.Sample(chunkColumn.x * Chunk.SIZE + x, 
-                                                    chunkColumn.y * Chunk.SIZE + y);
+			for (int x = 0; x < Chunk.SIZE; x++)
+				for (int y = 0; y < Chunk.SIZE; y++)
+					result[x, y] = noise.Sample(column.x * Chunk.SIZE + x,
+                        column.y * Chunk.SIZE + y);
 
-            return result;
-        }
+			return result;
+		}
 
         private readonly Vector2Int[] checkDirections = new Vector2Int[] {
             new Vector2Int( 0,  1),
