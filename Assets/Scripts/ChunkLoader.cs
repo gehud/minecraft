@@ -106,10 +106,11 @@ namespace Minecraft {
                 }
 
                 foreach (var item in generatedData) {
-                    ChunkUtility.For((localBlockCoordinate) => {
+                    ChunkUtility.ParallelFor((localBlockCoordinate) => {
                         if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
                             Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
-                            world.LiquidCalculatorWater.Add(blockCoordinate);
+                            if (LiquidCalculator.GetFlowDirection(world, blockCoordinate) != Vector3Int.zero)
+                                world.LiquidCalculatorWater.Add(blockCoordinate);
                         }
                     });
                 }

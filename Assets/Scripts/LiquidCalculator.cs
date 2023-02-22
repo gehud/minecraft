@@ -102,7 +102,7 @@ namespace Minecraft {
 			removeQueue.Enqueue(entry);
 		}
 
-		private Vector3Int GetFlowDirection(Vector3Int origin) {
+		public static Vector3Int GetFlowDirection(World world, Vector3Int origin) {
 			foreach (var side in flowSides) {
 				for (int e = 1; e <= 5; e++) {
 					var x = origin.x + side.x * e;
@@ -181,7 +181,7 @@ namespace Minecraft {
 				if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 					Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
 					if (BlockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid) {
-						Vector3Int flowDirection = GetFlowDirection(entry.Coordinate);
+						Vector3Int flowDirection = GetFlowDirection(world, entry.Coordinate);
 						foreach (var side in flowSides) {
 							blockCoordinate = entry.Coordinate + side;
 							if (flowDirection != Vector3Int.zero && flowDirection != side
