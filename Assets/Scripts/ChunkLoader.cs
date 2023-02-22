@@ -1,6 +1,7 @@
 ﻿using Minecraft.Utilities;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -38,21 +39,23 @@ namespace Minecraft {
 
         private readonly CancellationTokenSource cancellationTokenSource = new();
 
+        private Task lastLoading;
+        private bool loadCanceled = false;
+
         private Vector3Int GetPlayerChunk() {
             Vector3Int coordinate = CoordinateUtility.ToCoordinate(player.position);
             return CoordinateUtility.ToChunk(coordinate);
         }
 
-        private void GenerateLoadData() {
+        private void GenerateLoadData(int zone) {
             chunkToCreateCoordinates.Clear();
             rendererToCreateCoordinates.Clear();
             sunlightCoordinatesToCalculate.Clear();
-            world.Center = new Vector2Int(lastPlayerChunk.x, lastPlayerChunk.z);
-            int startX = lastPlayerChunk.x - world.DrawDistance - 1;
-            int endX = lastPlayerChunk.x + world.DrawDistance + 1;
-            int startZ = lastPlayerChunk.z - world.DrawDistance - 1;
-            int endZ = lastPlayerChunk.z + world.DrawDistance + 1;
-            for (int x = startX; x <= endX; x++)
+            int startX = world.Center.x - zone - 1;
+            int endX = world.Center.x + zone + 1;
+            int startZ = world.Center.y - zone - 1;
+            int endZ = world.Center.y + zone + 1;
+            for (int x = startX; x <= endX; x++) {
                 for (int z = startZ; z <= endZ; z++) {
                     bool sunlight = false;
                     for (int y = 0; y < World.HEIGHT; y++) {
@@ -71,7 +74,11 @@ namespace Minecraft {
                     if (sunlight) {
                         sunlightCoordinatesToCalculate.Push(new Vector2Int(x, z));
                     }
+
+                    if (loadCanceled)
+                        return;
                 }
+            }
 		}
 
         private IEnumerator GenerateChunks(World world, ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> meshDatas) {
@@ -90,41 +97,56 @@ namespace Minecraft {
             worldGenerated = true;
         }
 
-        private async void LoadChunks() {
+        private async Task LoadChunks() {
+            while (loadCanceled) {
+                await Task.Yield();
+            }
+
 			ConcurrentDictionary<Vector3Int, Chunk> generatedData = new();
             ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
-            await Task.Run(() => {
-                GenerateLoadData();
+            if (!cancellationTokenSource.IsCancellationRequested && !loadCanceled) {
+			    world.Center = new Vector2Int(lastPlayerChunk.x, lastPlayerChunk.z);
+            }
 
-				foreach (var item in chunkToCreateCoordinates)
-                    generatedData.TryAdd(item, chunkGenerator.Generate(item));
+            for (int zone = 1; zone <= world.DrawDistance; zone++) {
+                if (cancellationTokenSource.IsCancellationRequested || loadCanceled)
+                    break;
 
-                foreach (var item in generatedData) {
-                    foreach (var treeRoot in item.Value.TreeData.Positions) {
-                        GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
-                    }
-                }
+                await Task.Run(() => {
+                    GenerateLoadData(zone);
 
-                foreach (var item in generatedData) {
-                    ChunkUtility.ParallelFor((localBlockCoordinate) => {
-                        if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
-                            Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
-                            if (LiquidCalculator.GetFlowDirection(world, blockCoordinate) != Vector3Int.zero)
-                                world.LiquidCalculatorWater.Add(blockCoordinate);
+				    foreach (var item in chunkToCreateCoordinates)
+                        generatedData.TryAdd(item, chunkGenerator.Generate(item));
+
+                    foreach (var item in generatedData) {
+                        foreach (var treeRoot in item.Value.TreeData.Positions) {
+                            GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
                         }
-                    });
-                }
+                    }
 
-                foreach (var item in sunlightCoordinatesToCalculate)
-                    LightCalculator.AddSunlight(world, item);
+                    foreach (var item in generatedData) {
+                        ChunkUtility.ParallelFor((localBlockCoordinate) => {
+                            if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
+                                Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
+                                if (LiquidCalculator.GetFlowDirection(world, blockCoordinate) != Vector3Int.zero)
+                                    world.LiquidCalculatorWater.Add(blockCoordinate);
+                            }
+                        });
+                    }
 
-                world.LightCalculatorSun.Calculate();
-                foreach (var item in rendererToCreateCoordinates)
-                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.GetChunk(item), blockDataProvider));
-            }, cancellationTokenSource.Token);
+                    foreach (var item in sunlightCoordinatesToCalculate)
+                        LightCalculator.AddSunlight(world, item);
 
-            if (!cancellationTokenSource.IsCancellationRequested)
-                StartCoroutine(GenerateChunks(world, generatedMeshDatas));
+                    world.LightCalculatorSun.Calculate();
+                    foreach (var item in rendererToCreateCoordinates)
+                        generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.GetChunk(item), blockDataProvider));
+                }, cancellationTokenSource.Token);
+
+                if (!cancellationTokenSource.IsCancellationRequested && !loadCanceled)
+                    StartCoroutine(GenerateChunks(world, generatedMeshDatas));
+            }
+
+            loadCanceled = false;
         }
 
         private void GenerateTree(Vector3Int blockCoordinate) {
@@ -159,14 +181,18 @@ namespace Minecraft {
             Vector3Int playerChunk = GetPlayerChunk();
             if (!generateChunks && (playerChunk.x != lastPlayerChunk.x || playerChunk.z != lastPlayerChunk.z)) {
                 lastPlayerChunk = playerChunk;
-                LoadChunks();
+                if (lastLoading != null && !lastLoading.IsCompleted) {
+                    loadCanceled = true;
+                }
+
+                lastLoading = LoadChunks();
             } else
                 StartCoroutine(CheckLoadRequirement());
         }
 
         private IEnumerator WaitForWorldStartGeneration() {
             lastPlayerChunk = GetPlayerChunk();
-            LoadChunks();
+            lastLoading = LoadChunks();
             yield return new WaitUntil(() => worldGenerated);
             OnWorldCreate?.Invoke();
         }
