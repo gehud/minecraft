@@ -144,6 +144,8 @@ namespace Minecraft {
 
                 if (!cancellationTokenSource.IsCancellationRequested && !loadCanceled)
                     StartCoroutine(GenerateChunks(world, generatedMeshDatas));
+
+                await Task.Yield();
             }
 
             loadCanceled = false;

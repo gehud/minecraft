@@ -28,7 +28,7 @@ namespace Minecraft {
         public int DrawDistance => drawDistance;
 
         // TODO: Be editable.
-        private static int drawDistance = 8;
+        private static int drawDistance = 16;
 
         private Vector2Int center = Vector2Int.zero;
 
