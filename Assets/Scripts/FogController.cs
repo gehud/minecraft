@@ -11,9 +11,8 @@ namespace Minecraft {
 		private readonly World world;
 
 		private void LateUpdate() {
-			float end = world.DrawDistance * Chunk.SIZE;
-			camera.farClipPlane = end;
-			RenderSettings.fogEndDistance = end;
+			camera.farClipPlane = Mathf.Max(World.HEIGHT * Chunk.SIZE, world.DrawDistance * Chunk.SIZE);
+			RenderSettings.fogEndDistance = world.DrawDistance * Chunk.SIZE;
 		}
 	}
 }

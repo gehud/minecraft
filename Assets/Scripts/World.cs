@@ -28,7 +28,7 @@ namespace Minecraft {
         public int DrawDistance => drawDistance;
 
         // TODO: Be editable.
-        private static int drawDistance = 16;
+        private static int drawDistance = 4;
 
         private Vector2Int center = Vector2Int.zero;
 
@@ -104,8 +104,10 @@ namespace Minecraft {
         public ChunkRenderer CreateRenderer(Vector3Int coordinate) {
 			if (HasRenderer(coordinate))
 				throw new Exception("Renderer allready exists.");
+            if (!HasChunk(coordinate))
+                throw new Exception("Renderer requires chunk.");
 			var renderer = Instantiate(this.renderer);
-            var chunk = GetOrCreateChunk(coordinate);
+            var chunk = GetChunk(coordinate);
             renderer.Initialize(chunk);
             renderers[RendererToIndex(coordinate)] = renderer;
             return renderer;
@@ -380,24 +382,24 @@ namespace Minecraft {
 				}
 			}
 
-			for (int x = 0; x < renderersSize; x++) {
-				for (int z = 0; z < renderersSize; z++) {
-					for (int y = 0; y < HEIGHT; y++) {
-						var rindex = Array3DUtility.To1D(x, y, z, renderersSize, HEIGHT);
-						var renderer = renderers[rindex];
-						if (renderer == null)
-							continue;
-						int nx = x - d.x;
-						int nz = z - d.y;
-						if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
-							renderersToDestroy.Push(renderer);
-							renderers[rindex] = null;
-							continue;
-						}
-						renderersBuffer[Array3DUtility.To1D(nx, y, nz, renderersSize, HEIGHT)] = renderer;
-					}
+            for (int x = 0; x < renderersSize; x++) {
+                for (int z = 0; z < renderersSize; z++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+                        var index = Array3DUtility.To1D(x, y, z, renderersSize, HEIGHT);
+                        var renderer = renderers[index];
+                        if (renderer == null)
+                            continue;
+                        int nx = x - d.x;
+                        int nz = z - d.y;
+                        if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
+                            renderersToDestroy.Push(renderer);
+                            renderers[index] = null;
+                            continue;
+                        }
+                        renderersBuffer[Array3DUtility.To1D(nx, y, nz, renderersSize, HEIGHT)] = renderer;
+                    }
 				}
-			}
+            }
 
 			(chunks, chunksBuffer) = (chunksBuffer, chunks);
 			(renderers, renderersBuffer) = (renderersBuffer, renderers);
