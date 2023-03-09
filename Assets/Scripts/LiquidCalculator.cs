@@ -20,6 +20,8 @@ namespace Minecraft {
 		private readonly BlockType liquidType;
 		private readonly Queue<Entry> removeQueue = new();
 		private readonly Queue<Entry> addQueue = new();
+		private readonly Queue<Entry> toRemoveQueue = new();
+		private readonly Queue<Entry> toAddQueue = new();
 
 		private static BlockProvider BlockDataProvider { get; set; }
 
@@ -102,9 +104,42 @@ namespace Minecraft {
 			removeQueue.Enqueue(entry);
 		}
 
-		public static Vector3Int GetFlowDirection(World world, Vector3Int origin) {
+		public static bool ShouldFlow(World world, Vector3Int blockCoordinate) {
+			var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate + Vector3Int.down);
+			if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
+				var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate + Vector3Int.down);
+				if (chunk.BlockMap[localBlockCoordinate] == BlockType.Air)
+					return true;
+			}
+
+			for (int i = 0; i < flowSides.LongLength; i++) {
+				chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate + flowSides[i]);
+				if (world.TryGetChunk(chunkCoordinate, out chunk)) {
+					var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate + flowSides[i]);
+					if (chunk.BlockMap[localBlockCoordinate] == BlockType.Air)
+						return true;
+				}
+			}
+
+			return false;
+		}
+
+		private bool IsRenewable(Vector3Int blockCoordinate) {
+			var amount000 = world.GetLiquidAmount(blockCoordinate + Vector3Int.right);
+			var amount090 = world.GetLiquidAmount(blockCoordinate + Vector3Int.forward);
+			var amount180 = world.GetLiquidAmount(blockCoordinate + Vector3Int.left);
+			var amount270 = world.GetLiquidAmount(blockCoordinate + Vector3Int.back);
+			return (amount000 == LiquidMap.MAX && amount090 == LiquidMap.MAX)
+				|| (amount000 == LiquidMap.MAX && amount180 == LiquidMap.MAX)
+				|| (amount000 == LiquidMap.MAX && amount270 == LiquidMap.MAX)
+				|| (amount090 == LiquidMap.MAX && amount180 == LiquidMap.MAX)
+				|| (amount090 == LiquidMap.MAX && amount270 == LiquidMap.MAX)
+				|| (amount180 == LiquidMap.MAX && amount270 == LiquidMap.MAX);
+		}
+
+		private Vector3Int GetFlowDirection(Vector3Int origin) {
 			foreach (var side in flowSides) {
-				for (int e = 1; e <= 5; e++) {
+				for (int e = 1; e < 5; e++) {
 					var x = origin.x + side.x * e;
 					var y = origin.y;
 					var z = origin.z + side.z * e;
@@ -128,23 +163,7 @@ namespace Minecraft {
 			return Vector3Int.zero;
 		}
 
-		private bool IsRenewable(Vector3Int blockCoordinate) {
-			var amount000 = world.GetLiquidAmount(blockCoordinate + Vector3Int.right);
-			var amount090 = world.GetLiquidAmount(blockCoordinate + Vector3Int.forward);
-			var amount180 = world.GetLiquidAmount(blockCoordinate + Vector3Int.left);
-			var amount270 = world.GetLiquidAmount(blockCoordinate + Vector3Int.back);
-			return (amount000 == LiquidMap.MAX && amount090 == LiquidMap.MAX)
-				|| (amount000 == LiquidMap.MAX && amount180 == LiquidMap.MAX)
-				|| (amount000 == LiquidMap.MAX && amount270 == LiquidMap.MAX)
-				|| (amount090 == LiquidMap.MAX && amount180 == LiquidMap.MAX)
-				|| (amount090 == LiquidMap.MAX && amount270 == LiquidMap.MAX)
-				|| (amount180 == LiquidMap.MAX && amount270 == LiquidMap.MAX);
-		}
-
 		public void Calculate() {
-			var toRemove = new Queue<Entry>();
-			var toAdd = new Queue<Entry>();
-
 			while (removeQueue.TryDequeue(out Entry entry)) {
 				foreach (var side in blockSides) {
 					var blockCoordinate = entry.Coordinate + side;
@@ -156,7 +175,7 @@ namespace Minecraft {
 							&& (amount == entry.Amount - 1 || side.y == -1 && amount == LiquidMap.MAX)
 							&& !IsRenewable(blockCoordinate)) {
 							var removeEntry = new Entry(blockCoordinate, amount);
-							toRemove.Enqueue(removeEntry);
+							toRemoveQueue.Enqueue(removeEntry);
 							chunk.LiquidMap.Set(localBlockCoordinate, liquidType, LiquidMap.MIN);
 							chunk.BlockMap[localBlockCoordinate] = BlockType.Air;
 							chunk.MarkDirty();
@@ -181,7 +200,7 @@ namespace Minecraft {
 				if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 					Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
 					if (BlockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid) {
-						Vector3Int flowDirection = GetFlowDirection(world, entry.Coordinate);
+						Vector3Int flowDirection = GetFlowDirection(entry.Coordinate);
 						foreach (var side in flowSides) {
 							blockCoordinate = entry.Coordinate + side;
 							if (flowDirection != Vector3Int.zero && flowDirection != side
@@ -198,7 +217,7 @@ namespace Minecraft {
 										chunk.LiquidMap.Set(localBlockCoordinate, liquidType, newAmount);
 										chunk.BlockMap[localBlockCoordinate] = liquidType;
 										var addEntry = new Entry(blockCoordinate, newAmount);
-										toAdd.Enqueue(addEntry);
+										toAddQueue.Enqueue(addEntry);
 										chunk.MarkDirty();
 										world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
 									}
@@ -209,17 +228,17 @@ namespace Minecraft {
 						chunk.LiquidMap.Set(localBlockCoordinate, liquidType, LiquidMap.MAX);
 						chunk.BlockMap[localBlockCoordinate] = liquidType;
 						var addEntry = new Entry(blockCoordinate, LiquidMap.MAX);
-						toAdd.Enqueue(addEntry);
+						toAddQueue.Enqueue(addEntry);
 						chunk.MarkDirty();
 						world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
 					}
 				}
 			}
 
-			for (int i = 0; i < toRemove.Count; i++)
-				removeQueue.Enqueue(toRemove.Dequeue());
-			for (int i = 0; i < toAdd.Count; i++)
-				addQueue.Enqueue(toAdd.Dequeue());
+			for (int i = 0; i < toRemoveQueue.Count; i++)
+				removeQueue.Enqueue(toRemoveQueue.Dequeue());
+			for (int i = 0; i < toAddQueue.Count; i++)
+				addQueue.Enqueue(toAddQueue.Dequeue());
 		}
 	}
 }

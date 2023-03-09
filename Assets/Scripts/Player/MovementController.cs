@@ -60,12 +60,12 @@ namespace Minecraft.Player {
         private void Awake() {
 			hitbox = GetComponent<Hitbox>();
 
-			//for (int y = World.HEIGHT * Chunk.SIZE; y >= 0; --y) {
-   //             if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(0, y, 0))).IsSolid) {
-   //                 transform.position = new Vector3(0.0f, y + 1.0f, 0.0f);
-   //                 break;
-   //             }
-   //         }
+            for (int y = World.HEIGHT * Chunk.SIZE; y >= 0; --y) {
+                if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(0, y, 0))).IsSolid) {
+                    transform.position = new Vector3(0.0f, y + 1.0f, 0.0f);
+                    break;
+                }
+            }
         }
 
 		private void Jump() {

@@ -1,11 +1,9 @@
 ﻿using Minecraft.Utilities;
 using System.Collections.Concurrent;
-using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace Minecraft {
-    public class LightCalculator {
+	public class LightCalculator {
         private struct Entry {
             public Vector3Int Coordinate;
             public byte Level;
@@ -125,14 +123,12 @@ namespace Minecraft {
         }
 
         public void Calculate() {
-            Profiler.BeginSample("LightCalculator.Calculate");
-
             while (removeQueue.TryDequeue(out Entry entry)) {
 				for (int i = 0; i < blockSides.Length; i++) {
                     var blockCoordinate = entry.Coordinate + blockSides[i];
                     var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                    var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                     if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
+                        var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                         var level = chunk.LightMap.Get(localBlockCoordinate, chanel);
                         var blockType = chunk.BlockMap[localBlockCoordinate];
                         var absorption = BlockDataProvider.Get(blockType).Absorption;
@@ -173,8 +169,6 @@ namespace Minecraft {
                     }
                 }
             }
-
-            Profiler.EndSample();
         }
     }
 }

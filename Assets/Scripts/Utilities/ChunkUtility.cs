@@ -331,33 +331,21 @@ namespace Minecraft.Utilities {
                         var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-                            byte afbk2 = aown == LiquidMap.MAX
-                                || a000 == LiquidMap.MAX
-                                || a270 == LiquidMap.MAX
-                                || a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a045 == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk2)
-                                + (lq270 ? a270 : afbk2)
-                                + (lq315 ? a315 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq045 ? a045 : afbk3)
-                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown + a000 + a270 + a315) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315))
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown + a000 + a045 + a090) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090)) 
+                                        / (LiquidMap.MAX + 1);
                             }
                             if (a000 != 0) {
-                                h1 = (aown
-                                + (lq000 ? a000 : afbk2)
-                                + (lq270 ? a270 : afbk2)
-                                + (lq315 ? a315 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq045 ? a045 : afbk3)
-                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h1 = (aown + a000 + a270 + a315) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315)) 
+                                        / (LiquidMap.MAX + 1);
+                                h4 = (aown + a000 + a045 + a090) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090)) 
+                                        / (LiquidMap.MAX + 1);
                             }
 
                             dir = 5.0f;
@@ -467,34 +455,22 @@ namespace Minecraft.Utilities {
 						var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-							byte afbk2 = aown == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX
-								|| a135 == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX
-								|| a225 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
-                                + (lq090 ? a090 : afbk2)
-                                + (lq135 ? a135 : afbk2)
-                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt180 || lqt225 || lqt270 ? 1.0f :  (aown
-                                + (lq180 ? a180 : afbk3)
-                                + (lq225 ? a225 : afbk3)
-                                + (lq270 ? a270 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown + a090 + a135 + a180) 
+                                    / (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180)) 
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt180 || lqt225 || lqt270 ? 1.0f :  (aown + a180 + a225 + a270) 
+                                    / (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270)) 
+                                        / (LiquidMap.MAX + 1);
                             }
 							if (a180 != 0) {
-                                h1 = (aown
-                                + (lq090 ? a090 : afbk2)
-                                + (lq135 ? a135 : afbk2)
-                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = (aown
-                                + (lq180 ? a180 : afbk3)
-                                + (lq225 ? a225 : afbk3)
-                                + (lq270 ? a270 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                            }
+                                h1 = (aown + a090 + a135 + a180)
+									/ (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180))
+										/ (LiquidMap.MAX + 1);
+								h4 = (aown + a180 + +a270)
+									/ (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270))
+										/ (LiquidMap.MAX + 1);
+							}
 
 							dir = 5.0f;
 
@@ -603,39 +579,19 @@ namespace Minecraft.Utilities {
 						var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-							byte afbk1 = aown == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX
-								|| a225 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk2 = aown == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX
-								|| a135 == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a045 == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk4 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX
-								|| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h1 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown
-                                + (lq180 ? a180 : afbk1)
-                                + (lq225 ? a225 : afbk1)
-                                + (lq270 ? a270 : afbk1)) / 4.0f / (LiquidMap.MAX + 1);
-                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
-                                + (lq090 ? a090 : afbk2)
-                                + (lq135 ? a135 : afbk2)
-                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq045 ? a045 : afbk3)
-                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk4)
-                                + (lq270 ? a270 : afbk4)
-                                + (lq315 ? a315 : afbk4)) / 4.0f / (LiquidMap.MAX + 1);
+                                h1 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown + a180 + a225 + a270) 
+                                    / (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270)) 
+                                        / (LiquidMap.MAX + 1);
+                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown + a090 + a135 + a180) 
+                                    / (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180)) 
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown + a000 + a045 + a090) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090)) 
+                                        / (LiquidMap.MAX + 1);
+                                h4 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown + a000 + a270 + a315) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315)) 
+                                        / (LiquidMap.MAX + 1);
 
                                 byte la000;
                                 byte la045;
@@ -894,34 +850,22 @@ namespace Minecraft.Utilities {
 						var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-							byte afbk2 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a045 == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX
-								|| a135 == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk2)
-                                + (lq045 ? a045 : afbk2)
-                                + (lq090 ? a090 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
-                                + (lq090 ? a090 : afbk3)
-                                + (lq135 ? a135 : afbk3)
-                                + (lq180 ? a180 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown + a000 + a045 + a090) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090)) 
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown + a090 + a135 + a180) 
+                                    / (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180)) 
+                                        / (LiquidMap.MAX + 1);
                             }
                             if (a090 != 0) {
-                                h1 = (aown
-                                + (lq000 ? a000 : afbk2)
-                                + (lq045 ? a045 : afbk2)
-                                + (lq090 ? a090 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = (aown
-                                + (lq090 ? a090 : afbk3)
-                                + (lq135 ? a135 : afbk3)
-                                + (lq180 ? a180 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                            }
+                                h1 = (aown + a000 + a045 + a090)
+									/ (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090))
+										/ (LiquidMap.MAX + 1);
+								h4 = (aown + a090 + a135 + a180)
+									/ (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180))
+										/ (LiquidMap.MAX + 1);
+							}
 
 							dir = 5.0f;
 
@@ -1030,34 +974,22 @@ namespace Minecraft.Utilities {
 						var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-							byte afbk2 = aown == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX
-								|| a225 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX
-								|| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown
-                                + (lq180 ? a180 : afbk2)
-                                + (lq225 ? a225 : afbk2)
-                                + (lq270 ? a270 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq270 ? a270 : afbk3)
-                                + (lq315 ? a315 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown + a180 + a225 + a270) 
+                                    / (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270)) 
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown + a000 + a270 + a315) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315)) 
+                                        / (LiquidMap.MAX + 1);
                             }
                             if (a270 != 0) {
-                                h1 = (aown
-                                + (lq180 ? a180 : afbk2)
-                                + (lq225 ? a225 : afbk2)
-                                + (lq270 ? a270 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq270 ? a270 : afbk3)
-                                + (lq315 ? a315 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                            }
+                                h1 = (aown + a180 + a225 + a270)
+									/ (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270))
+										/ (LiquidMap.MAX + 1);
+								h4 = (aown + a000 + a270 + a315)
+									/ (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315))
+										/ (LiquidMap.MAX + 1);
+							}
 
 							dir = 5.0f;
 

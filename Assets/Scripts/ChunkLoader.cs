@@ -110,13 +110,13 @@ namespace Minecraft {
 								}
 							}
 
-							foreach (var item in generatedData) {
+							foreach (var item in renderers) {
 								ChunkUtility.ParallelFor((localBlockCoordinate) => {
-									if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
-										Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
-										if (LiquidCalculator.GetFlowDirection(world, blockCoordinate) != Vector3Int.zero)
-											world.LiquidCalculatorWater.Add(blockCoordinate);
-									}
+									Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item, localBlockCoordinate);
+									if (world.GetBlock(blockCoordinate) == BlockType.Water) {
+                                        if (LiquidCalculator.ShouldFlow(world, blockCoordinate))
+                                            world.LiquidCalculatorWater.Add(blockCoordinate);
+                                    }
 								});
 							}
 
