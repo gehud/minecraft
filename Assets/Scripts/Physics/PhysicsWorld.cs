@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Minecraft.Utilities;
+using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
@@ -11,15 +12,16 @@ namespace Minecraft.Physics {
 		}
 
 		public float ContactOffset {
-			get => contactOffset;	
+			get => contactOffset;
 			set => contactOffset = value;
 		}
 
 		[SerializeField] private Vector3 gravity = new(0.0f, -9.81f, 0.0f);
 		[SerializeField] private float contactOffset = 0.08f;
+		[SerializeField, Range(0.0f, 1.0f)] private float waterFriction = 0.1f;
 
 		[Inject]
-		private readonly World World;
+		private readonly World world;
 
 		[Inject]
 		private readonly BlockProvider blockProvider;
@@ -65,7 +67,7 @@ namespace Minecraft.Physics {
 			Vector3 norm;
 
 			while (t <= maxDistance) {
-				var block = World.GetBlock((int)ix, (int)iy, (int)iz);
+				var block = world.GetBlock((int)ix, (int)iy, (int)iz);
 				if (blockProvider.Get(block).IsSolid) {
 					end.x = px + t * dx;
 					end.y = py + t * dy;
@@ -134,7 +136,7 @@ namespace Minecraft.Physics {
 			for (int i = 0; i < hitboxes.Count; i++) {
 				var hitbox = hitboxes[i];
 				var transform = hitbox.transform;
-			
+
 				if (hitbox == null)
 					return;
 
@@ -147,7 +149,7 @@ namespace Minecraft.Physics {
 					int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x - contactOffset);
 					for (int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y + contactOffset); y <= Mathf.FloorToInt(transform.position.y + offset.y + extents.y - contactOffset); y++) {
 						for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + contactOffset); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - contactOffset); z++) {
-							if (blockProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
+							if (blockProvider.Get(world.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 								hitbox.Velocity = new Vector3(0.0f, hitbox.Velocity.y, hitbox.Velocity.z);
 								transform.position = new Vector3(x + 1.0f - offset.x + extents.x + contactOffset, transform.position.y, transform.position.z);
 								break;
@@ -160,7 +162,7 @@ namespace Minecraft.Physics {
 					int x = Mathf.FloorToInt(transform.position.x + offset.x + extents.x + contactOffset);
 					for (int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y + contactOffset); y <= Mathf.FloorToInt(transform.position.y + offset.y + extents.y - contactOffset); y++) {
 						for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + contactOffset); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - contactOffset); z++) {
-							if (blockProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
+							if (blockProvider.Get(world.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 								hitbox.Velocity = new Vector3(0.0f, hitbox.Velocity.y, hitbox.Velocity.z);
 								transform.position = new Vector3(x - offset.x - extents.x - contactOffset, transform.position.y, transform.position.z);
 								break;
@@ -173,7 +175,7 @@ namespace Minecraft.Physics {
 					int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z - contactOffset);
 					for (int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y + contactOffset); y <= Mathf.FloorToInt(transform.position.y + offset.y + extents.y - contactOffset); y++) {
 						for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + contactOffset); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - contactOffset); x++) {
-							if (blockProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
+							if (blockProvider.Get(world.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 								hitbox.Velocity = new Vector3(hitbox.Velocity.x, hitbox.Velocity.y, 0.0f);
 								transform.position = new Vector3(transform.position.x, transform.position.y, z + 1.0f - offset.z + extents.z + contactOffset);
 								break;
@@ -186,7 +188,7 @@ namespace Minecraft.Physics {
 					int z = Mathf.FloorToInt(transform.position.z + offset.z + extents.z + contactOffset);
 					for (int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y + contactOffset); y <= Mathf.FloorToInt(transform.position.y + offset.y + extents.y - contactOffset); y++) {
 						for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + contactOffset); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - contactOffset); x++) {
-							if (blockProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
+							if (blockProvider.Get(world.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 								hitbox.Velocity = new Vector3(hitbox.Velocity.x, hitbox.Velocity.y, 0.0f);
 								transform.position = new Vector3(transform.position.x, transform.position.y, z - offset.z - extents.z - contactOffset);
 								break;
@@ -199,7 +201,7 @@ namespace Minecraft.Physics {
 					int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y - contactOffset);
 					for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + contactOffset); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - contactOffset); x++) {
 						for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + contactOffset); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - contactOffset); z++) {
-							if (blockProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
+							if (blockProvider.Get(world.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 								hitbox.Velocity = new Vector3(hitbox.Velocity.x, 0.0f, hitbox.Velocity.z);
 								transform.position = new Vector3(transform.position.x, y + 1.0f - offset.y + extents.y + contactOffset, transform.position.z);
 								break;
@@ -212,7 +214,7 @@ namespace Minecraft.Physics {
 					int y = Mathf.FloorToInt(transform.position.y + offset.y + extents.y + contactOffset);
 					for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + contactOffset); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - contactOffset); x++) {
 						for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + contactOffset); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - contactOffset); z++) {
-							if (blockProvider.Get(World.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
+							if (blockProvider.Get(world.GetBlock(new Vector3Int(x, y, z))).IsSolid) {
 								hitbox.Velocity = new Vector3(hitbox.Velocity.x, 0.0f, hitbox.Velocity.z);
 								transform.position = new Vector3(transform.position.x, y - offset.y - extents.y - contactOffset, transform.position.z);
 								break;
@@ -220,6 +222,10 @@ namespace Minecraft.Physics {
 						}
 					}
 				}
+
+				var blockCoordinate = CoordinateUtility.ToCoordinate(transform.position);
+				if (!hitbox.IsKinematic && blockProvider.Get(world.GetBlock(blockCoordinate)).IsLiquid)
+					hitbox.Velocity *= 1.0f - waterFriction;
 
 				transform.position += hitbox.Velocity * delta;
 			}

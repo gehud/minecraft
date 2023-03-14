@@ -1,10 +1,7 @@
 ﻿using Minecraft.Physics;
 using Minecraft.Utilities;
-using System;
-using TMPro;
 using UnityEngine;
 using Zenject;
-using static UnityEditor.PlayerSettings;
 
 namespace Minecraft.Player {
 	[RequireComponent(typeof(Hitbox))]
@@ -22,7 +19,7 @@ namespace Minecraft.Player {
         private float sneakSpeed = 3;
         [SerializeField, Min(0)]
         private float sprintSpeed = 7;
-        [SerializeField, Min(0)]
+		[SerializeField, Min(0)]
         private float speedDelta = 1.0f;
 
         [SerializeField, Min(0)]
@@ -40,7 +37,17 @@ namespace Minecraft.Player {
         [SerializeField]
         private KeyCode sprintKey = KeyCode.LeftControl;
 
-        private float lastDoubleTapTime = 0.0f;
+		[Inject]
+		private readonly World world;
+
+		[Inject]
+		private readonly BlockProvider blockProvider;
+
+		[Inject]
+		private readonly PhysicsWorld PhysicsWorld;
+
+
+		private float lastDoubleTapTime = 0.0f;
 
         private Hitbox hitbox;
         private Vector3 velocity = Vector3.zero;
@@ -49,22 +56,14 @@ namespace Minecraft.Player {
         private bool isGrounded = false;
         private bool isSneaking = false;
 		private bool isSprinting = false;
-        private Vector3 lastPosition;
-
-        [Inject]
-        private readonly World World;
-
-        [Inject]
-        private readonly BlockProvider BlockDataProvider;
-
-        [Inject]
-        private readonly PhysicsWorld PhysicsWorld;
+		private bool isSwiming = false;
+		private Vector3 lastPosition;
 
         private void Awake() {
 			hitbox = GetComponent<Hitbox>();
 
             for (int y = World.HEIGHT * Chunk.SIZE; y >= 0; --y) {
-                if (BlockDataProvider.Get(World.GetBlock(new Vector3Int(0, y, 0))).IsSolid) {
+                if (blockProvider.Get(world.GetBlock(new Vector3Int(0, y, 0))).IsSolid) {
                     transform.position = new Vector3(0.0f, y + 1.0f, 0.0f);
                     break;
                 }
@@ -79,7 +78,7 @@ namespace Minecraft.Player {
         }
 
         private void Update() {
-            if (isSneaking && isGrounded) {
+            if (isSneaking) {
 				var extents = hitbox.Bounds.extents;
 				var offset = hitbox.Bounds.center;
 				int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y - skinWidth);
@@ -87,7 +86,7 @@ namespace Minecraft.Player {
                 bool shouldFall = true;
 				for (int x = Mathf.FloorToInt(lastPosition.x + offset.x - extents.x + skinWidth); x <= Mathf.FloorToInt(lastPosition.x + offset.x + extents.x - skinWidth); x++) {
 					for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + skinWidth); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - skinWidth); z++) {
-						if (BlockDataProvider.Get(World.GetBlock(x, y, z)).IsSolid) {
+						if (blockProvider.Get(world.GetBlock(x, y, z)).IsSolid) {
                             shouldFall = false;
                             break;
 						}
@@ -100,7 +99,7 @@ namespace Minecraft.Player {
                 shouldFall = true;
 				for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + skinWidth); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - skinWidth); x++) {
 					for (int z = Mathf.FloorToInt(lastPosition.z + offset.z - extents.z + skinWidth); z <= Mathf.FloorToInt(lastPosition.z + offset.z + extents.z - skinWidth); z++) {
-						if (BlockDataProvider.Get(World.GetBlock(x, y, z)).IsSolid) {
+						if (blockProvider.Get(world.GetBlock(x, y, z)).IsSolid) {
 							shouldFall = false;
 							break;
 						}
@@ -121,8 +120,9 @@ namespace Minecraft.Player {
             Vector2 input = new(horizontalInput, verticalInput);
             input = input.magnitude > 1 ? input.normalized : input;
 
-            isSneaking = Input.GetKey(sneakKey);
+            isSneaking = Input.GetKey(sneakKey) && isGrounded;
             isSprinting = Input.GetKeyDown(sprintKey) || isSprinting && input.magnitude == 1.0f;
+            isSwiming = blockProvider.Get(world.GetBlock(CoordinateUtility.ToCoordinate(transform.position))).IsLiquid;
 
             if (isSneaking) {
                 targetSpeed = sneakSpeed;
@@ -133,7 +133,7 @@ namespace Minecraft.Player {
             }
 
             if (Input.GetKeyDown(jumpKey)) {
-                if (isGrounded)
+                if (isGrounded && !isSwiming)
                     Jump();
                 if (Time.time - lastDoubleTapTime < doubleTapTime)
                     hitbox.IsKinematic = !hitbox.IsKinematic;
@@ -143,7 +143,11 @@ namespace Minecraft.Player {
             speed = Mathf.MoveTowards(speed, targetSpeed, speedDelta);
 
             if (!hitbox.IsKinematic) {
-                velocity.y = hitbox.Velocity.y;
+                if (isSwiming && Input.GetAxis("Fly") > 0) {
+					velocity.y = Input.GetAxis("Fly") * speed;
+				} else { 
+                    velocity.y = hitbox.Velocity.y;
+                }
             } else {
                 velocity.y = Input.GetAxis("Fly") * speed;
             }
@@ -162,7 +166,7 @@ namespace Minecraft.Player {
 			int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y - skinWidth);
 			for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + skinWidth); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - skinWidth); x++) {
                 for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + skinWidth); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - skinWidth); z++) {
-                    if (BlockDataProvider.Get(World.GetBlock(x, y, z)).IsSolid) {
+                    if (blockProvider.Get(world.GetBlock(x, y, z)).IsSolid) {
                         return true;
                     }
                 }
