@@ -4,6 +4,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using Zenject;
+using static UnityEditor.PlayerSettings;
 
 namespace Minecraft.Player {
 	[RequireComponent(typeof(Hitbox))]
@@ -45,8 +46,10 @@ namespace Minecraft.Player {
         private Vector3 velocity = Vector3.zero;
         private float targetSpeed = 0;
         private float speed = 0;
+        private bool isGrounded = false;
         private bool isSneaking = false;
-        private bool isSprinting = false;
+		private bool isSprinting = false;
+        private Vector3 lastPosition;
 
         [Inject]
         private readonly World World;
@@ -66,6 +69,8 @@ namespace Minecraft.Player {
                     break;
                 }
             }
+
+            lastPosition = transform.position;
         }
 
 		private void Jump() {
@@ -74,19 +79,49 @@ namespace Minecraft.Player {
         }
 
         private void Update() {
-            bool isGrounded = IsGrounded();
+            if (isSneaking && isGrounded) {
+				var extents = hitbox.Bounds.extents;
+				var offset = hitbox.Bounds.center;
+				int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y - skinWidth);
 
-            if (isGrounded) {
-                if (hitbox.IsKinematic)
-                    hitbox.IsKinematic = false;
-            }
+                bool shouldFall = true;
+				for (int x = Mathf.FloorToInt(lastPosition.x + offset.x - extents.x + skinWidth); x <= Mathf.FloorToInt(lastPosition.x + offset.x + extents.x - skinWidth); x++) {
+					for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + skinWidth); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - skinWidth); z++) {
+						if (BlockDataProvider.Get(World.GetBlock(x, y, z)).IsSolid) {
+                            shouldFall = false;
+                            break;
+						}
+					}
+				}
+
+                if (shouldFall)
+                    transform.position = new Vector3(transform.position.x, transform.position.y, lastPosition.z);
+
+                shouldFall = true;
+				for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + skinWidth); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - skinWidth); x++) {
+					for (int z = Mathf.FloorToInt(lastPosition.z + offset.z - extents.z + skinWidth); z <= Mathf.FloorToInt(lastPosition.z + offset.z + extents.z - skinWidth); z++) {
+						if (BlockDataProvider.Get(World.GetBlock(x, y, z)).IsSolid) {
+							shouldFall = false;
+							break;
+						}
+					}
+				}
+
+				if (shouldFall)
+					transform.position = new Vector3(lastPosition.x, transform.position.y, transform.position.z);
+			}
+
+            isGrounded = IsGrounded();
+
+            if (isGrounded && hitbox.IsKinematic)
+                hitbox.IsKinematic = false;
 
             float horizontalInput = Input.GetAxis("Horizontal");
             float verticalInput = Input.GetAxis("Vertical");
             Vector2 input = new(horizontalInput, verticalInput);
             input = input.magnitude > 1 ? input.normalized : input;
 
-            //isSneaking = Input.GetKey(sneakKey);
+            isSneaking = Input.GetKey(sneakKey);
             isSprinting = Input.GetKeyDown(sprintKey) || isSprinting && input.magnitude == 1.0f;
 
             if (isSneaking) {
@@ -118,6 +153,7 @@ namespace Minecraft.Player {
             velocity = Quaternion.Euler(0, camera.localEulerAngles.y, 0) * velocity;
 
             hitbox.Velocity = velocity;
+            lastPosition = transform.position;
         }
 
 		private bool IsGrounded() {
