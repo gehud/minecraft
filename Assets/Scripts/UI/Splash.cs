@@ -15,6 +15,7 @@ namespace Minecraft {
         private AtlasProvider AtlasManager { get; }
 
         private void Start() {
+            transform.SetAsLastSibling();
             var atlas = AtlasManager.GetAtlas(MaterialType.Opaque);
             var step = Mathf.RoundToInt(atlas.width * AtlasManager.TileStep);
             var position = block.TexturingData.FrontFace * step;

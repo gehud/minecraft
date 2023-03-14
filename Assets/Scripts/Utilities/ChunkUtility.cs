@@ -622,7 +622,7 @@ namespace Minecraft.Utilities {
                                     la315 = a315;
                                 }
 
-                                if (la000 == la180 && la090 == la270 && aown == la000 && aown == la090) {
+                                if (la000 == la180 && la090 == la270 && la045 == la225 && la135 == la315) {
                                     dir = 0.0f;
                                 } else if (la000 != la180 && la090 == la270) {
                                     if (la000 < la180 || la000 < aown || aown < la180)

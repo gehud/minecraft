@@ -22,13 +22,25 @@ namespace Minecraft {
             }
         }
 
-        /// <summary>
-        /// Radius in chunks of rendering area.
-        /// </summary>
-        public int DrawDistance => drawDistance;
+        public const int MIN_DRAW_DISTANCE = 2;
+        public const int MAX_DRAW_DISTANCE = 32;
 
-        // TODO: Be editable.
-        private static int drawDistance = 4;
+		/// <summary>
+		/// Radius in chunks of rendering area.
+		/// </summary>
+		public int DrawDistance { 
+            get => drawDistance;
+            set {
+                drawDistance = Mathf.Clamp(value, MIN_DRAW_DISTANCE, MAX_DRAW_DISTANCE);
+                UpdateMetrics();
+                Center = Center;
+                OnDrawDistanceChanged?.Invoke();
+            }
+        }
+
+        private int drawDistance = 2;
+
+        public event Action OnDrawDistanceChanged;
 
         private Vector2Int center = Vector2Int.zero;
 
@@ -64,7 +76,7 @@ namespace Minecraft {
 		private int renderersVolume;
         private ChunkRenderer[] renderers;
         private ChunkRenderer[] renderersBuffer;
-		private ConcurrentStack<ChunkRenderer> renderersToDestroy = new();
+		private readonly ConcurrentQueue<ChunkRenderer> renderersToDestroy = new();
 
 		public bool HasChunk(Vector3Int coordinate) {
 			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
@@ -341,13 +353,57 @@ namespace Minecraft {
         }
 
 		private void UpdateMetrics() {
-			renderersSize = DrawDistance * 2 + 1;
+            var oldChunksSize = chunksSize;
+            var oldRenderersSize = renderersSize;
+            var oldChunks = chunks;
+            var oldRenderers = renderers;
 			chunksSize = DrawDistance * 2 + 3;
-			renderersVolume = renderersSize * renderersSize * HEIGHT;
+			renderersSize = DrawDistance * 2 + 1;
 			chunksVolume = chunksSize * chunksSize * HEIGHT;
-		}
+			renderersVolume = renderersSize * renderersSize * HEIGHT;
+			chunks = new Chunk[chunksVolume];
+			chunksBuffer = new Chunk[chunksVolume];
+			renderers = new ChunkRenderer[renderersVolume];
+            renderersBuffer = new ChunkRenderer[renderersVolume];
 
-		private int RendererToIndex(Vector3Int coordinate) {
+            var d = chunksSize - oldChunksSize;
+            for (int x = 0; x < oldChunksSize; x++) {
+                for (int z = 0; z < oldChunksSize; z++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+                        var index = Array3DUtility.To1D(x, y, z, oldChunksSize, HEIGHT);
+                        var chunk = oldChunks[index];
+                        if (chunk == null)
+                            continue;
+                        int nx = x + d / 2;
+                        int nz = z + d / 2;
+                        if (nx < 0 || nz < 0 || nx >= chunksSize || nz >= chunksSize)
+                            continue;
+                        chunks[Array3DUtility.To1D(nx, y, nz, chunksSize, HEIGHT)] = chunk;
+                    }
+                }
+            }
+
+            d = renderersSize - oldRenderersSize;
+            for (int x = 0; x < oldRenderersSize; x++) {
+                for (int z = 0; z < oldRenderersSize; z++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+                        var index = Array3DUtility.To1D(x, y, z, oldRenderersSize, HEIGHT);
+                        var renderer = oldRenderers[index];
+                        if (renderer == null)
+                            continue;
+                        int nx = x + d / 2;
+                        int nz = z + d / 2;
+                        if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
+                            Destroy(renderer.gameObject);
+                            continue;
+                        }
+                        renderers[Array3DUtility.To1D(nx, y, nz, renderersSize, HEIGHT)] = renderer;
+                    }
+                }
+            }
+        }
+
+        private int RendererToIndex(Vector3Int coordinate) {
 			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance,
 				coordinate.y, coordinate.z - Center.y + DrawDistance);
 			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, renderersSize, HEIGHT);
@@ -392,7 +448,7 @@ namespace Minecraft {
                         int nx = x - d.x;
                         int nz = z - d.y;
                         if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
-                            renderersToDestroy.Push(renderer);
+                            renderersToDestroy.Enqueue(renderer);
                             renderers[index] = null;
                             continue;
                         }
@@ -416,7 +472,7 @@ namespace Minecraft {
 
 		private IEnumerator CleanRenderers() {
 			while (true) {
-				while (renderersToDestroy.TryPop(out ChunkRenderer chunkRenderer)) {
+				while (renderersToDestroy.TryDequeue(out ChunkRenderer chunkRenderer)) {
 					Destroy(chunkRenderer.gameObject);
 					yield return null;
 				}
@@ -426,7 +482,10 @@ namespace Minecraft {
 		}
 
 		private void Awake() {
-			UpdateMetrics();
+			chunksSize = DrawDistance * 2 + 3;
+			renderersSize = DrawDistance * 2 + 1;
+			chunksVolume = chunksSize * chunksSize * HEIGHT;
+			renderersVolume = renderersSize * renderersSize * HEIGHT;
 			chunks = new Chunk[chunksVolume];
 			chunksBuffer = new Chunk[chunksVolume];
 			renderers = new ChunkRenderer[renderersVolume];

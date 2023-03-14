@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 97ab58a7baf4771459845d54fd0b41e9
+guid: 28f50ae2cc63b7644939644ccb1354cd
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -45,10 +45,10 @@ TextureImporter:
   spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 0
-  alignment: 9
-  spritePivot: {x: 0.35, y: 0.55}
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 0, y: 20, z: 80, w: 0}
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 0
@@ -129,13 +129,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Whitestone
+      name: Drakstone
       rect:
         serializedVersion: 2
         x: 0
-        y: 20
+        y: 17
         width: 176
-        height: 236
+        height: 239
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 3, y: 3, z: 3, w: 3}
@@ -143,8 +143,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e67edb468531fc04aa61d66a334eb1d6
-      internalID: 313155615
+      spriteID: 485d6167f9fd1504b9c05b9a5e747368
+      internalID: 188639041
       vertices: []
       indices: 
       edges: []
@@ -153,14 +153,14 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
-    internalID: 1537655665
+    internalID: 0
     vertices: []
     indices: 
     edges: []
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      Whitestone: 313155615
+      Drakstone: 188639041
   spritePackingTag: 
   pSDRemoveMatte: 0
   pSDShowRemoveMatteOption: 0
