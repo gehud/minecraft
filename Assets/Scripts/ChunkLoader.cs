@@ -81,7 +81,7 @@ namespace Minecraft {
 		}
 
 		private async Task Load() {
-			world.Center = center;
+			world.Center = center; 
 
 			for (int zone = 1; zone <= world.DrawDistance; zone++) {
 				if (isLoadingCanceled)
