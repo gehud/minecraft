@@ -1,8 +1,12 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace Minecraft.Player {
     public class MenuController : MonoBehaviour {
-        [SerializeField]
+        public static event Action OnEnter;
+        public static event Action OnExit;
+
+		[SerializeField]
         private GameObject menu;
 
         private void Update() {
@@ -10,9 +14,11 @@ namespace Minecraft.Player {
                 if (!menu.activeSelf) {
                     menu.SetActive(true);
                     Cursor.lockState = CursorLockMode.Confined;
+                    OnEnter?.Invoke();
                 } else {
                     menu.SetActive(false);
                     Cursor.lockState = CursorLockMode.Locked;
+                    OnExit?.Invoke();   
                 }
             }
         }

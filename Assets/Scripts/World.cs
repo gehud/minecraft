@@ -2,11 +2,13 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft {
-    public class World : MonoBehaviour {
+	public class World : MonoBehaviour {
         /// <summary>
         /// World height in Chunks.
         /// </summary>
@@ -63,10 +65,13 @@ namespace Minecraft {
         private float tick = 0.25f;
 
         [Inject]
-        private BlockProvider BlockDataProvider { get; }
+        private readonly BlockProvider blockDataProvider;
+         
+        [Inject]
+        private readonly MaterialProvider materialProvider;
 
         [Inject]
-        private MaterialProvider MaterialManager { get; }
+        private readonly ChunkGenerator chunkGenerator;
 
 		private int chunksSize;
 		private int chunksVolume;
@@ -77,6 +82,7 @@ namespace Minecraft {
         private ChunkRenderer[] renderers;
         private ChunkRenderer[] renderersBuffer;
 		private readonly ConcurrentQueue<ChunkRenderer> renderersToDestroy = new();
+        private readonly HashSet<Vector3Int> saved = new();
 
 		public bool HasChunk(Vector3Int coordinate) {
 			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
@@ -324,7 +330,7 @@ namespace Minecraft {
             LightCalculatorBlue.Remove(blockCoordinate);
             LightCalculatorSun.Remove(blockCoordinate);
             for (int y = blockCoordinate.y - 1; y >= 0; y--) {
-                if (!BlockDataProvider.Get(GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))).IsTransparent)
+                if (!blockDataProvider.Get(GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))).IsTransparent)
                     break;
                 LightCalculatorSun.Remove(blockCoordinate.x, y, blockCoordinate.z);
             }
@@ -333,7 +339,7 @@ namespace Minecraft {
             LightCalculatorBlue.Calculate();
             LightCalculatorSun.Calculate();
 
-            LightColor emission = BlockDataProvider.Get(voxelType).Emission;
+            LightColor emission = blockDataProvider.Get(voxelType).Emission;
             if (emission.R != 0) {
                 LightCalculatorRed.Add(blockCoordinate, emission.R);
                 LightCalculatorRed.Calculate();
@@ -481,6 +487,26 @@ namespace Minecraft {
 			}
 		}
 
+        private void Initialize() {
+            var selectedWorld = PlayerPrefs.GetString("SelectedWorld");
+            var path = Application.persistentDataPath + "/saves/" + selectedWorld + ".world";
+            var fileReader = new StreamReader(path);
+            string offset = fileReader.ReadLine();
+            fileReader.Close();
+            float offsetX, offsetY;
+            if (offset == null) {
+                offsetX = UnityEngine.Random.Range(-3529.2f, 3529.2f);
+                offsetY = UnityEngine.Random.Range(-3529.2f, 3529.2f);
+                using var fileWriter = new StreamWriter(path);
+                fileWriter.WriteLine($"Offset: [{offsetX}, {offsetY}]");
+			} else {
+                offsetX = float.Parse(offset[(offset.IndexOf('[') + 1)..offset.IndexOf(", ")]);
+                offsetY = float.Parse(offset[(offset.IndexOf(", ") + 1)..offset.IndexOf(']')]);
+            }
+
+            chunkGenerator.Offset = new Vector2(offsetX, offsetY);
+        }
+
 		private void Awake() {
 			chunksSize = DrawDistance * 2 + 3;
 			renderersSize = DrawDistance * 2 + 1;
@@ -491,13 +517,15 @@ namespace Minecraft {
 			renderers = new ChunkRenderer[renderersVolume];
 			renderersBuffer = new ChunkRenderer[renderersVolume];
 
-			LightCalculator.SetBlockDataManager(BlockDataProvider);
+			LightCalculator.SetBlockDataManager(blockDataProvider);
 			LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
 			LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
 			LightCalculatorBlue = new LightCalculator(this, LightChanel.Blue);
 			LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
-			LiquidCalculator.SetBlockDataManager(BlockDataProvider);
+			LiquidCalculator.SetBlockDataManager(blockDataProvider);
 			LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
+
+            Initialize();
 		}
 
 		private void Start() {
@@ -510,7 +538,7 @@ namespace Minecraft {
                 if (renderer == null)
                     continue;
                 if (renderer.Data.IsComplete && renderer.Data.IsDirty)
-                    renderer.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Data, BlockDataProvider), MaterialManager);
+                    renderer.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Data, blockDataProvider), materialProvider);
             }
         }
 

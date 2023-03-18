@@ -8,6 +8,11 @@ using Zenject;
 
 namespace Minecraft {
     public class ChunkGenerator : MonoBehaviour {
+        public Vector2 Offset {
+            get => offset;
+            set => offset = value;
+        }
+
         [SerializeField] private Vector2 offset;
         [SerializeField, Min(0)] private int waterLevel = 32;
         [Header("Surface")]

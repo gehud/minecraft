@@ -1,6 +1,7 @@
 using UnityEngine;
 
 namespace Minecraft {
+    [ExecuteAlways]
     public class AtlasProvider : MonoBehaviour {
         public float TileStep => 16.0f / 256.0f;
 
