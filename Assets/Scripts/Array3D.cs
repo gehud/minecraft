@@ -11,6 +11,11 @@ namespace Minecraft {
             Data = new T[x * y * z];
         }
 
+        public T this[int i] {
+            get => Data[i];
+            set => Data[i] = value;
+        }
+
         public T this[int x, int y, int z] {
             get => Data[z * XY + y * X + x];
             set => Data[z * XY + y * X + x] = value;

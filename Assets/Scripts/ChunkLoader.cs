@@ -1,6 +1,8 @@
 ﻿using Minecraft.Utilities;
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -38,6 +40,32 @@ namespace Minecraft {
 		private bool isLoadingCanceled = false;
 
 		private readonly CancellationTokenSource cancellationTokenSource = new();
+
+		private string selectedWorld;
+
+		private Chunk LoadSaved(Vector3Int coordinate) {
+			var path = Application.persistentDataPath + "/saves/" + selectedWorld + ".world";
+			using var binaryReader = new BinaryReader(File.Open(path, FileMode.Open));
+			binaryReader.BaseStream.Position += sizeof(float) * 2;
+			while (binaryReader.BaseStream.Position != binaryReader.BaseStream.Length) {
+				int x = binaryReader.ReadInt32();
+				int y = binaryReader.ReadInt32();
+				int z = binaryReader.ReadInt32();
+				if (new Vector3Int(x, y, z) == coordinate) {
+					var result = world.CreateChunk(coordinate);
+					byte[] bytes = new byte[Chunk.VOLUME * 2];
+					binaryReader.Read(bytes, 0, Chunk.VOLUME * 2);
+					for (int i = 0; i < Chunk.VOLUME; i++)
+						result.BlockMap[i] = (BlockType)bytes[i];
+					for (int i = 0; i < Chunk.VOLUME; i++)
+						result.LiquidMap[i] = bytes[Chunk.VOLUME + i];
+					return result;
+				}
+				binaryReader.BaseStream.Position += Chunk.VOLUME * 2;
+			}
+
+			throw new Exception("Failed to load chunk.");
+		}
 
 		private Vector2Int GetPlayerCenter() {
 			var blockCoordinate = CoordinateUtility.ToCoordinate(player.position);
@@ -97,12 +125,22 @@ namespace Minecraft {
 						ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
 						if (isLoadingCanceled)
 							return;
-						await Task.Run(() => {
+						await Task.Run(() => { 
 							GenerateLoadData(new Vector2Int(x, z));
+						}, cancellationTokenSource.Token);
 
-							foreach (var item in chunks)
-								generatedData.TryAdd(item, chunkGenerator.Generate(item));
+						foreach (var item in chunks) {
+							if (isLoadingCanceled)
+								return;
+							Chunk chunk;
+							if (world.Saved.Contains(item))
+								chunk = LoadSaved(item);
+							else
+								chunk = await Task.Run(() => chunkGenerator.Generate(item), cancellationTokenSource.Token);
+							generatedData.TryAdd(item, chunk);
+						}
 
+						await Task.Run(() => {
 							foreach (var item in generatedData) {
 								foreach (var treeRoot in item.Value.TreeData.Positions) {
 									GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
@@ -203,6 +241,7 @@ namespace Minecraft {
 		}
 
 		private IEnumerator Start() {
+			selectedWorld = PlayerPrefs.GetString("SelectedWorld");
 			var playerCenter = GetPlayerCenter();
 			center = playerCenter;
 			loading = Load();
@@ -225,6 +264,7 @@ namespace Minecraft {
 
 		private void OnDestroy() {
 			cancellationTokenSource.Cancel();
+			isLoadingCanceled = true;
 		}
 	}
 }

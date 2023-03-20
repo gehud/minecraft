@@ -75,7 +75,7 @@ namespace Minecraft {
                 if (blockCoordinate.y > surfaceHeight) {
                     if (blockCoordinate.y <= waterLevel) {
                         result.BlockMap[x, y, z] = BlockType.Water;
-                        result.LiquidMap.Set(x, y, z, BlockType.Water, LiquidMap.MAX);
+                        result.LiquidMap[x, y, z] = LiquidMap.MAX;
                     } else {
                         result.BlockMap[x, y, z] = BlockType.Air;
                         if (biome != BiomeType.Desert && blockCoordinate.y == surfaceHeight + 1 && blockCoordinate.y > waterLevel + 3) {

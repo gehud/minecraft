@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 namespace Minecraft {
-    public class Chunk {
+	public class Chunk {
         /// <summary>
         /// Chunk size in blocks.
         /// </summary>
@@ -22,8 +22,12 @@ namespace Minecraft {
 
         public bool IsComplete { get; set; } = false;
 
-        public void MarkDirty() => IsDirty = true;
+        public bool IsModified { get; set; } = false;
+
+		public void MarkDirty() => IsDirty = true;
 
         public void MarkComplete() => IsComplete = true;
-    }
+
+        public void MarkModified() => IsModified = true;
+	}
 }

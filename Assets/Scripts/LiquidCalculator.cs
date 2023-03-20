@@ -62,7 +62,7 @@ namespace Minecraft {
 			if (BlockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
 				return;
 
-			chunk.LiquidMap[localBlockCoordinate] = new LiquidData(liquidType, amount);
+			chunk.LiquidMap[localBlockCoordinate] = amount;
 			chunk.BlockMap[localBlockCoordinate] = liquidType;
 			chunk.MarkDirty();
 			world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
@@ -77,7 +77,7 @@ namespace Minecraft {
 				return;
 
 			Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-			byte amount = chunk.LiquidMap.Get(localBlockCoordinate, liquidType);
+			byte amount = chunk.BlockMap[localBlockCoordinate] == liquidType ? chunk.LiquidMap[localBlockCoordinate] : LiquidMap.MIN;
 			if (amount < 1)
 				return;
 
@@ -91,11 +91,11 @@ namespace Minecraft {
 				return;
 
 			Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-			byte amount = chunk.LiquidMap.Get(localBlockCoordinate, liquidType);
+			byte amount = chunk.BlockMap[localBlockCoordinate] == liquidType ? chunk.LiquidMap[localBlockCoordinate] : LiquidMap.MIN;
 			if (amount < 1)
 				return;
 
-			chunk.LiquidMap[localBlockCoordinate] = LiquidData.Empty;
+			chunk.LiquidMap[localBlockCoordinate] = LiquidMap.MIN;
 			chunk.BlockMap[localBlockCoordinate] = BlockType.Air;
 			chunk.MarkDirty();
 			world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
@@ -170,13 +170,13 @@ namespace Minecraft {
 					var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
 					if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 						var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-						var amount = chunk.LiquidMap.Get(localBlockCoordinate, liquidType);
+						var amount = chunk.BlockMap[localBlockCoordinate] == liquidType ? chunk.LiquidMap[localBlockCoordinate] : LiquidMap.MIN;
 						if (amount != 0
 							&& (amount == entry.Amount - 1 || side.y == -1 && amount == LiquidMap.MAX)
 							&& !IsRenewable(blockCoordinate)) {
 							var removeEntry = new Entry(blockCoordinate, amount);
 							toRemoveQueue.Enqueue(removeEntry);
-							chunk.LiquidMap.Set(localBlockCoordinate, liquidType, LiquidMap.MIN);
+							chunk.LiquidMap[localBlockCoordinate] = LiquidMap.MIN;
 							chunk.BlockMap[localBlockCoordinate] = BlockType.Air;
 							chunk.MarkDirty();
 							world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
@@ -210,11 +210,11 @@ namespace Minecraft {
 							if (world.TryGetChunk(chunkCoordinate, out chunk)) {
 								localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
 								var blockType = chunk.BlockMap[localBlockCoordinate];
-								var amount = chunk.LiquidMap.Get(localBlockCoordinate, liquidType);
+								var amount = chunk.BlockMap[localBlockCoordinate] == liquidType ? chunk.LiquidMap[localBlockCoordinate] : LiquidMap.MIN;
 								if (!BlockDataProvider.Get(blockType).IsSolid) {
 									if (amount + 2 <= entry.Amount) {
 										byte newAmount = (byte)(entry.Amount - 1);
-										chunk.LiquidMap.Set(localBlockCoordinate, liquidType, newAmount);
+										chunk.LiquidMap[localBlockCoordinate] = newAmount;
 										chunk.BlockMap[localBlockCoordinate] = liquidType;
 										var addEntry = new Entry(blockCoordinate, newAmount);
 										toAddQueue.Enqueue(addEntry);
@@ -225,7 +225,7 @@ namespace Minecraft {
 							}
 						}
 					} else {
-						chunk.LiquidMap.Set(localBlockCoordinate, liquidType, LiquidMap.MAX);
+						chunk.LiquidMap[localBlockCoordinate] = LiquidMap.MAX;
 						chunk.BlockMap[localBlockCoordinate] = liquidType;
 						var addEntry = new Entry(blockCoordinate, LiquidMap.MAX);
 						toAddQueue.Enqueue(addEntry);

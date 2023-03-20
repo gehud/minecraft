@@ -125,7 +125,9 @@ namespace Minecraft.Utilities {
 				var neighbour = neighbours[CoordinateToIndex(chunkCoordinate)];
 				if (neighbour != null) {    
 					var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-					return neighbour.LiquidMap.Get(localBlockCoordinate, liquidType);
+                    if (neighbour.BlockMap[localBlockCoordinate] == liquidType)
+					    return neighbour.LiquidMap[localBlockCoordinate];
+                    return LiquidMap.MIN;
 				}
 
 				return LiquidMap.MIN;
