@@ -19,9 +19,9 @@ namespace Minecraft {
 		private readonly World world;
 		private readonly BlockType liquidType;
 		private readonly Queue<Entry> removeQueue = new();
+		private readonly List<Entry> toRemove = new();
 		private readonly Queue<Entry> addQueue = new();
-		private readonly Queue<Entry> toRemoveQueue = new();
-		private readonly Queue<Entry> toAddQueue = new();
+		private readonly List<Entry> toAdd = new();
 
 		private static BlockProvider BlockDataProvider { get; set; }
 
@@ -175,7 +175,7 @@ namespace Minecraft {
 							&& (amount == entry.Amount - 1 || side.y == -1 && amount == LiquidMap.MAX)
 							&& !IsRenewable(blockCoordinate)) {
 							var removeEntry = new Entry(blockCoordinate, amount);
-							toRemoveQueue.Enqueue(removeEntry);
+							toRemove.Add(removeEntry);
 							chunk.LiquidMap[localBlockCoordinate] = LiquidMap.MIN;
 							chunk.BlockMap[localBlockCoordinate] = BlockType.Air;
 							chunk.IsDirty = true;
@@ -193,14 +193,11 @@ namespace Minecraft {
 			}
 
 			while (addQueue.TryDequeue(out Entry entry)) {
-				Vector3Int blockCoordinate;
-				Vector3Int chunkCoordinate;
-
 				if (entry.Amount < 1)
 					continue;
 
-				blockCoordinate = entry.Coordinate + Vector3Int.down;
-				chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+				var blockCoordinate = entry.Coordinate + Vector3Int.down;
+				var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
 				if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 					Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
 					if (BlockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid) {
@@ -221,7 +218,7 @@ namespace Minecraft {
 										chunk.LiquidMap[localBlockCoordinate] = newAmount;
 										chunk.BlockMap[localBlockCoordinate] = liquidType;
 										var addEntry = new Entry(blockCoordinate, newAmount);
-										toAddQueue.Enqueue(addEntry);
+										toAdd.Add(addEntry);
 										chunk.IsDirty = true;
 										world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
 										if (chunk.IsModified) {
@@ -236,7 +233,7 @@ namespace Minecraft {
 						chunk.LiquidMap[localBlockCoordinate] = LiquidMap.MAX;
 						chunk.BlockMap[localBlockCoordinate] = liquidType;
 						var addEntry = new Entry(blockCoordinate, LiquidMap.MAX);
-						toAddQueue.Enqueue(addEntry);
+						toAdd.Add(addEntry);
 						chunk.IsDirty = true;
 						world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
 						if (chunk.IsModified) {
@@ -247,10 +244,14 @@ namespace Minecraft {
 				}
 			}
 
-			for (int i = 0; i < toRemoveQueue.Count; i++)
-				removeQueue.Enqueue(toRemoveQueue.Dequeue());
-			for (int i = 0; i < toAddQueue.Count; i++)
-				addQueue.Enqueue(toAddQueue.Dequeue());
+			
+			for (int i = 0; i < toRemove.Count; i++)
+				removeQueue.Enqueue(toRemove[i]);
+			for (int i = 0; i < toAdd.Count; i++)
+				addQueue.Enqueue(toAdd[i]);
+
+			toRemove.Clear();
+			toAdd.Clear();
 		}
 	}
 }
