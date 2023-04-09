@@ -2,7 +2,7 @@
 
 namespace Minecraft {
     public class Array3D<T> {
-        protected readonly T[] Data;
+        public readonly T[] Data;
         protected readonly int X, XY;
 
         public Array3D(int x, int y, int z) {

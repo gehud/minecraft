@@ -11,6 +11,8 @@ using Zenject;
 
 namespace Minecraft {
 	public class ChunkLoader : MonoBehaviour {
+		public event Action<Vector2> OnStartLoading;
+
 		[SerializeField]
 		private UnityEvent onWorldCreate;
 
@@ -31,6 +33,9 @@ namespace Minecraft {
 		[Inject]
 		private readonly ChunkGenerator chunkGenerator;
 
+		[Inject]
+		private readonly SaveManager saveManager;
+
 		private Vector2Int center;
 		private readonly ConcurrentStack<Vector3Int> chunks = new();
 		private readonly ConcurrentStack<Vector3Int> renderers = new();
@@ -42,30 +47,6 @@ namespace Minecraft {
 		private readonly CancellationTokenSource cancellationTokenSource = new();
 
 		private string selectedWorld;
-
-		private Chunk LoadSaved(Vector3Int coordinate) {
-			var path = Application.persistentDataPath + "/saves/" + selectedWorld + ".world";
-			using var binaryReader = new BinaryReader(File.Open(path, FileMode.Open));
-			binaryReader.BaseStream.Position += sizeof(float) * 2;
-			while (binaryReader.BaseStream.Position != binaryReader.BaseStream.Length) {
-				int x = binaryReader.ReadInt32();
-				int y = binaryReader.ReadInt32();
-				int z = binaryReader.ReadInt32();
-				if (new Vector3Int(x, y, z) == coordinate) {
-					var result = world.CreateChunk(coordinate);
-					byte[] bytes = new byte[Chunk.VOLUME * 2];
-					binaryReader.Read(bytes, 0, Chunk.VOLUME * 2);
-					for (int i = 0; i < Chunk.VOLUME; i++)
-						result.BlockMap[i] = (BlockType)bytes[i];
-					for (int i = 0; i < Chunk.VOLUME; i++)
-						result.LiquidMap[i] = bytes[Chunk.VOLUME + i];
-					return result;
-				}
-				binaryReader.BaseStream.Position += Chunk.VOLUME * 2;
-			}
-
-			throw new Exception("Failed to load chunk.");
-		}
 
 		private Vector2Int GetPlayerCenter() {
 			var blockCoordinate = CoordinateUtility.ToCoordinate(player.position);
@@ -133,8 +114,8 @@ namespace Minecraft {
 							if (isLoadingCanceled)
 								return;
 							Chunk chunk;
-							if (world.Saved.Contains(item))
-								chunk = LoadSaved(item);
+							if (saveManager.IsSaved(item))
+								chunk = saveManager.LoadChunk(world, item);
 							else
 								chunk = await Task.Run(() => chunkGenerator.Generate(item), cancellationTokenSource.Token);
 							generatedData.TryAdd(item, chunk);
@@ -240,8 +221,7 @@ namespace Minecraft {
 			}
 		}
 
-		private IEnumerator Start() {
-			selectedWorld = PlayerPrefs.GetString("SelectedWorld");
+		private IEnumerator StartLoading() {
 			var playerCenter = GetPlayerCenter();
 			center = playerCenter;
 			loading = Load();
@@ -250,16 +230,23 @@ namespace Minecraft {
 			onWorldCreate?.Invoke();
 		}
 
+		private void OnSaveLoaded(SaveLoadData data) {
+			OnStartLoading?.Invoke(data.Offset);
+			StartCoroutine(StartLoading());
+		}
+
 		private void StartRelaunchLoading() {
 			StartCoroutine(RelaunchLoading());
 		}
 
 		private void OnEnable() {
 			world.OnDrawDistanceChanged += StartRelaunchLoading;
+			saveManager.OnLoad += OnSaveLoaded;
 		}
 
 		private void OnDisable() {
 			world.OnDrawDistanceChanged -= StartRelaunchLoading;
+			saveManager.OnLoad -= OnSaveLoaded;
 		}
 
 		private void OnDestroy() {

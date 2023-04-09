@@ -75,6 +75,9 @@ namespace Minecraft {
         [Inject]
         private readonly ChunkGenerator chunkGenerator;
 
+        [Inject]
+        private readonly SaveManager saveManager;
+
 		private int chunksSize;
 		private int chunksVolume;
         private Chunk[] chunks;
@@ -84,10 +87,6 @@ namespace Minecraft {
         private ChunkRenderer[] renderers;
         private ChunkRenderer[] renderersBuffer;
 		private readonly ConcurrentQueue<ChunkRenderer> renderersToDestroy = new();
-        private readonly List<Vector3Int> saved = new();
-
-        // Temp.
-        public List<Vector3Int> Saved => saved;
 
 		public bool HasChunk(Vector3Int coordinate) {
 			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
@@ -465,94 +464,6 @@ namespace Minecraft {
 			}
 		}
 
-        private void SetupWorldOffset() {
-			var path = GetSelectedWorldPath();
-			using var binaryReader = new BinaryReader(File.Open(path, FileMode.Open));
-			float offsetX;
-			float offsetY;
-			if (binaryReader.BaseStream.Length == 0) {
-				binaryReader.Close();
-				using var binaryWriter = new BinaryWriter(File.Open(path, FileMode.Open));
-				offsetX = UnityEngine.Random.Range(-3529.2f, 3529.2f);
-				offsetY = UnityEngine.Random.Range(-3529.2f, 3529.2f);
-				binaryWriter.Write(offsetX);
-				binaryWriter.Write(offsetY);
-			} else {
-				offsetX = binaryReader.ReadSingle();
-				offsetY = binaryReader.ReadSingle();
-				binaryReader.Close();
-			}
-
-			chunkGenerator.Offset = new Vector2(offsetX, offsetY);
-		}
-
-        private void ExtractSavedChunkCoordinates() {
-			var path = GetSelectedWorldPath();
-			using var binaryReader = new BinaryReader(File.Open(path, FileMode.Open));
-            binaryReader.BaseStream.Position += sizeof(float) * 2;
-            while (binaryReader.BaseStream.Position != binaryReader.BaseStream.Length) {
-                int x = binaryReader.ReadInt32();
-                int y = binaryReader.ReadInt32();
-                int z = binaryReader.ReadInt32();
-                saved.Add(new Vector3Int(x, y, z));
-                binaryReader.BaseStream.Position += Chunk.VOLUME * 2;
-			}
-		}
-
-        private void Initialize() {
-            SetupWorldOffset();
-            ExtractSavedChunkCoordinates();
-        }
-
-        private byte[] SerializeChunk(Chunk chunk) {
-			byte[] bytes = new byte[Chunk.VOLUME * 2];
-            for (int i = 0; i < Chunk.VOLUME; i++)
-                bytes[i] = (byte)chunk.BlockMap[i];
-            for (int i = 0; i < Chunk.VOLUME; i++)
-                bytes[Chunk.VOLUME + i] = chunk.LiquidMap[i];
-            return bytes;
-        }
-
-        private string GetSelectedWorldPath() {
-			var selectedWorld = PlayerPrefs.GetString("SelectedWorld");
-			return Path.Combine(Application.persistentDataPath + "/saves/" + selectedWorld) + ".world";
-		}
-
-        private long GetChunkFilePosition(Vector3Int coordinate) {
-			var path = GetSelectedWorldPath();
-			using var binaryReader = new BinaryReader(File.Open(path, FileMode.Open));
-			binaryReader.BaseStream.Position += sizeof(float) * 2;
-			while (binaryReader.BaseStream.Position != binaryReader.BaseStream.Length) {
-				int x = binaryReader.ReadInt32();
-				int y = binaryReader.ReadInt32();
-				int z = binaryReader.ReadInt32();
-                if (new Vector3Int(x, y, z) == coordinate)
-                    return binaryReader.BaseStream.Position;
-				binaryReader.BaseStream.Position += Chunk.VOLUME * 2;
-			}
-
-            return -1;
-		}
-
-        private void Save(Chunk chunk) {
-            chunk.IsModified = false;
-            if (!saved.Contains(chunk.Coordinate)) {
-                saved.Add(chunk.Coordinate);
-				var path = GetSelectedWorldPath();
-				using var binaryWriter = new BinaryWriter(File.Open(path, FileMode.Append));
-                binaryWriter.Write(chunk.Coordinate.x);
-                binaryWriter.Write(chunk.Coordinate.y);
-                binaryWriter.Write(chunk.Coordinate.z);
-                binaryWriter.Write(SerializeChunk(chunk));
-			} else {
-                long chunkFilePosition = GetChunkFilePosition(chunk.Coordinate);
-				var path = GetSelectedWorldPath();
-				using var binaryWriter = new BinaryWriter(File.Open(path, FileMode.Open));
-                binaryWriter.BaseStream.Position = chunkFilePosition;
-                binaryWriter.Write(SerializeChunk(chunk));
-			}
-		}
-
 		private void Awake() {
 			chunksSize = DrawDistance * 2 + 3;
 			renderersSize = DrawDistance * 2 + 1;
@@ -570,8 +481,6 @@ namespace Minecraft {
 			LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
 			LiquidCalculator.SetBlockDataManager(blockDataProvider);
 			LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
-
-            Initialize();
 		}
 
 		private void Start() {
@@ -586,7 +495,7 @@ namespace Minecraft {
                 if (renderer.Data.IsComplete && renderer.Data.IsDirty) { 
                     renderer.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Data, blockDataProvider), materialProvider);
                 } else if (renderer.Data.IsModified) {
-                    Save(renderer.Data);
+                    saveManager.SaveChunk(renderer.Data);
                 }
             }
         }

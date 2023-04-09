@@ -8,11 +8,6 @@ using Zenject;
 
 namespace Minecraft {
     public class ChunkGenerator : MonoBehaviour {
-        public Vector2 Offset {
-            get => offset;
-            set => offset = value;
-        }
-
         [SerializeField] private Vector2 offset;
         [SerializeField, Min(0)] private int waterLevel = 32;
         [Header("Surface")]
@@ -29,6 +24,9 @@ namespace Minecraft {
 
         [Inject]
         private readonly World world;
+
+        [Inject]
+        private readonly ChunkLoader chunkLoader;
 
         public float GetContinentalness(Vector3Int blockCoordinate) {
             return continentalness.Sample(blockCoordinate.x, blockCoordinate.z, offset.x, offset.y);
@@ -174,5 +172,17 @@ namespace Minecraft {
 
             return result;
 		}
-    }
+
+        private void OnStartLoading(Vector2 offset) {
+            this.offset = offset;
+        }
+
+		private void OnEnable() {
+            chunkLoader.OnStartLoading += OnStartLoading;
+		}
+
+		private void OnDisable() {
+			chunkLoader.OnStartLoading -= OnStartLoading;
+		}
+	}
 }
