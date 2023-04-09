@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -45,8 +44,6 @@ namespace Minecraft {
 		private bool isLoadingCanceled = false;
 
 		private readonly CancellationTokenSource cancellationTokenSource = new();
-
-		private string selectedWorld;
 
 		private Vector2Int GetPlayerCenter() {
 			var blockCoordinate = CoordinateUtility.ToCoordinate(player.position);

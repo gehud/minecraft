@@ -7,7 +7,7 @@ using UnityEngine;
 using Zenject;
 
 namespace Minecraft {
-    public class ChunkGenerator : MonoBehaviour {
+	public class ChunkGenerator : MonoBehaviour {
         [SerializeField] private Vector2 offset;
         [SerializeField, Min(0)] private int waterLevel = 32;
         [Header("Surface")]

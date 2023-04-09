@@ -64,8 +64,8 @@ namespace Minecraft {
 
 			chunk.LiquidMap[localBlockCoordinate] = amount;
 			chunk.BlockMap[localBlockCoordinate] = liquidType;
-			chunk.MarkDirty();
-			world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
+			chunk.IsDirty = true;
+			world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
 
 			var entry = new Entry(blockCoordinate, amount);
 			addQueue.Enqueue(entry);
@@ -97,8 +97,8 @@ namespace Minecraft {
 
 			chunk.LiquidMap[localBlockCoordinate] = LiquidMap.MIN;
 			chunk.BlockMap[localBlockCoordinate] = BlockType.Air;
-			chunk.MarkDirty();
-			world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
+			chunk.IsDirty = true;
+			world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
 
 			Entry entry = new(blockCoordinate, amount);
 			removeQueue.Enqueue(entry);
@@ -178,8 +178,12 @@ namespace Minecraft {
 							toRemoveQueue.Enqueue(removeEntry);
 							chunk.LiquidMap[localBlockCoordinate] = LiquidMap.MIN;
 							chunk.BlockMap[localBlockCoordinate] = BlockType.Air;
-							chunk.MarkDirty();
-							world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
+							chunk.IsDirty = true;
+							world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+							if (chunk.IsModified) {
+								chunk.IsSaved = false;
+								world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+							}
 						} else if (amount >= entry.Amount) {
 							var addEntry = new Entry(blockCoordinate, amount);
 							addQueue.Enqueue(addEntry);
@@ -218,8 +222,12 @@ namespace Minecraft {
 										chunk.BlockMap[localBlockCoordinate] = liquidType;
 										var addEntry = new Entry(blockCoordinate, newAmount);
 										toAddQueue.Enqueue(addEntry);
-										chunk.MarkDirty();
-										world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
+										chunk.IsDirty = true;
+										world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+										if (chunk.IsModified) {
+											chunk.IsSaved = false;
+											world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+										}
 									}
 								}
 							}
@@ -229,8 +237,12 @@ namespace Minecraft {
 						chunk.BlockMap[localBlockCoordinate] = liquidType;
 						var addEntry = new Entry(blockCoordinate, LiquidMap.MAX);
 						toAddQueue.Enqueue(addEntry);
-						chunk.MarkDirty();
-						world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
+						chunk.IsDirty = true;
+						world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+						if (chunk.IsModified) {
+							chunk.IsSaved = false;
+							world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+						}
 					}
 				}
 			}

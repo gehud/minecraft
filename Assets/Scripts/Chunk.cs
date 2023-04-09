@@ -24,10 +24,6 @@ namespace Minecraft {
 
         public bool IsModified { get; set; } = false;
 
-		public void MarkDirty() => IsDirty = true;
-
-        public void MarkComplete() => IsComplete = true;
-
-        public void MarkModified() => IsModified = true;
+        public bool IsSaved { get; set; } = false;
 	}
 }

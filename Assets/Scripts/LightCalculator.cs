@@ -51,8 +51,8 @@ namespace Minecraft {
 
             var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
             chunk.LightMap.Set(localBlockCoordinate, chanel, level);
-            chunk.MarkDirty();
-            world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
+            chunk.IsDirty = true;
+            world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
 
             var entry = new Entry(blockCoordinate, level);
             addQueue.Enqueue(entry);
@@ -91,8 +91,8 @@ namespace Minecraft {
                 return;
 
             chunk.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
-            world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
-            chunk.MarkDirty();
+            chunk.IsDirty = true;
+            world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
 
             var entry = new Entry(blockCoordinate, level);
             removeQueue.Enqueue(entry);
@@ -136,9 +136,13 @@ namespace Minecraft {
                             var removeEntry = new Entry(blockCoordinate, level);
                             removeQueue.Enqueue(removeEntry);
                             chunk.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
-                            chunk.MarkDirty();
-                            world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
-                        } else if (level >= entry.Level) {
+                            chunk.IsDirty = true;
+                            world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+							if (chunk.IsModified) {
+                                chunk.IsSaved = false;
+								world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+                            }
+						} else if (level >= entry.Level) {
                             var addEntry = new Entry(blockCoordinate, level);
                             addQueue.Enqueue(addEntry);
                         }
@@ -163,9 +167,13 @@ namespace Minecraft {
                             chunk.LightMap.Set(localBlockCoordinate, chanel, newLevel);
                             var addEntry = new Entry(blockCoordinate, newLevel);
                             addQueue.Enqueue(addEntry);
-                            chunk.MarkDirty();
-                            world.ValidateChunk(chunkCoordinate, localBlockCoordinate);
-                        }
+                            chunk.IsDirty = true;
+                            world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+							if (chunk.IsModified) {
+                                chunk.IsSaved = false;
+								world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+                            }
+						}
                     }
                 }
             }

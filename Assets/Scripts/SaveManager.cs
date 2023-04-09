@@ -60,7 +60,7 @@ namespace Minecraft {
 		}
 
 		public void SaveChunk(Chunk chunk) {
-			chunk.IsModified = false;
+			chunk.IsSaved = true;
 			if (!IsSaved(chunk.Coordinate)) {
 				using var binaryWriter = new BinaryWriter(File.Open(selectedPath, FileMode.Append));
 				binaryWriter.Write(chunk.Coordinate.x);
