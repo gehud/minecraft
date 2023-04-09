@@ -1,21 +1,50 @@
 ﻿using Minecraft.Utilities;
+using System;
 using System.Collections;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft {
-    public class World : MonoBehaviour {
+	public class World : MonoBehaviour {
         /// <summary>
         /// World height in Chunks.
         /// </summary>
         public const int HEIGHT = 16;
 
-        public Dictionary<Vector3Int, ChunkData> ChunksData { get; set; } = new();
+        /// <summary>
+        /// Center of world rendering.
+        /// </summary>
+        public Vector2Int Center {
+            get => center;
+            set {
+                UpdateCenter(value);
+            }
+        }
 
-        public Dictionary<Vector3Int, Chunk> Chunks { get; set; } = new();
+        public const int MIN_DRAW_DISTANCE = 2;
+        public const int MAX_DRAW_DISTANCE = 32;
 
-        public LightCalculator LightCalculatorSun { get; set; }
+		/// <summary>
+		/// Radius in chunks of rendering area.
+		/// </summary>
+		public int DrawDistance { 
+            get => drawDistance;
+            set {
+                drawDistance = Mathf.Clamp(value, MIN_DRAW_DISTANCE, MAX_DRAW_DISTANCE);
+                UpdateMetrics();
+                Center = Center;
+                OnDrawDistanceChanged?.Invoke();
+            }
+        }
+
+        private int drawDistance = 2;
+
+        public event Action OnDrawDistanceChanged;
+
+        private Vector2Int center = Vector2Int.zero;
+
+		public LightCalculator LightCalculatorSun { get; set; }
 
         public LightCalculator LightCalculatorRed { get; set; }
 
@@ -26,111 +55,213 @@ namespace Minecraft {
         public LiquidCalculator LiquidCalculatorWater { get; set; }
 
         [SerializeField]
-        private Chunk chunk;
+        private new ChunkRenderer renderer;
+        [SerializeField]
+        private bool debugChunks = false;
 
         [SerializeField, Min(0)]
         private float tick = 0.25f;
 
         [Inject]
-        private BlockDataManager BlockDataManager { get; }
+        private readonly BlockProvider blockDataProvider;
+         
+        [Inject]
+        private readonly MaterialProvider materialProvider;
 
         [Inject]
-        private MaterialManager MaterialManager { get; }
+        private readonly SaveManager saveManager;
 
-        public ChunkData CreateChunkData(Vector3Int blockCoordinate) {
-            var chunkData = new ChunkData {
-                Coordinate = blockCoordinate
-            };
-            ChunksData.Add(blockCoordinate, chunkData);
-            return chunkData;
-        }
+		private int chunksSize;
+		private int chunksVolume;
+        private Chunk[] chunks;
+        private Chunk[] chunksBuffer;
+		private int renderersSize;
+		private int renderersVolume;
+        private ChunkRenderer[] renderers;
+        private ChunkRenderer[] renderersBuffer;
+		private readonly ConcurrentQueue<ChunkRenderer> renderersToDestroy = new();
 
-        public Chunk CreateChunk(Vector3Int blockCoordinate) {
-            var chunk = Instantiate(this.chunk, transform);
-            var chunkData = GetOrCreateChunkData(blockCoordinate);
-            chunk.Initialize(chunkData);
-            Chunks.Add(blockCoordinate, chunk);
+		public bool HasChunk(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
+				coordinate.y, coordinate.z - Center.y + DrawDistance + 1);
+            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= chunksSize
+                || arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
+                || arrayCoordinate.z < 0 || arrayCoordinate.z >= chunksSize)
+                return false;
+			return chunks[ChunkToIndex(coordinate)] != null;
+		}
+
+		public bool HasRenderer(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance,
+				coordinate.y, coordinate.z - Center.y + DrawDistance);
+            if (arrayCoordinate.x < 0 || arrayCoordinate.x >= renderersSize
+                || arrayCoordinate.y < 0 || arrayCoordinate.y >= HEIGHT
+                || arrayCoordinate.z < 0 || arrayCoordinate.z >= renderersSize)
+                return false;
+			return renderers[RendererToIndex(coordinate)] != null;
+		}
+
+        public Chunk CreateChunk(Vector3Int coordinate) {
+            if (HasChunk(coordinate))
+                throw new Exception("Chunk allready exists.");
+			var chunk = new Chunk();
+            chunk.Coordinate = coordinate;
+            chunks[ChunkToIndex(coordinate)] = chunk;
             return chunk;
         }
 
-        public ChunkData GetChunkData(Vector3Int blockCoordinate) {
-            if (ChunksData.ContainsKey(blockCoordinate))
-                return ChunksData[blockCoordinate];
+        public Chunk GetChunk(Vector3Int coordinate) {
+            if (!HasChunk(coordinate))
+                return null;
+			return chunks[ChunkToIndex(coordinate)];
+		}
 
-            return null;
+        public ChunkRenderer CreateRenderer(Vector3Int coordinate) {
+			if (HasRenderer(coordinate))
+				throw new Exception("Renderer allready exists.");
+            if (!HasChunk(coordinate))
+                throw new Exception("Renderer requires chunk.");
+			var renderer = Instantiate(this.renderer);
+            var chunk = GetChunk(coordinate);
+            renderer.Initialize(chunk);
+            renderers[RendererToIndex(coordinate)] = renderer;
+            return renderer;
         }
 
-        public Chunk GetChunk(Vector3Int blockCoordinate) {
-            if (Chunks.ContainsKey(blockCoordinate))
-                return Chunks[blockCoordinate];
+		public bool TryGetChunk(Vector3Int coordinate, out Chunk chunk) {
+            chunk = GetChunk(coordinate);
+            return chunk != null;
+		}
 
-            return null;
+		public ChunkRenderer GetRenderer(Vector3Int coordinate) {
+			if (!HasRenderer(coordinate))
+				return null;
+			return renderers[RendererToIndex(coordinate)];
+		}
+
+		public bool TryGetRenderer(Vector3Int coordinate, out ChunkRenderer renderer) {
+            renderer = GetRenderer(coordinate);
+			return renderer != null;
+		}
+
+		public Chunk GetOrCreateChunk(Vector3Int coordinate) {
+            if (TryGetChunk(coordinate, out Chunk chunk))
+                return chunk;
+            return CreateChunk(coordinate);
         }
 
-        public ChunkData GetOrCreateChunkData(Vector3Int blockCoordinate) {
-            if (ChunksData.ContainsKey(blockCoordinate))
-                return ChunksData[blockCoordinate];
-
-            return CreateChunkData(blockCoordinate);
+        public ChunkRenderer GetOrCreateRenderer(Vector3Int coordinate) {
+            if (TryGetRenderer(coordinate, out ChunkRenderer renderer))
+                return renderer;
+            return CreateRenderer(coordinate);
         }
 
-        public Chunk GetOrCreateChunk(Vector3Int blockCoordinate) {
-            if (Chunks.ContainsKey(blockCoordinate))
-                return Chunks[blockCoordinate];
+		public void MarkDirtyIfNeeded(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
+            if (localBlockCoordinate.x == 0 && TryGetChunk(chunkCoordinate + Vector3Int.left, out var chunk))
+                chunk.IsDirty = true;
+			if (localBlockCoordinate.y == 0 && TryGetChunk(chunkCoordinate + Vector3Int.down, out chunk))
+				chunk.IsDirty = true;
+			if (localBlockCoordinate.z == 0 && TryGetChunk(chunkCoordinate + Vector3Int.back, out chunk))
+				chunk.IsDirty = true; 
+			if (localBlockCoordinate.x == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.right, out chunk))
+				chunk.IsDirty = true;
+			if (localBlockCoordinate.y == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.up, out chunk))
+				chunk.IsDirty = true;
+			if (localBlockCoordinate.z == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.forward, out chunk))
+				chunk.IsDirty = true;
+		}
 
-            return CreateChunk(blockCoordinate);
-        }
+		public void MarkModifiedIfNeeded(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
+			if (localBlockCoordinate.x == 0 && TryGetChunk(chunkCoordinate + Vector3Int.left, out var chunk)) {
+				chunk.IsModified = true; 
+                chunk.IsSaved = false;
+            }
+			if (localBlockCoordinate.y == 0 && TryGetChunk(chunkCoordinate + Vector3Int.down, out chunk)) {
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.z == 0 && TryGetChunk(chunkCoordinate + Vector3Int.back, out chunk)) {
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.x == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.right, out chunk)) {
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.y == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.up, out chunk)) {
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.z == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.forward, out chunk)) {
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+		}
 
-        public void DestroyChunk(Vector3Int blockCoordinate) {
-            ChunksData.Remove(blockCoordinate);
-            Chunks.Remove(blockCoordinate, out Chunk chunk);
-            Destroy(chunk.gameObject);
-        }
-
-        /// <summary>
-        /// Marks chunk data as dirty if needed.
-        /// </summary>
-        public void ValidateChunkData(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
-			ChunkData chunkData;
-            if (localBlockCoordinate.x == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.left, out chunkData))
-                chunkData.MarkDirty();
-			if (localBlockCoordinate.y == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.down, out chunkData))
-				chunkData.MarkDirty();
-			if (localBlockCoordinate.z == 0 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.back, out chunkData))
-				chunkData.MarkDirty();
-			if (localBlockCoordinate.x == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.right, out chunkData))
-				chunkData.MarkDirty();
-			if (localBlockCoordinate.y == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.up, out chunkData))
-				chunkData.MarkDirty();
-			if (localBlockCoordinate.z == Chunk.SIZE - 1 && ChunksData.TryGetValue(chunkCoordinate + Vector3Int.forward, out chunkData))
-				chunkData.MarkDirty();
-        }
+		public void MarkDirtyAndModifiedIfNeeded(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
+			if (localBlockCoordinate.x == 0 && TryGetChunk(chunkCoordinate + Vector3Int.left, out var chunk)) {
+                chunk.IsDirty = true;
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.y == 0 && TryGetChunk(chunkCoordinate + Vector3Int.down, out chunk)) {
+				chunk.IsDirty = true;
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.z == 0 && TryGetChunk(chunkCoordinate + Vector3Int.back, out chunk)) {
+				chunk.IsDirty = true;
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.x == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.right, out chunk)) {
+				chunk.IsDirty = true;
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.y == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.up, out chunk)) {
+				chunk.IsDirty = true;
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+			if (localBlockCoordinate.z == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.forward, out chunk)) {
+				chunk.IsDirty = true;
+				chunk.IsModified = true;
+				chunk.IsSaved = false;
+			}
+		}
 
 		public BlockType GetBlock(Vector3Int blockCoordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                return chunkData.BlockMap[localBlockCoordinate];
+                return chunk.BlockMap[localBlockCoordinate];
             }
 
             return BlockType.Air;
         }
 
+        public BlockType GetBlock(int x, int y, int z) {
+            return GetBlock(new Vector3Int(x, y, z));
+        }
+
         public void SetBlock(Vector3Int blockCoordinate, BlockType voxelType) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                chunkData.BlockMap[localBlockCoordinate] = voxelType;
-				chunkData.MarkDirty();
-				ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+                chunk.BlockMap[localBlockCoordinate] = voxelType;
+                chunk.IsDirty = true;
+                chunk.IsModified = true;
+                chunk.IsSaved = false;
+				MarkDirtyAndModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
             }
         }
 
         public int GetLightLevel(Vector3Int blockCoordinate, LightChanel chanel) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                return chunkData.LightMap.Get(localBlockCoordinate, chanel);
+                return chunk.LightMap.Get(localBlockCoordinate, chanel);
             }
 
             return LightMap.MAX;
@@ -138,52 +269,12 @@ namespace Minecraft {
 
         public byte GetLiquidAmount(Vector3Int blockCoordinate) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
+            if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                return chunkData.LiquidMap[localBlockCoordinate].Amount;
+                return chunk.LiquidMap[localBlockCoordinate];
             }
 
             return LiquidMap.MIN;
-        }
-
-		public void SetLiquidAmount(Vector3Int blockCoordinate, byte amount) {
-			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                chunkData.LiquidMap.Set(localBlockCoordinate, amount);
-				chunkData.MarkDirty();
-				ValidateChunkData(chunkCoordinate, localBlockCoordinate);
-			}
-		}
-
-		public byte GetLiquidAmount(Vector3Int blockCoordinate, BlockType type) {
-			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-				return chunkData.LiquidMap.Get(localBlockCoordinate, type);
-			}
-
-			return LiquidMap.MIN;
-		}
-
-		public void SetLiquidAmount(Vector3Int blockCoordinate, BlockType type, byte amount) {
-			Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-			if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-				Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-				chunkData.LiquidMap.Set(localBlockCoordinate, type, amount);
-                chunkData.MarkDirty();
-			    ValidateChunkData(chunkCoordinate, localBlockCoordinate);
-			}
-		}
-
-		public LiquidData GetLiquidData(Vector3Int blockCoordinate) {
-            Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                return chunkData.LiquidMap[localBlockCoordinate];
-            }
-
-            return LiquidData.Empty;
         }
 
 		public void DestroyVoxel(Vector3Int blockCoordinate) {
@@ -255,7 +346,7 @@ namespace Minecraft {
             LightCalculatorBlue.Remove(blockCoordinate);
             LightCalculatorSun.Remove(blockCoordinate);
             for (int y = blockCoordinate.y - 1; y >= 0; y--) {
-                if (!BlockDataManager.Data[GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))].IsTransparent)
+                if (!blockDataProvider.Get(GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))).IsTransparent)
                     break;
                 LightCalculatorSun.Remove(blockCoordinate.x, y, blockCoordinate.z);
             }
@@ -264,7 +355,7 @@ namespace Minecraft {
             LightCalculatorBlue.Calculate();
             LightCalculatorSun.Calculate();
 
-            LightColor emission = BlockDataManager.Data[voxelType].Emission;
+            LightColor emission = blockDataProvider.Get(voxelType).Emission;
             if (emission.R != 0) {
                 LightCalculatorRed.Add(blockCoordinate, emission.R);
                 LightCalculatorRed.Calculate();
@@ -283,30 +374,188 @@ namespace Minecraft {
             }
         }
 
-        private void Awake() {
-            LightCalculator.SetBlockDataManager(BlockDataManager);
-            LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
-            LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
-            LightCalculatorBlue = new LightCalculator(this, LightChanel.Blue);
-            LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
-            LiquidCalculator.SetBlockDataManager(BlockDataManager);
-            LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
-        }
+		private void UpdateMetrics() {
+            var oldChunksSize = chunksSize;
+            var oldRenderersSize = renderersSize;
+            var oldChunks = chunks;
+            var oldRenderers = renderers;
+			chunksSize = DrawDistance * 2 + 3;
+			renderersSize = DrawDistance * 2 + 1;
+			chunksVolume = chunksSize * chunksSize * HEIGHT;
+			renderersVolume = renderersSize * renderersSize * HEIGHT;
+			chunks = new Chunk[chunksVolume];
+			chunksBuffer = new Chunk[chunksVolume];
+			renderers = new ChunkRenderer[renderersVolume];
+            renderersBuffer = new ChunkRenderer[renderersVolume];
 
-        public void StartLiquidCalculation() => StartCoroutine(LiquidCalculation());
+            var d = chunksSize - oldChunksSize;
+            for (int x = 0; x < oldChunksSize; x++) {
+                for (int z = 0; z < oldChunksSize; z++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+                        var index = Array3DUtility.To1D(x, y, z, oldChunksSize, HEIGHT);
+                        var chunk = oldChunks[index];
+                        if (chunk == null)
+                            continue;
+                        int nx = x + d / 2;
+                        int nz = z + d / 2;
+                        if (nx < 0 || nz < 0 || nx >= chunksSize || nz >= chunksSize)
+                            continue;
+                        chunks[Array3DUtility.To1D(nx, y, nz, chunksSize, HEIGHT)] = chunk;
+                    }
+                }
+            }
 
-        private IEnumerator LiquidCalculation() {
-            while (true) {
-                LiquidCalculatorWater.Calculate();
-                yield return new WaitForSeconds(tick);
+            d = renderersSize - oldRenderersSize;
+            for (int x = 0; x < oldRenderersSize; x++) {
+                for (int z = 0; z < oldRenderersSize; z++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+                        var index = Array3DUtility.To1D(x, y, z, oldRenderersSize, HEIGHT);
+                        var renderer = oldRenderers[index];
+                        if (renderer == null)
+                            continue;
+                        int nx = x + d / 2;
+                        int nz = z + d / 2;
+                        if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
+                            Destroy(renderer.gameObject);
+                            continue;
+                        }
+                        renderers[Array3DUtility.To1D(nx, y, nz, renderersSize, HEIGHT)] = renderer;
+                    }
+                }
             }
         }
 
-        private void Update() {
-            foreach (var chunk in Chunks.Values) {
-                if (chunk.Data.IsComplete && chunk.Data.IsDirty)
-                    chunk.UpdateMesh(ChunkUtility.GenerateMeshData(this, chunk.Data, BlockDataManager), MaterialManager);
+        private int RendererToIndex(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance,
+				coordinate.y, coordinate.z - Center.y + DrawDistance);
+			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, renderersSize, HEIGHT);
+		}
+
+		private int ChunkToIndex(Vector3Int coordinate) {
+			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
+				coordinate.y, coordinate.z - Center.y + DrawDistance + 1);
+			return Array3DUtility.To1D(arrayCoordinate.x, arrayCoordinate.y, arrayCoordinate.z, chunksSize, HEIGHT);
+		}
+
+		private void UpdateCenter(Vector2Int center) {
+			Array.Fill(chunksBuffer, null);
+			Array.Fill(renderersBuffer, null);
+
+			var d = center - this.center;
+			for (int x = 0; x < chunksSize; x++) {
+				for (int z = 0; z < chunksSize; z++) {
+					for (int y = 0; y < HEIGHT; y++) {
+						var index = Array3DUtility.To1D(x, y, z, chunksSize, HEIGHT);
+						var chunk = chunks[index];
+						if (chunk == null)
+							continue;
+						int nx = x - d.x;
+						int nz = z - d.y;
+						if (nx < 0 || nz < 0 || nx >= chunksSize || nz >= chunksSize) {
+							chunks[index] = null;
+							continue;
+						}
+						chunksBuffer[Array3DUtility.To1D(nx, y, nz, chunksSize, HEIGHT)] = chunk;
+					}
+				}
+			}
+
+            for (int x = 0; x < renderersSize; x++) {
+                for (int z = 0; z < renderersSize; z++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+                        var index = Array3DUtility.To1D(x, y, z, renderersSize, HEIGHT);
+                        var renderer = renderers[index];
+                        if (renderer == null)
+                            continue;
+                        int nx = x - d.x;
+                        int nz = z - d.y;
+                        if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
+                            renderersToDestroy.Enqueue(renderer);
+                            renderers[index] = null;
+                            continue;
+                        }
+                        renderersBuffer[Array3DUtility.To1D(nx, y, nz, renderersSize, HEIGHT)] = renderer;
+                    }
+				}
+            }
+
+			(chunks, chunksBuffer) = (chunksBuffer, chunks);
+			(renderers, renderersBuffer) = (renderersBuffer, renderers);
+
+			this.center = center;
+		}
+
+		private IEnumerator SolveLiquid() {
+			while (true) {
+				LiquidCalculatorWater.Calculate();
+				yield return new WaitForSeconds(tick);
+			}
+		}
+
+		private IEnumerator CleanRenderers() {
+			while (true) {
+				while (renderersToDestroy.TryDequeue(out ChunkRenderer chunkRenderer)) {
+					Destroy(chunkRenderer.gameObject);
+					yield return null;
+				}
+
+				yield return null;
+			}
+		}
+
+		private void Awake() {
+			chunksSize = DrawDistance * 2 + 3;
+			renderersSize = DrawDistance * 2 + 1;
+			chunksVolume = chunksSize * chunksSize * HEIGHT;
+			renderersVolume = renderersSize * renderersSize * HEIGHT;
+			chunks = new Chunk[chunksVolume];
+			chunksBuffer = new Chunk[chunksVolume];
+			renderers = new ChunkRenderer[renderersVolume];
+			renderersBuffer = new ChunkRenderer[renderersVolume];
+
+			LightCalculator.SetBlockDataManager(blockDataProvider);
+			LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
+			LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
+			LightCalculatorBlue = new LightCalculator(this, LightChanel.Blue);
+			LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
+			LiquidCalculator.SetBlockDataManager(blockDataProvider);
+			LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
+		}
+
+		private void Start() {
+            StartCoroutine(SolveLiquid());
+            StartCoroutine(CleanRenderers());
+		}
+
+		private void Update() {
+            foreach (var renderer in renderers) {
+                if (renderer == null)
+                    continue;
+                if (renderer.Data.IsComplete && renderer.Data.IsDirty) { 
+                    renderer.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Data, blockDataProvider), materialProvider);
+                } else if (renderer.Data.IsModified && !renderer.Data.IsSaved) {
+                    saveManager.SaveChunk(renderer.Data);
+                }
             }
         }
-    }
+
+        private void DrawChunkGizmo(Vector3Int coordinate) {
+            var center = coordinate * Chunk.SIZE + Vector3.one * Chunk.SIZE / 2.0f;
+            var size = Vector3.one * Chunk.SIZE - Vector3.one * 0.01f;
+			Gizmos.DrawWireCube(center, size);
+		}
+
+		private void OnDrawGizmos() {
+			if (!debugChunks) {
+				return;
+			}
+
+			foreach (var chunk in chunks) {
+				if (chunk == null)
+					continue;
+				Gizmos.color = Color.green;
+				DrawChunkGizmo(chunk.Coordinate);
+			}
+		}
+	}
 }

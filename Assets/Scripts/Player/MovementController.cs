@@ -1,11 +1,10 @@
-﻿using System;
+﻿using Minecraft.Physics;
+using Minecraft.Utilities;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft.Player {
-    [RequireComponent(typeof(Rigidbody))]
-    [RequireComponent(typeof(BoxCollider))]
-    [RequireComponent(typeof(GroundChecker))]
+	[RequireComponent(typeof(Hitbox))]
     public class MovementController : MonoBehaviour {
         public bool IsSneaking => isSneaking;
 
@@ -20,13 +19,15 @@ namespace Minecraft.Player {
         private float sneakSpeed = 3;
         [SerializeField, Min(0)]
         private float sprintSpeed = 7;
-        [SerializeField, Min(0)]
+		[SerializeField, Min(0)]
         private float speedDelta = 1.0f;
 
         [SerializeField, Min(0)]
         private float jumpingHeight = 1.125f;
         [SerializeField, Min(0)]
         private float doubleTapTime = 0.5f;
+        [SerializeField, Min(0)]
+        private float skinWidth = 0.08f;
 
         [Header("Keys")]
         [SerializeField]
@@ -36,51 +37,94 @@ namespace Minecraft.Player {
         [SerializeField]
         private KeyCode sprintKey = KeyCode.LeftControl;
 
-        private float lastDoubleTapTime = 0.0f;
+		[Inject]
+		private readonly World world;
 
-        private new Rigidbody rigidbody;
-        private BoxCollider boxCollider;
-        private GroundChecker groundChecker;
+		[Inject]
+		private readonly BlockProvider blockProvider;
+
+		[Inject]
+		private readonly PhysicsWorld PhysicsWorld;
+
+
+		private float lastDoubleTapTime = 0.0f;
+
+        private Hitbox hitbox;
         private Vector3 velocity = Vector3.zero;
         private float targetSpeed = 0;
         private float speed = 0;
+        private bool isGrounded = false;
         private bool isSneaking = false;
-        private bool isSprinting = false;
-
-        [Inject]
-        private World World { get; }
-
-        [Inject]
-        private BlockDataManager BlockDataManager { get; }
+		private bool isSprinting = false;
+		private bool isSwiming = false;
+		private Vector3 lastPosition;
 
         private void Awake() {
-            rigidbody = GetComponent<Rigidbody>();
-            boxCollider = GetComponent<BoxCollider>();
-            groundChecker = GetComponent<GroundChecker>();
+			hitbox = GetComponent<Hitbox>();
+
+            for (int y = World.HEIGHT * Chunk.SIZE; y >= 0; --y) {
+                if (blockProvider.Get(world.GetBlock(new Vector3Int(0, y, 0))).IsSolid) {
+                    transform.position = new Vector3(0.0f, y + 1.0f, 0.0f);
+                    break;
+                }
+            }
+
+            lastPosition = transform.position;
         }
 
-        private void Jump() {
-            float velocity = Mathf.Sqrt(2 * Mathf.Abs(Physics.gravity.y) * jumpingHeight);
-            rigidbody.velocity += Vector3.up * velocity;
+		private void Jump() {
+            float velocity = Mathf.Sqrt(2 * Mathf.Abs(PhysicsWorld.Gravity.y) * jumpingHeight);
+            hitbox.Velocity += Vector3.up * velocity;
         }
 
         private void Update() {
-			bool isGrounded = groundChecker.IsGrounded;
+            if (isSneaking) {
+				var extents = hitbox.Bounds.extents;
+				var offset = hitbox.Bounds.center;
+				int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y - skinWidth);
 
-            if (isGrounded) {
-                if (!rigidbody.useGravity)
-                    rigidbody.useGravity = true;
-            }
+                bool shouldFall = true;
+				for (int x = Mathf.FloorToInt(lastPosition.x + offset.x - extents.x + skinWidth); x <= Mathf.FloorToInt(lastPosition.x + offset.x + extents.x - skinWidth); x++) {
+					for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + skinWidth); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - skinWidth); z++) {
+						if (blockProvider.Get(world.GetBlock(x, y, z)).IsSolid) {
+                            shouldFall = false;
+                            break;
+						}
+					}
+				}
 
-			float horizontalInput = Input.GetAxis("Horizontal");
-			float verticalInput = Input.GetAxis("Vertical");
-			Vector2 input = new(horizontalInput, verticalInput);
-			input = input.magnitude > 1 ? input.normalized : input;
+                if (shouldFall)
+                    transform.position = new Vector3(transform.position.x, transform.position.y, lastPosition.z);
+
+                shouldFall = true;
+				for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + skinWidth); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - skinWidth); x++) {
+					for (int z = Mathf.FloorToInt(lastPosition.z + offset.z - extents.z + skinWidth); z <= Mathf.FloorToInt(lastPosition.z + offset.z + extents.z - skinWidth); z++) {
+						if (blockProvider.Get(world.GetBlock(x, y, z)).IsSolid) {
+							shouldFall = false;
+							break;
+						}
+					}
+				}
+
+				if (shouldFall)
+					transform.position = new Vector3(lastPosition.x, transform.position.y, transform.position.z);
+			}
+
+            isGrounded = IsGrounded();
+
+            if (isGrounded && hitbox.IsKinematic)
+                hitbox.IsKinematic = false;
+
+            float horizontalInput = Input.GetAxis("Horizontal");
+            float verticalInput = Input.GetAxis("Vertical");
+            Vector2 input = new(horizontalInput, verticalInput);
+            input = input.magnitude > 1 ? input.normalized : input;
 
             isSneaking = Input.GetKey(sneakKey) && isGrounded;
             isSprinting = Input.GetKeyDown(sprintKey) || isSprinting && input.magnitude == 1.0f;
+            isSwiming = blockProvider.Get(world.GetBlock(CoordinateUtility.ToCoordinate(transform.position))).IsLiquid;
 
-			if (isSneaking) {
+            if (isSneaking) {
                 targetSpeed = sneakSpeed;
             } else if (isSprinting) {
                 targetSpeed = sprintSpeed;
@@ -89,17 +133,21 @@ namespace Minecraft.Player {
             }
 
             if (Input.GetKeyDown(jumpKey)) {
-                if (isGrounded)
+                if (isGrounded && !isSwiming)
                     Jump();
                 if (Time.time - lastDoubleTapTime < doubleTapTime)
-                    rigidbody.useGravity = !rigidbody.useGravity;
+                    hitbox.IsKinematic = !hitbox.IsKinematic;
                 lastDoubleTapTime = Time.time;
             }
 
             speed = Mathf.MoveTowards(speed, targetSpeed, speedDelta);
 
-            if (rigidbody.useGravity) {
-                velocity.y = rigidbody.velocity.y;
+            if (!hitbox.IsKinematic) {
+                if (isSwiming && Input.GetAxis("Fly") > 0) {
+					velocity.y = Input.GetAxis("Fly") * speed;
+				} else { 
+                    velocity.y = hitbox.Velocity.y;
+                }
             } else {
                 velocity.y = Input.GetAxis("Fly") * speed;
             }
@@ -108,40 +156,23 @@ namespace Minecraft.Player {
             velocity.z = input.y * speed;
             velocity = Quaternion.Euler(0, camera.localEulerAngles.y, 0) * velocity;
 
-            if (isSneaking && velocity != Vector3.zero) {
-                var direction = velocity.normalized;
-                if (direction.x > 0.0f)
-                    direction.x = 1.0f;
-                else if (direction.x < 0.0f)
-                    direction.x = -1.0f;
-                if (direction.z > 0.0f)
-                    direction.z = 1.0f;
-                else if (direction.z < 0.0f)
-                    direction.z = -1.0f;
-
-                var extents = Vector3.one * boxCollider.bounds.extents.x;
-
-                if (!CheckSquare(transform.position + Vector3.forward * direction.z * speed * Time.fixedDeltaTime, extents)) {
-                    velocity.z = 0.0f;
-                }
-
-                if (!CheckSquare(transform.position + Vector3.right * direction.x * speed * Time.fixedDeltaTime, extents)) {
-                    velocity.x = 0.0f;
-                }
-            }
-
-            rigidbody.velocity = velocity;
+            hitbox.Velocity = velocity;
+            lastPosition = transform.position;
         }
 
-        private bool CheckSquare(Vector3 position, Vector3 extents) {
-            for (int x = Mathf.FloorToInt(position.x - extents.x); x <= Mathf.FloorToInt(position.x + extents.x); x++) {
-                for (int z = Mathf.FloorToInt(position.z - extents.z); z <= Mathf.FloorToInt(position.z + extents.z); z++) {
-                    if (BlockDataManager.Data[World.GetBlock(new Vector3Int(x, Mathf.FloorToInt(position.y - extents.y), z))].IsSolid)
+		private bool IsGrounded() {
+			var extents = hitbox.Bounds.extents;
+			var offset = hitbox.Bounds.center;
+			int y = Mathf.FloorToInt(transform.position.y + offset.y - extents.y - skinWidth);
+			for (int x = Mathf.FloorToInt(transform.position.x + offset.x - extents.x + skinWidth); x <= Mathf.FloorToInt(transform.position.x + offset.x + extents.x - skinWidth); x++) {
+                for (int z = Mathf.FloorToInt(transform.position.z + offset.z - extents.z + skinWidth); z <= Mathf.FloorToInt(transform.position.z + offset.z + extents.z - skinWidth); z++) {
+                    if (blockProvider.Get(world.GetBlock(x, y, z)).IsSolid) {
                         return true;
+                    }
                 }
             }
 
             return false;
-        }
+		}
     }
 }

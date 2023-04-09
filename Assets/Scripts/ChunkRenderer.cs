@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -8,6 +7,8 @@ namespace Minecraft {
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
     public class ChunkRenderer : MonoBehaviour {
+		public Chunk Data { get; set; }
+
         [SerializeField]
         private MeshFilter meshFilter;
         [SerializeField]
@@ -15,7 +16,12 @@ namespace Minecraft {
 
         private Mesh mesh;
 
-        public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshData, MaterialManager materialManager) {
+		public void Initialize(Chunk data) {
+			Data = data;
+			transform.position = data.Coordinate * Chunk.SIZE;
+		}
+
+		public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshData, MaterialProvider materialManager) {
             List<SubMeshDescriptor> subMeshDescriptors = new();
             List<ushort> indices = new();
             List<Vertex> vertices = new();
@@ -27,7 +33,7 @@ namespace Minecraft {
                     indices.Add((ushort)(pair.Value.Indices[i] + vertexCount));
                 }
                 vertices.AddRange(pair.Value.Vertices);
-                materials.Add(materialManager.Materials[pair.Key]);
+                materials.Add(materialManager.Get(pair.Key));
             }
 
             mesh.SetVertexBufferParams(vertices.Count,
@@ -45,7 +51,10 @@ namespace Minecraft {
             mesh.bounds = new Bounds(center, size);
 
             meshRenderer.materials = materials.ToArray();
-        }
+
+			Data.IsDirty = false;
+			Data.IsComplete = true;
+		}
 
         private void Awake() {
             mesh = new();

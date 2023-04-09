@@ -7,14 +7,19 @@ namespace Minecraft.Player {
         [SerializeField, Min(0)]
         private float sencitivity = 5;
 
+        public float FOV {
+            get => normalFOV;
+            set => normalFOV = value;
+		}
+
         [SerializeField]
         private MovementController movementController;
         [SerializeField]
         private float sneakHeight = 1.4f;
         [SerializeField]
-        private float sprintFieldOfView = 70.0f;
+        private float sprintFOVMultiplier = 1.5f;
         [SerializeField]
-        private float fieldOfViewDelta = 1.0f;
+        private float FOVDelta = 1.0f;
 
         private new Camera camera;
 
@@ -22,13 +27,19 @@ namespace Minecraft.Player {
         private float rotationY = 0.0f;
 
         private float normalHeight;
-        private float normalFieldOfView;
-        private float targetFieldOfView = 1.0f;
+        private float normalFOV;
+        private float targetFOV = 1.0f;
+
+        private bool isInMenu = false;
 
 		private void Awake() {
 			camera = GetComponent<Camera>();
             normalHeight = transform.localPosition.y;
-            normalFieldOfView = camera.fieldOfView;
+            normalFOV = camera.fieldOfView;
+		}
+
+		private void Start() {
+			Cursor.lockState = CursorLockMode.Locked;
 		}
 
 		private void Update() {
@@ -39,19 +50,39 @@ namespace Minecraft.Player {
             }
 
             if (movementController.IsSprinting) {
-                targetFieldOfView = sprintFieldOfView;
+                targetFOV = normalFOV * sprintFOVMultiplier;
             } else {
-                targetFieldOfView = normalFieldOfView;
+                targetFOV = normalFOV;
             }
 
-            camera.fieldOfView = Mathf.MoveTowards(camera.fieldOfView, targetFieldOfView, fieldOfViewDelta);
+            camera.fieldOfView = Mathf.MoveTowards(camera.fieldOfView, targetFOV, FOVDelta);
 
-            float mouseX = Input.GetAxis("Mouse X");
-            float mouseY = Input.GetAxis("Mouse Y");
+            if (!isInMenu) { 
+                float mouseX = Input.GetAxis("Mouse X");
+                float mouseY = Input.GetAxis("Mouse Y");
 
-            rotationX = Mathf.Clamp(rotationX - mouseY * sencitivity, -90.0f, 90.0f);
-            rotationY += mouseX * sencitivity;
-            transform.localEulerAngles = new Vector3(rotationX, rotationY, 0.0f);
+                rotationX = Mathf.Clamp(rotationX - mouseY * sencitivity, -90.0f, 90.0f);
+                rotationY += mouseX * sencitivity;
+                transform.localEulerAngles = new Vector3(rotationX, rotationY, 0.0f);
+            }
         }
-    }
+
+        private void OnMenuEnter() {
+            isInMenu = true;
+        }
+
+		private void OnMenuExit() {
+			isInMenu = false;
+		}
+
+		private void OnEnable() {
+            MenuController.OnEnter += OnMenuEnter;
+            MenuController.OnExit += OnMenuExit;
+		}
+
+		private void OnDisable() {
+			MenuController.OnEnter -= OnMenuEnter;
+			MenuController.OnExit -= OnMenuExit;
+		}
+	}
 }

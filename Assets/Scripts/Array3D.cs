@@ -2,13 +2,18 @@
 
 namespace Minecraft {
     public class Array3D<T> {
-        protected readonly T[] Data;
+        public readonly T[] Data;
         protected readonly int X, XY;
 
         public Array3D(int x, int y, int z) {
             X = x;
             XY = x * y;
             Data = new T[x * y * z];
+        }
+
+        public T this[int i] {
+            get => Data[i];
+            set => Data[i] = value;
         }
 
         public T this[int x, int y, int z] {

@@ -1,13 +1,18 @@
 ﻿namespace Minecraft {
-    public enum BlockType {
+    public enum BlockType : byte {
         Air,
         Stone,
-        Dirt,
         Grass,
-        Sand,
+        Dirt,
         Water,
-        JackOLantern,
+        Sand,
         Log,
         Leaves,
+        JackOLantern,
+        Bedrock,
+        Gravel,
+        TallGrass,
+        RedFlower,
+        YellowFlower,
     }
 }

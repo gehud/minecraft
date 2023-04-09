@@ -1,13 +1,13 @@
 ﻿using UnityEditor;
-using UnityEngine;
 
 namespace Minecraft.Editor {
-	[CustomEditor(typeof(BlockData))]
+	[CustomEditor(typeof(Block))]
 	public class BlockDataEditor : UnityEditor.Editor {
 		private SerializedProperty texturingData;
 		private SerializedProperty materialType;
 		private SerializedProperty isSolid;
 		private SerializedProperty isLiquid;
+		private SerializedProperty isVegetation;
 		private SerializedProperty emission;
 		private SerializedProperty isTransparent;
 		private SerializedProperty absorption;
@@ -17,6 +17,7 @@ namespace Minecraft.Editor {
 			materialType = serializedObject.FindProperty(nameof(materialType));
 			isSolid = serializedObject.FindProperty(nameof(isSolid));
 			isLiquid = serializedObject.FindProperty(nameof(isLiquid));
+			isVegetation = serializedObject.FindProperty(nameof(isVegetation));
 			emission = serializedObject.FindProperty(nameof(emission));
 			isTransparent = serializedObject.FindProperty(nameof(isTransparent));
 			absorption = serializedObject.FindProperty(nameof(absorption));
@@ -29,6 +30,7 @@ namespace Minecraft.Editor {
 			EditorGUILayout.PropertyField(materialType);
 			EditorGUILayout.PropertyField(isSolid);
 			EditorGUILayout.PropertyField(isLiquid);
+			EditorGUILayout.PropertyField(isVegetation);
 			EditorGUILayout.PropertyField(emission);
 			EditorGUILayout.PropertyField(isTransparent);
 			if (isTransparent.boolValue) {

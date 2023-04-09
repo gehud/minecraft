@@ -6,61 +6,36 @@ using UnityEngine;
 namespace Minecraft.Utilities {
     public static class ChunkUtility {
         public static void For(Action<int, int, int> action) {
-            for (int y = 0; y < Chunk.SIZE; y++)
-                for (int x = 0; x < Chunk.SIZE; x++)
+            for (int x = 0; x < Chunk.SIZE; x++)
+                for (int y = 0; y < Chunk.SIZE; y++)
                     for (int z = 0; z < Chunk.SIZE; z++)
-                        action(y, x, z);
+                        action(x, y, z);
         }
 
         public static void For(Action<Vector3Int> action) {
-            for (int y = 0; y < Chunk.SIZE; y++)
-                for (int x = 0; x < Chunk.SIZE; x++)
+            for (int x = 0; x < Chunk.SIZE; x++)
+                for (int y = 0; y < Chunk.SIZE; y++)
                     for (int z = 0; z < Chunk.SIZE; z++)
                         action(new Vector3Int(x, y, z));
         }
-
-        private const int SIZE_X_SIZE = Chunk.SIZE * Chunk.SIZE;
 
         private static readonly object lockObject = new();
 
         public static void ParallelFor(Action<int, int, int> action) {
             Parallel.For(0, Chunk.VOLUME, (index, state) => {
-                int z = index / SIZE_X_SIZE;
-                index -= z * SIZE_X_SIZE;
-                int y = index / Chunk.SIZE;
-                int x = index % Chunk.SIZE;
-                action(x, y, z);
+                var coordinate = Array3DUtility.To3D(index, Chunk.SIZE, Chunk.SIZE);
+                action(coordinate.x, coordinate.y, coordinate.z);
             });
         }
 
-        public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, ChunkData chunkData, BlockDataManager blockDataManager) {
-            BlockType GetBlock(int x, int y, int z) {
-                Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
-                return world.GetBlock(blockCoordinate);
-            }
+		public static void ParallelFor(Action<Vector3Int> action) {
+            Parallel.For(0, Chunk.VOLUME, (index, state) => {
+				var coordinate = Array3DUtility.To3D(index, Chunk.SIZE, Chunk.SIZE);
+				action(coordinate);
+			});
+        }
 
-            int GetLight(int x, int y, int z, LightChanel chanel) {
-                Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
-                return world.GetLightLevel(blockCoordinate, chanel);
-            }
-
-            byte GetLiquidAmount(int x, int y, int z, BlockType liquidType) {
-                Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunkData.Coordinate, new Vector3Int(x, y, z));
-                return world.GetLiquidAmount(blockCoordinate, liquidType);
-            }
-
-            bool IsSolid(int x, int y, int z) {
-                return blockDataManager.Data[GetBlock(x, y, z)].IsSolid;
-            }
-
-            bool IsLiquid(int x, int y, int z) {
-                return blockDataManager.Data[GetBlock(x, y, z)].IsLiquid;
-            }
-
-            bool IsVoxelTransparent(int x, int y, int z) {
-                return blockDataManager.Data[GetBlock(x, y, z)].IsTransparent;
-            }
-
+		public static ConcurrentDictionary<MaterialType, MeshData> GenerateMeshData(World world, Chunk chunk, BlockProvider blockProvider) {
             void AddFaceIndices(MeshData meshData, float aof1, float aof2, float aof3, float aof4, bool force = false, bool fliped = false) {
                 int vertexCount = meshData.Vertices.Count;
                 if (force && fliped || aof1 + aof3 < aof2 + aof4) {
@@ -82,33 +57,147 @@ namespace Minecraft.Utilities {
                 }
             }
 
-            void AddFaceColliderIndices(MeshData meshData) {
-                int vertexCount = meshData.ColliderVertices.Count;
-                meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(1 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(0 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(2 + vertexCount));
-                meshData.ColliderIndices.Add((ushort)(3 + vertexCount));
+            var neighbours = new Chunk[3 * 3 * 3];
+            neighbours[0] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.back);
+            neighbours[1] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.back);
+            neighbours[2] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.back);
+            neighbours[3] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.back);
+            neighbours[4] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.back);
+            neighbours[5] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.back);
+            neighbours[6] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.back);
+            neighbours[7] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.back);
+            neighbours[8] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.back);
+
+            neighbours[9] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.zero);
+            neighbours[10] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.zero);
+            neighbours[11] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.zero);
+            neighbours[12] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.zero);
+            neighbours[13] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.zero);
+            neighbours[14] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.zero);
+            neighbours[15] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.zero);
+            neighbours[16] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.zero);
+            neighbours[17] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.zero);
+
+            neighbours[18] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.down + Vector3Int.forward);
+            neighbours[19] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.down + Vector3Int.forward);
+            neighbours[20] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.down + Vector3Int.forward);
+            neighbours[21] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.zero + Vector3Int.forward);
+            neighbours[22] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.zero + Vector3Int.forward);
+            neighbours[23] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.zero + Vector3Int.forward);
+            neighbours[24] = world.GetChunk(chunk.Coordinate + Vector3Int.left + Vector3Int.up + Vector3Int.forward);
+            neighbours[25] = world.GetChunk(chunk.Coordinate + Vector3Int.zero + Vector3Int.up + Vector3Int.forward);
+            neighbours[26] = world.GetChunk(chunk.Coordinate + Vector3Int.right + Vector3Int.up + Vector3Int.forward);
+
+            int CoordinateToIndex(Vector3Int coordinate) {
+                return Array3DUtility.To1D(
+                    coordinate.x - chunk.Coordinate.x + 1,
+                    coordinate.y - chunk.Coordinate.y + 1,
+					coordinate.z - chunk.Coordinate.z + 1, 3, 3);
             }
 
-            ConcurrentDictionary<MaterialType, MeshData> result = new();
-#if CHUNK_UTILITY_PARALLEL_FOR
-            ParallelFor((x, y, z) => {
-#else
-            For((x, y, z) => { 
-#endif
-                BlockType blockType = chunkData.BlockMap[x, y, z];
+			BlockType GetBlock(int x, int y, int z) {
+				var blockCoordinate = CoordinateUtility.ToGlobal(chunk.Coordinate, new Vector3Int(x, y, z));
+                var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+                var neighbour = neighbours[CoordinateToIndex(chunkCoordinate)];
+                if (neighbour != null) {
+                    var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                    return neighbour.BlockMap[localBlockCoordinate];
+                }
 
-                if (blockType != BlockType.Air) {
+                return BlockType.Air;
+			}
+
+			int GetLight(int x, int y, int z, LightChanel chanel) {
+				Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunk.Coordinate, new Vector3Int(x, y, z));
+				var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+				var neighbour = neighbours[CoordinateToIndex(chunkCoordinate)];
+				if (neighbour != null) {
+					var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+					return neighbour.LightMap.Get(localBlockCoordinate, chanel);
+				}
+
+                return LightMap.MAX;
+            }
+
+			byte GetLiquidAmount(int x, int y, int z, BlockType liquidType) {
+				Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(chunk.Coordinate, new Vector3Int(x, y, z));
+				var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+				var neighbour = neighbours[CoordinateToIndex(chunkCoordinate)];
+				if (neighbour != null) {    
+					var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                    if (neighbour.BlockMap[localBlockCoordinate] == liquidType)
+					    return neighbour.LiquidMap[localBlockCoordinate];
+                    return LiquidMap.MIN;
+				}
+
+				return LiquidMap.MIN;
+			}
+
+			bool IsSolid(int x, int y, int z) {
+				return blockProvider.Get(GetBlock(x, y, z)).IsSolid;
+			}
+
+			bool IsLiquid(int x, int y, int z) {
+				return blockProvider.Get(GetBlock(x, y, z)).IsLiquid;
+			}
+
+			bool IsVoxelTransparent(int x, int y, int z) {
+				return blockProvider.Get(GetBlock(x, y, z)).IsTransparent;
+			}
+
+			ConcurrentDictionary<MaterialType, MeshData> result = new();
+            ParallelFor((x, y, z) => {
+                BlockType blockType = chunk.BlockMap[x, y, z];
+
+                if (blockProvider.Get(blockType).IsVegetation) {
+					var localBlockCoordinate = new Vector3Int(x, y, z);
+					var blockData = blockProvider.Get(blockType);
+					MaterialType materialType = blockData.MaterialType;
+					if (!result.ContainsKey(materialType))
+						result.TryAdd(materialType, new MeshData());
+
+					float atlasStep = 16.0f / 256.0f;
+					bool isLiquid = blockData.IsLiquid;
+					var meshData = result[materialType];
+
+					Vector2 atlasPosition = (Vector2)blockData.TexturingData.FrontFace * atlasStep;
+                    float r = GetLight(x, y, z, LightChanel.Red) / (float)LightMap.MAX;
+                    float g = GetLight(x, y, z, LightChanel.Green) / (float)LightMap.MAX;
+                    float b = GetLight(x, y, z, LightChanel.Blue) / (float)LightMap.MAX;
+                    float s = GetLight(x, y, z, LightChanel.Sun) / (float)LightMap.MAX;
+
+					lock (lockObject) {
+                        var vertexCount = meshData.Vertices.Count;
+                        meshData.Indices.Add((ushort)(vertexCount + 0));
+                        meshData.Indices.Add((ushort)(vertexCount + 1));
+                        meshData.Indices.Add((ushort)(vertexCount + 2));
+                        meshData.Indices.Add((ushort)(vertexCount + 0));
+                        meshData.Indices.Add((ushort)(vertexCount + 2));
+                        meshData.Indices.Add((ushort)(vertexCount + 3));
+                        meshData.Vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 0.0f, atlasPosition.x + 0.0f * atlasStep, atlasPosition.y + 0.0f * atlasStep, r, g, b, s, 0.0f));
+                        meshData.Vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 0.0f, atlasPosition.x + 0.0f * atlasStep, atlasPosition.y + 1.0f * atlasStep, r, g, b, s, 0.0f));
+                        meshData.Vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 1.0f, atlasPosition.x + 1.0f * atlasStep, atlasPosition.y + 1.0f * atlasStep, r, g, b, s, 0.0f));
+                        meshData.Vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 1.0f, atlasPosition.x + 1.0f * atlasStep, atlasPosition.y + 0.0f * atlasStep, r, g, b, s, 0.0f));
+						meshData.Indices.Add((ushort)(vertexCount + 4));
+						meshData.Indices.Add((ushort)(vertexCount + 5));
+						meshData.Indices.Add((ushort)(vertexCount + 6));
+						meshData.Indices.Add((ushort)(vertexCount + 4));
+						meshData.Indices.Add((ushort)(vertexCount + 6));
+						meshData.Indices.Add((ushort)(vertexCount + 7));
+						meshData.Vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 1.0f, atlasPosition.x + 0.0f * atlasStep, atlasPosition.y + 0.0f * atlasStep, r, g, b, s, 0.0f));
+						meshData.Vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 1.0f, atlasPosition.x + 0.0f * atlasStep, atlasPosition.y + 1.0f * atlasStep, r, g, b, s, 0.0f));
+						meshData.Vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 0.0f, atlasPosition.x + 1.0f * atlasStep, atlasPosition.y + 1.0f * atlasStep, r, g, b, s, 0.0f));
+						meshData.Vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 0.0f, atlasPosition.x + 1.0f * atlasStep, atlasPosition.y + 0.0f * atlasStep, r, g, b, s, 0.0f));
+					}
+                } else if (blockType != BlockType.Air) {
                     var localBlockCoordinate = new Vector3Int(x, y, z);
-                    MaterialType materialType = blockDataManager.Data[blockType].MaterialType;
+                    var blockData = blockProvider.Get(blockType);
+					MaterialType materialType = blockData.MaterialType;
                     if (!result.ContainsKey(materialType))
                         result.TryAdd(materialType, new MeshData());
 
                     float atlasStep = 16.0f / 256.0f;
-                    bool isSolid = IsSolid(x, y, z);
-                    bool isLiquid = blockDataManager.Data[blockType].IsLiquid;
+                    bool isLiquid = blockData.IsLiquid;
                     var meshData = result[materialType];
 
                     byte aown = GetLiquidAmount(x + 0, y + 0, z + 0, blockType);
@@ -164,7 +253,7 @@ namespace Minecraft.Utilities {
 
                     // Right face.
                     if (hasFace(x + 1, y, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.RightFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.RightFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 0, z + 1);
                         bool t090 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
@@ -244,33 +333,21 @@ namespace Minecraft.Utilities {
                         var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-                            byte afbk2 = aown == LiquidMap.MAX
-                                || a000 == LiquidMap.MAX
-                                || a270 == LiquidMap.MAX
-                                || a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a045 == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk2)
-                                + (lq270 ? a270 : afbk2)
-                                + (lq315 ? a315 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq045 ? a045 : afbk3)
-                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown + a000 + a270 + a315) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315))
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown + a000 + a045 + a090) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090)) 
+                                        / (LiquidMap.MAX + 1);
                             }
                             if (a000 != 0) {
-                                h1 = (aown
-                                + (lq000 ? a000 : afbk2)
-                                + (lq270 ? a270 : afbk2)
-                                + (lq315 ? a315 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq045 ? a045 : afbk3)
-                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h1 = (aown + a000 + a270 + a315) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315)) 
+                                        / (LiquidMap.MAX + 1);
+                                h4 = (aown + a000 + a045 + a090) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090)) 
+                                        / (LiquidMap.MAX + 1);
                             }
 
                             dir = 5.0f;
@@ -289,30 +366,18 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 				    }
 
                     // Left face.
                     if (hasFace(x - 1, y, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.LeftFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.LeftFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y + 0, z - 1);
                         bool t090 = !IsVoxelTransparent(x - 1, y + 1, z + 0);
@@ -392,34 +457,22 @@ namespace Minecraft.Utilities {
 						var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-							byte afbk2 = aown == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX
-								|| a135 == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX
-								|| a225 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
-                                + (lq090 ? a090 : afbk2)
-                                + (lq135 ? a135 : afbk2)
-                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt180 || lqt225 || lqt270 ? 1.0f :  (aown
-                                + (lq180 ? a180 : afbk3)
-                                + (lq225 ? a225 : afbk3)
-                                + (lq270 ? a270 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown + a090 + a135 + a180) 
+                                    / (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180)) 
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt180 || lqt225 || lqt270 ? 1.0f :  (aown + a180 + a225 + a270) 
+                                    / (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270)) 
+                                        / (LiquidMap.MAX + 1);
                             }
 							if (a180 != 0) {
-                                h1 = (aown
-                                + (lq090 ? a090 : afbk2)
-                                + (lq135 ? a135 : afbk2)
-                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = (aown
-                                + (lq180 ? a180 : afbk3)
-                                + (lq225 ? a225 : afbk3)
-                                + (lq270 ? a270 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                            }
+                                h1 = (aown + a090 + a135 + a180)
+									/ (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180))
+										/ (LiquidMap.MAX + 1);
+								h4 = (aown + a180 + +a270)
+									/ (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270))
+										/ (LiquidMap.MAX + 1);
+							}
 
 							dir = 5.0f;
 
@@ -437,30 +490,18 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-						AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+						    AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 
 					// Top face.
 					if (hasFace(x, y + 1, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.TopFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.TopFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 1, z + 0);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -540,39 +581,19 @@ namespace Minecraft.Utilities {
 						var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-							byte afbk1 = aown == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX
-								|| a225 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk2 = aown == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX
-								|| a135 == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a045 == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk4 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX
-								|| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h1 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown
-                                + (lq180 ? a180 : afbk1)
-                                + (lq225 ? a225 : afbk1)
-                                + (lq270 ? a270 : afbk1)) / 4.0f / (LiquidMap.MAX + 1);
-                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
-                                + (lq090 ? a090 : afbk2)
-                                + (lq135 ? a135 : afbk2)
-                                + (lq180 ? a180 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq045 ? a045 : afbk3)
-                                + (lq090 ? a090 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk4)
-                                + (lq270 ? a270 : afbk4)
-                                + (lq315 ? a315 : afbk4)) / 4.0f / (LiquidMap.MAX + 1);
+                                h1 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown + a180 + a225 + a270) 
+                                    / (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270)) 
+                                        / (LiquidMap.MAX + 1);
+                                h2 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown + a090 + a135 + a180) 
+                                    / (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180)) 
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown + a000 + a045 + a090) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090)) 
+                                        / (LiquidMap.MAX + 1);
+                                h4 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown + a000 + a270 + a315) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315)) 
+                                        / (LiquidMap.MAX + 1);
 
                                 byte la000;
                                 byte la045;
@@ -603,7 +624,7 @@ namespace Minecraft.Utilities {
                                     la315 = a315;
                                 }
 
-                                if (la000 == la180 && la090 == la270 && aown == la000 && aown == la090) {
+                                if (la000 == la180 && la090 == la270 && la045 == la225 && la135 == la315) {
                                     dir = 0.0f;
                                 } else if (la000 != la180 && la090 == la270) {
                                     if (la000 < la180 || la000 < aown || aown < la180)
@@ -639,31 +660,19 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
-                        lock (lockObject) {
-#endif
 					    bool fliped = isLiquid && (lqt045 || lqt225);
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4, true, fliped);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
+                        lock (lockObject) {
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4, true, fliped);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 1 * h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 1 * h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 
 					// Bottom face.
 					if (hasFace(x, y - 1, z)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.BottomFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.BottomFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y - 1, z + 0);
                         bool t090 = !IsVoxelTransparent(x + 0, y - 1, z + 1);
@@ -752,30 +761,18 @@ namespace Minecraft.Utilities {
 							uv4 = new Vector2(atlasPosition.x + 1 * atlasStep, atlasPosition.y + 0 * atlasStep);
 						}
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-				        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir1));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir2));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir3));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir4));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
+				            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir1));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + 0, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir2));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir3));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + 0, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir4));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 
 					// Front face.
 					if (hasFace(x, y, z + 1)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.BackFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.BackFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x - 1, y + 0, z + 1);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z + 1);
@@ -855,34 +852,22 @@ namespace Minecraft.Utilities {
 						var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-							byte afbk2 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a045 == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a090 == LiquidMap.MAX
-								|| a135 == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk2)
-                                + (lq045 ? a045 : afbk2)
-                                + (lq090 ? a090 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown
-                                + (lq090 ? a090 : afbk3)
-                                + (lq135 ? a135 : afbk3)
-                                + (lq180 ? a180 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt000 || lqt045 || lqt090 ? 1.0f : (aown + a000 + a045 + a090) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090)) 
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt090 || lqt135 || lqt180 ? 1.0f : (aown + a090 + a135 + a180) 
+                                    / (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180)) 
+                                        / (LiquidMap.MAX + 1);
                             }
                             if (a090 != 0) {
-                                h1 = (aown
-                                + (lq000 ? a000 : afbk2)
-                                + (lq045 ? a045 : afbk2)
-                                + (lq090 ? a090 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = (aown
-                                + (lq090 ? a090 : afbk3)
-                                + (lq135 ? a135 : afbk3)
-                                + (lq180 ? a180 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                            }
+                                h1 = (aown + a000 + a045 + a090)
+									/ (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s045) + Convert.ToInt32(!s090))
+										/ (LiquidMap.MAX + 1);
+								h4 = (aown + a090 + a135 + a180)
+									/ (float)(1 + Convert.ToInt32(!s090) + Convert.ToInt32(!s135) + Convert.ToInt32(!s180))
+										/ (LiquidMap.MAX + 1);
+							}
 
 							dir = 5.0f;
 
@@ -900,30 +885,18 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 1));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 1));
+                            AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h1, z + 1, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h2, z + 1, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h3, z + 1, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h4, z + 1, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 
 					// Back face.
 					if (hasFace(x, y, z - 1)) {
-                        Vector2 atlasPosition = (Vector2)blockDataManager.Data[blockType].TexturingData.FrontFace * atlasStep;
+                        Vector2 atlasPosition = (Vector2)blockData.TexturingData.FrontFace * atlasStep;
 
                         bool t000 = !IsVoxelTransparent(x + 1, y + 0, z - 1);
                         bool t090 = !IsVoxelTransparent(x + 0, y + 1, z - 1);
@@ -1003,34 +976,22 @@ namespace Minecraft.Utilities {
 						var uv4 = new Vector2(1.0f, 0.0f);
 
 						if (isLiquid) {
-							byte afbk2 = aown == LiquidMap.MAX
-								|| a180 == LiquidMap.MAX
-								|| a225 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
-							byte afbk3 = aown == LiquidMap.MAX
-								|| a000 == LiquidMap.MAX
-								|| a270 == LiquidMap.MAX
-								|| a315 == LiquidMap.MAX ? LiquidMap.MAX : LiquidMap.MIN;
 							if (atop == 0) {
-                                h2 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown
-                                + (lq180 ? a180 : afbk2)
-                                + (lq225 ? a225 : afbk2)
-                                + (lq270 ? a270 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h3 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq270 ? a270 : afbk3)
-                                + (lq315 ? a315 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
+                                h2 = lqt180 || lqt225 || lqt270 ? 1.0f : (aown + a180 + a225 + a270) 
+                                    / (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270)) 
+                                        / (LiquidMap.MAX + 1);
+                                h3 = lqt000 || lqt270 || lqt315 ? 1.0f : (aown + a000 + a270 + a315) 
+                                    / (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315)) 
+                                        / (LiquidMap.MAX + 1);
                             }
                             if (a270 != 0) {
-                                h1 = (aown
-                                + (lq180 ? a180 : afbk2)
-                                + (lq225 ? a225 : afbk2)
-                                + (lq270 ? a270 : afbk2)) / 4.0f / (LiquidMap.MAX + 1);
-                                h4 = (aown
-                                + (lq000 ? a000 : afbk3)
-                                + (lq270 ? a270 : afbk3)
-                                + (lq315 ? a315 : afbk3)) / 4.0f / (LiquidMap.MAX + 1);
-                            }
+                                h1 = (aown + a180 + a225 + a270)
+									/ (float)(1 + Convert.ToInt32(!s180) + Convert.ToInt32(!s225) + Convert.ToInt32(!s270))
+										/ (LiquidMap.MAX + 1);
+								h4 = (aown + a000 + a270 + a315)
+									/ (float)(1 + Convert.ToInt32(!s000) + Convert.ToInt32(!s270) + Convert.ToInt32(!s315))
+										/ (LiquidMap.MAX + 1);
+							}
 
 							dir = 5.0f;
 
@@ -1048,25 +1009,13 @@ namespace Minecraft.Utilities {
                         float aof3 = lr3 + lg3 + lb3 + ls3;
                         float aof4 = lr4 + lg4 + lb4 + ls4;
 
-#if CHUNK_UTILITY_PARALLEL_FOR
                         lock (lockObject) {
-#endif
-	                    AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
-                        meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
-                        meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
-
-                        if (isSolid) {
-                            AddFaceColliderIndices(meshData);
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 0, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 0, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 1, z + 0));
-                            meshData.ColliderVertices.Add(new Vector3(x + 1, y + 0, z + 0));
+	                        AddFaceIndices(meshData, aof1, aof2, aof3, aof4);
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h1, z + 0, uv1.x, uv1.y, lr1, lg1, lb1, ls1, dir));
+                            meshData.Vertices.Add(new Vertex(x + 0, y + h2, z + 0, uv2.x, uv2.y, lr2, lg2, lb2, ls2, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h3, z + 0, uv3.x, uv3.y, lr3, lg3, lb3, ls3, dir));
+                            meshData.Vertices.Add(new Vertex(x + 1, y + h4, z + 0, uv4.x, uv4.y, lr4, lg4, lb4, ls4, dir));
                         }
-#if CHUNK_UTILITY_PARALLEL_FOR
-					    }
-#endif
 					}
 				}
             });

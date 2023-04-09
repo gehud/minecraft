@@ -1,10 +1,9 @@
 ﻿using Minecraft.Utilities;
 using System.Collections.Concurrent;
 using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace Minecraft {
-    public class LightCalculator {
+	public class LightCalculator {
         private struct Entry {
             public Vector3Int Coordinate;
             public byte Level;
@@ -22,7 +21,7 @@ namespace Minecraft {
         private readonly ConcurrentQueue<Entry> addQueue = new();
         private readonly ConcurrentQueue<Entry> removeQueue = new();
 
-        private static BlockDataManager BlockDataManager { get; set; }
+		private static BlockProvider BlockDataProvider { get; set; }
 
         private static readonly Vector3Int[] blockSides = {
             new Vector3Int( 0,  0,  1),
@@ -33,8 +32,8 @@ namespace Minecraft {
             new Vector3Int(-1,  0,  0),
         };
 
-        public static void SetBlockDataManager(BlockDataManager blockDataManager) {
-            BlockDataManager = blockDataManager;
+        public static void SetBlockDataManager(BlockProvider blockDataManager) {
+            BlockDataProvider = blockDataManager;
         }
 
         public LightCalculator(World world, LightChanel chanel) {
@@ -47,13 +46,13 @@ namespace Minecraft {
                 return;
 
             var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+            if (!world.TryGetChunk(chunkCoordinate, out Chunk chunk))
                 return;
 
             var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-            chunkData.LightMap.Set(localBlockCoordinate, chanel, level);
-            chunkData.MarkDirty();
-            world.ValidateChunkData(chunkCoordinate, localBlockCoordinate);
+            chunk.LightMap.Set(localBlockCoordinate, chanel, level);
+            chunk.IsDirty = true;
+            world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
 
             var entry = new Entry(blockCoordinate, level);
             addQueue.Enqueue(entry);
@@ -65,11 +64,11 @@ namespace Minecraft {
 
         public void Add(Vector3Int blockCoordinate) {
             var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+            if (!world.TryGetChunk(chunkCoordinate, out Chunk chunk))
                 return;
 
             var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-            var level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
+            var level = chunk.LightMap.Get(localBlockCoordinate, chanel);
             if (level <= 1)
                 return;
 
@@ -83,17 +82,17 @@ namespace Minecraft {
 
         public void Remove(Vector3Int blockCoordinate) {
             var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-            if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+            if (!world.TryGetChunk(chunkCoordinate, out Chunk chunk))
                 return;
 
             var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-            byte level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
+            byte level = chunk.LightMap.Get(localBlockCoordinate, chanel);
             if (level <= 1)
                 return;
 
-            chunkData.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
-            world.ValidateChunkData(chunkCoordinate, localBlockCoordinate);
-            chunkData.MarkDirty();
+            chunk.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
+            chunk.IsDirty = true;
+            world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
 
             var entry = new Entry(blockCoordinate, level);
             removeQueue.Enqueue(entry);
@@ -105,18 +104,18 @@ namespace Minecraft {
 
         public static void AddSunlight(World world, Vector2Int column) {
             int startX = column.x * Chunk.SIZE;
-            int endX = column.x * Chunk.SIZE + Chunk.SIZE - 1;
+            int endX = column.x * Chunk.SIZE + Chunk.SIZE;
             int startZ = column.y * Chunk.SIZE;
-            int endZ = column.y * Chunk.SIZE + Chunk.SIZE - 1;
-            for (int x = startX; x <= endX; x++)
-                for (int z = startZ; z <= endZ; z++) {
+            int endZ = column.y * Chunk.SIZE + Chunk.SIZE;
+            for (int x = startX; x < endX; x++)
+                for (int z = startZ; z < endZ; z++) {
                     for (int y = World.HEIGHT * Chunk.SIZE - 1; y >= 0; y--) {
                         var blockCoordinate = new Vector3Int(x, y, z);
                         var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                        if (!world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData))
+                        if (!world.TryGetChunk(chunkCoordinate, out Chunk chunk))
                             break;
                         var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                        if (chunkData.BlockMap[localBlockCoordinate] != BlockType.Air)
+                        if (chunk.BlockMap[localBlockCoordinate] != BlockType.Air)
                             break;
                         world.LightCalculatorSun.Add(blockCoordinate, LightMap.MAX);
                     }
@@ -124,24 +123,26 @@ namespace Minecraft {
         }
 
         public void Calculate() {
-            Profiler.BeginSample("LightCalculator.Calculate");
-
             while (removeQueue.TryDequeue(out Entry entry)) {
 				for (int i = 0; i < blockSides.Length; i++) {
                     var blockCoordinate = entry.Coordinate + blockSides[i];
                     var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                    var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                    if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                        var level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
-                        var blockType = chunkData.BlockMap[localBlockCoordinate];
-                        var absorption = BlockDataManager.Data[blockType].Absorption;
+                    if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
+                        var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+                        var level = chunk.LightMap.Get(localBlockCoordinate, chanel);
+                        var blockType = chunk.BlockMap[localBlockCoordinate];
+                        var absorption = BlockDataProvider.Get(blockType).Absorption;
                         if (level != 0 && level == entry.Level - absorption - 1) {
                             var removeEntry = new Entry(blockCoordinate, level);
                             removeQueue.Enqueue(removeEntry);
-                            chunkData.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
-                            chunkData.MarkDirty();
-                            world.ValidateChunkData(chunkCoordinate, localBlockCoordinate);
-                        } else if (level >= entry.Level) {
+                            chunk.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
+                            chunk.IsDirty = true;
+                            world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+							if (chunk.IsModified) {
+                                chunk.IsSaved = false;
+								world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+                            }
+						} else if (level >= entry.Level) {
                             var addEntry = new Entry(blockCoordinate, level);
                             addQueue.Enqueue(addEntry);
                         }
@@ -157,23 +158,25 @@ namespace Minecraft {
                     var blockCoordinate = entry.Coordinate + blockSides[i];
                     var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
                     var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                    if (world.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                        var blockType = chunkData.BlockMap[localBlockCoordinate];
-                        var absorption = BlockDataManager.Data[blockType].Absorption;
-                        var level = chunkData.LightMap.Get(localBlockCoordinate, chanel);
-                        if (BlockDataManager.Data[blockType].IsTransparent && level + absorption + 1 < entry.Level) {
+                    if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
+                        var blockType = chunk.BlockMap[localBlockCoordinate];
+                        var absorption = BlockDataProvider.Get(blockType).Absorption;
+                        var level = chunk.LightMap.Get(localBlockCoordinate, chanel);
+                        if (BlockDataProvider.Get(blockType).IsTransparent && level + absorption + 1 < entry.Level) {
                             var newLevel = (byte)(entry.Level - absorption - 1);
-                            chunkData.LightMap.Set(localBlockCoordinate, chanel, newLevel);
+                            chunk.LightMap.Set(localBlockCoordinate, chanel, newLevel);
                             var addEntry = new Entry(blockCoordinate, newLevel);
                             addQueue.Enqueue(addEntry);
-                            chunkData.MarkDirty();
-                            world.ValidateChunkData(chunkCoordinate, localBlockCoordinate);
-                        }
+                            chunk.IsDirty = true;
+                            world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+							if (chunk.IsModified) {
+                                chunk.IsSaved = false;
+								world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+                            }
+						}
                     }
                 }
             }
-
-            Profiler.EndSample();
         }
     }
 }

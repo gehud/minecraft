@@ -2,211 +2,253 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 using Zenject;
 
 namespace Minecraft {
-    public class ChunkLoader : MonoBehaviour {
-        public UnityEvent OnWorldCreate;
+	public class ChunkLoader : MonoBehaviour {
+		public event Action<Vector2> OnStartLoading;
 
-        [SerializeField]
-        private Transform player;
-        [SerializeField, Min(2)]
-        private int drawDistance = 4;
-        [SerializeField]
-        private float loadCountdown = 0.5f;
+		[SerializeField]
+		private UnityEvent onWorldCreate;
 
-        private Vector3Int lastPlayerChunk;
-        private readonly ConcurrentStack<Vector3Int> chunkToRemoveCoordinates = new();
-        private readonly ConcurrentStack<Vector3Int> chunkToCreateCoordinates = new();
-        private readonly ConcurrentStack<Vector3Int> chunkDataToRemoveCoordinates = new();
-        private readonly ConcurrentStack<Vector3Int> chunkDataToCreateCoordinates = new();
-        private readonly ConcurrentStack<Vector2Int> sunlightCoordinatesToCalculate = new();
+		[SerializeField]
+		private Transform player;
+		[SerializeField]
+		private float loadCountdown = 0.5f;
 
-        bool generateChunks = false;
-        bool worldGenerated = false;
+		[Inject]
+		private readonly World world;
 
-        [Inject]
-        private World World { get; }
+		[Inject]
+		private readonly BlockProvider blockDataProvider;
 
-        [Inject]
-        private BlockDataManager BlockDataManager { get; }
+		[Inject]
+		private readonly MaterialProvider materialManager;
 
-        [Inject]
-        private MaterialManager MaterialManager { get; }
+		[Inject]
+		private readonly ChunkGenerator chunkGenerator;
 
-        [Inject]
-        private ChunkDataGenerator ChunkDataGenerator { get; }
+		[Inject]
+		private readonly SaveManager saveManager;
 
-        private Vector3Int GetPlayerChunk() {
-            Vector3Int coordinate = CoordinateUtility.ToCoordinate(player.position);
-            return CoordinateUtility.ToChunk(coordinate);
-        }
+		private Vector2Int center;
+		private readonly ConcurrentStack<Vector3Int> chunks = new();
+		private readonly ConcurrentStack<Vector3Int> renderers = new();
+		private readonly ConcurrentStack<Vector2Int> sunlights = new();
 
-        private void GenerateLoadData(World world) {
-            chunkToRemoveCoordinates.Clear();
-            chunkToCreateCoordinates.Clear();
-            chunkDataToRemoveCoordinates.Clear();
-            chunkDataToCreateCoordinates.Clear();
-            sunlightCoordinatesToCalculate.Clear();
-            ConcurrentStack<Vector3Int> loadedCoordinates = new();
-            ConcurrentStack<Vector3Int> visibleCoordinates = new();
-            int startX = lastPlayerChunk.x - (drawDistance + 1);
-            int endX = lastPlayerChunk.x + drawDistance;
-            int startZ = lastPlayerChunk.z - (drawDistance + 1);
-            int endZ = lastPlayerChunk.z + drawDistance;
-            for (int x = startX; x <= endX; x++)
-                for (int z = startZ; z <= endZ; z++) {
-                    bool sunlight = false;
-                    for (int y = 0; y < World.HEIGHT; y++) {
-                        Vector3Int chunkCoordinate = new Vector3Int(x, y, z);
-                        loadedCoordinates.Push(chunkCoordinate);
-                        if (x != startX && x != endX && z != startZ && z != endZ) {
-                            visibleCoordinates.Push(chunkCoordinate);
-                            if (!world.Chunks.ContainsKey(chunkCoordinate))
-                                chunkToCreateCoordinates.Push(chunkCoordinate);
-                        }
+		private Task loading;
+		private bool isLoadingCanceled = false;
 
-                        if (!world.ChunksData.ContainsKey(chunkCoordinate)) {
-                            chunkDataToCreateCoordinates.Push(chunkCoordinate);
-                            sunlight = true;
-                        }
-                    }
+		private readonly CancellationTokenSource cancellationTokenSource = new();
 
-                    if (sunlight) {
-                        sunlightCoordinatesToCalculate.Push(new Vector2Int(x, z));
-                    }
-                }
+		private Vector2Int GetPlayerCenter() {
+			var blockCoordinate = CoordinateUtility.ToCoordinate(player.position);
+			var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+			return new Vector2Int(chunkCoordinate.x, chunkCoordinate.z);
+		}
 
-            foreach (var item in world.ChunksData.Keys) {
-                if (!loadedCoordinates.Contains(item))
-                    chunkDataToRemoveCoordinates.Push(item);
-            }
+		private void GenerateLoadData(Vector2Int column) {
+			chunks.Clear();
+			renderers.Clear();
+			sunlights.Clear();
+			int startX = column.x - 1;
+			int endX = column.x + 1;
+			int startZ = column.y - 1;
+			int endZ = column.y + 1;
+			for (int x = startX; x <= endX; x++) {
+				for (int z = startZ; z <= endZ; z++) {
+					bool sunlight = false;
+					for (int y = 0; y < World.HEIGHT; y++) {
+						Vector3Int chunkCoordinate = new Vector3Int(x, y, z);
+						if (x != startX && x != endX && z != startZ && z != endZ) {
+							if (!world.HasRenderer(chunkCoordinate)) {
+								renderers.Push(chunkCoordinate);
+							}
+						}
 
-            foreach (var item in world.Chunks.Keys) {
-                if (!visibleCoordinates.Contains(item))
-                    chunkToRemoveCoordinates.Push(item);
-            }
-        }
-
-        private IEnumerator GenerateChunks(World world, ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> meshDatas) {
-            generateChunks = true;
-
-            foreach (var item in meshDatas) {
-                Chunk chunk = world.GetOrCreateChunk(item.Key);
-                chunk.UpdateMesh(item.Value, MaterialManager);
-                yield return null;
-            }
-
-            generateChunks = false;
-
-            StartCoroutine(CheckLoadRequirement());
-
-            worldGenerated = true;
-        }
-
-        private async void LoadChunks() {
-            await Task.Run(() => GenerateLoadData(World));
-
-            foreach (var item in chunkDataToRemoveCoordinates)
-                World.ChunksData.Remove(item);
-
-            foreach (var item in chunkToRemoveCoordinates) {
-                World.Chunks.Remove(item, out Chunk chunk);
-                Destroy(chunk.gameObject);
-            }
-
-            ConcurrentDictionary<Vector3Int, ChunkData> generatedData = new();
-            await Task.Run(() => {
-                foreach (var item in chunkDataToCreateCoordinates)
-                    generatedData.TryAdd(item, ChunkDataGenerator.GenerateChunkData(item));
-            });
-
-            foreach (var item in generatedData)
-                World.ChunksData.Add(item.Key, item.Value);
-
-            await Task.Run(() => { 
-                foreach (var item in generatedData) {
-                    foreach (var treeRoot in item.Value.TreeData.Positions) {
-                        GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
-                    }
-                }
-            });
-
-            await Task.Run(() => {
-                foreach (var item in generatedData) {
-                    ChunkUtility.For((localBlockCoordinate) => {
-                        if (item.Value.BlockMap[localBlockCoordinate] == BlockType.Water) {
-                            Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item.Key, localBlockCoordinate);
-                            World.LiquidCalculatorWater.Add(blockCoordinate);
-                        }
-                    });
-                }
-            });
-
-            await Task.Run(() => {
-                foreach (var item in sunlightCoordinatesToCalculate)
-                    LightCalculator.AddSunlight(World, item);
-                World.LightCalculatorSun.Calculate();
-            });
-
-            ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
-            await Task.Run(() => {
-                foreach (var item in chunkToCreateCoordinates)
-                    generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(World, World.ChunksData[item], BlockDataManager));
-            });
-
-            StartCoroutine(GenerateChunks(World, generatedMeshDatas));
-        }
-
-        private void GenerateTree(Vector3Int blockCoordinate) {
-            for (int i = 0; i < 5; i++) {
-                Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                if (World.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-                    Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                    chunkData.BlockMap[localBlockCoordinate] = BlockType.Log;
-                }
-
-                blockCoordinate += Vector3Int.up;
-            }
-
-            for (int x = -2; x <= 2; x++)
-                for (int y = -2; y <= 2; y++)
-                    for (int z = -2; z <= 2; z++) {
-                        Vector3Int leavesCoordinate = blockCoordinate + new Vector3Int(x, y, z);
-						Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
-						if (World.ChunksData.TryGetValue(chunkCoordinate, out ChunkData chunkData)) {
-							Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
-                            if (!BlockDataManager.Data[chunkData.BlockMap[localBlockCoordinate]].IsSolid)
-							    chunkData.BlockMap[localBlockCoordinate] = BlockType.Leaves;
+						if (!world.HasChunk(chunkCoordinate)) {
+							chunks.Push(chunkCoordinate);
+							sunlight = true;
 						}
 					}
-        }
 
-        private IEnumerator CheckLoadRequirement() {
-            yield return new WaitForSeconds(loadCountdown);
+					if (sunlight) {
+						sunlights.Push(new Vector2Int(x, z));
+					}
 
-            Vector3Int playerChunk = GetPlayerChunk();
-            if (!generateChunks && (playerChunk.x != lastPlayerChunk.x || playerChunk.z != lastPlayerChunk.z)) {
-                lastPlayerChunk = playerChunk;
-                LoadChunks();
-            } else
-                StartCoroutine(CheckLoadRequirement());
-        }
+					if (isLoadingCanceled)
+						return;
+				}
+			}
+		}
 
-        private IEnumerator WaitForWorldStartGeneration() {
-            lastPlayerChunk = GetPlayerChunk();
-            LoadChunks();
-            yield return new WaitUntil(() => worldGenerated);
-            OnWorldCreate?.Invoke();
-        }
+		private async Task Load() {
+			world.Center = center; 
 
-        private void Start() {
-            StartCoroutine(WaitForWorldStartGeneration());
-        }
-    }
+			for (int zone = 1; zone <= world.DrawDistance; zone++) {
+				if (isLoadingCanceled)
+					return;
+
+				int startX = world.Center.x - zone;
+				int endX = world.Center.x + zone;
+				int startZ = world.Center.y - zone;
+				int endZ = world.Center.y + zone;
+				for (int x = startX; x <= endX; x++) {
+					for (int z = startZ; z <= endZ; z++) {
+						ConcurrentDictionary<Vector3Int, Chunk> generatedData = new();
+						ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
+						if (isLoadingCanceled)
+							return;
+						await Task.Run(() => { 
+							GenerateLoadData(new Vector2Int(x, z));
+						}, cancellationTokenSource.Token);
+
+						foreach (var item in chunks) {
+							if (isLoadingCanceled)
+								return;
+							Chunk chunk;
+							if (saveManager.IsSaved(item))
+								chunk = saveManager.LoadChunk(world, item);
+							else
+								chunk = await Task.Run(() => chunkGenerator.Generate(item), cancellationTokenSource.Token);
+							generatedData.TryAdd(item, chunk);
+						}
+
+						await Task.Run(() => {
+							foreach (var item in generatedData) {
+								foreach (var treeRoot in item.Value.TreeData.Positions) {
+									GenerateTree(CoordinateUtility.ToGlobal(item.Value.Coordinate, treeRoot));
+								}
+							}
+
+							foreach (var item in renderers) {
+								ChunkUtility.ParallelFor((localBlockCoordinate) => {
+									Vector3Int blockCoordinate = CoordinateUtility.ToGlobal(item, localBlockCoordinate);
+									if (world.GetBlock(blockCoordinate) == BlockType.Water) {
+										if (LiquidCalculator.ShouldFlow(world, blockCoordinate))
+											world.LiquidCalculatorWater.Add(blockCoordinate);
+									}
+								});
+							}
+
+							foreach (var item in sunlights)
+								LightCalculator.AddSunlight(world, item);
+
+							world.LightCalculatorSun.Calculate();
+
+							foreach (var item in renderers)
+								generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.GetChunk(item), blockDataProvider));
+						}, cancellationTokenSource.Token);
+
+						foreach (var item in generatedMeshDatas) {
+							if (isLoadingCanceled)
+								return;
+							ChunkRenderer renderer = world.CreateRenderer(item.Key);
+							renderer.UpdateMesh(item.Value, materialManager);
+							await Task.Yield();
+						}
+					}
+				}
+			}
+		}
+
+		private void GenerateTree(Vector3Int blockCoordinate) {
+			for (int i = 0; i < 6; i++) {
+				Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
+				if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
+					Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
+					chunk.BlockMap[localBlockCoordinate] = BlockType.Log;
+				}
+
+				blockCoordinate += Vector3Int.up;
+			}
+
+			void PlaceLeaves(int x, int y, int z) {
+				Vector3Int leavesCoordinate = blockCoordinate + new Vector3Int(x, y, z) + Vector3Int.down;
+				Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
+				if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
+					Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
+					if (!blockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
+						chunk.BlockMap[localBlockCoordinate] = BlockType.Leaves;
+				}
+			}
+
+			for (int x = -2; x <= 2; x++) {
+				for (int y = -2; y < 2; y++) {
+					for (int z = -2; z <= 2; z++) {
+						if (y >= 0) {
+							if (x != -2 && x != 2 && z != -2 && z != 2) {
+								if (y == 0) {
+									PlaceLeaves(x, y, z);
+								} else if (!(x == -1 && z == -1 || x == -1 && z == 1 || x == 1 && z == -1 || x == 1 && z == 1)) {
+									PlaceLeaves(x, y, z);
+								}
+							}
+						} else if (!(x == -2 && z == -2 || x == -2 && z == 2 || x == 2 && z == -2 || x == 2 && z == 2)) {
+							PlaceLeaves(x, y, z);
+						}
+					}
+				}
+			}
+		}
+
+		private IEnumerator RelaunchLoading() {
+			if (loading != null && !loading.IsCompleted)
+				isLoadingCanceled = true;
+
+			yield return new WaitUntil(() => loading.IsCompleted);
+
+			isLoadingCanceled = false;
+			loading = Load();
+		}
+
+		private IEnumerator LaunchLoadingIfNeeded() {
+			while (true) {
+				Vector2Int playerCenter = GetPlayerCenter();
+				if (playerCenter != center) {
+					center = playerCenter;
+					yield return StartCoroutine(RelaunchLoading());
+				}
+
+				yield return new WaitForSeconds(loadCountdown);
+			}
+		}
+
+		private IEnumerator StartLoading() {
+			var playerCenter = GetPlayerCenter();
+			center = playerCenter;
+			loading = Load();
+			StartCoroutine(LaunchLoadingIfNeeded());
+			yield return new WaitUntil(() => loading.IsCompleted);
+			onWorldCreate?.Invoke();
+		}
+
+		private void OnSaveLoaded(SaveLoadData data) {
+			OnStartLoading?.Invoke(data.Offset);
+			StartCoroutine(StartLoading());
+		}
+
+		private void StartRelaunchLoading() {
+			StartCoroutine(RelaunchLoading());
+		}
+
+		private void OnEnable() {
+			world.OnDrawDistanceChanged += StartRelaunchLoading;
+			saveManager.OnLoad += OnSaveLoaded;
+		}
+
+		private void OnDisable() {
+			world.OnDrawDistanceChanged -= StartRelaunchLoading;
+			saveManager.OnLoad -= OnSaveLoaded;
+		}
+
+		private void OnDestroy() {
+			cancellationTokenSource.Cancel();
+			isLoadingCanceled = true;
+		}
+	}
 }
