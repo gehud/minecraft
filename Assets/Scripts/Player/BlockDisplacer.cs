@@ -1,16 +1,17 @@
 ﻿using Minecraft.Physics;
-using TMPro;
+using Minecraft.UI;
+using Unity.Netcode;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft.Player {
-	public class BlockDisplacer : MonoBehaviour {
+	public class BlockDisplacer : NetworkBehaviour {
+        public BlockType Current => currentBlock;
+
         [SerializeField]
         private Transform player;
         [SerializeField]
         private float placementDistance = 5.0f;
-        [SerializeField]
-        private TMP_Text voxelTypeText;
 
         private BlockType currentBlock = BlockType.Stone;
 
@@ -23,11 +24,19 @@ namespace Minecraft.Player {
         [Inject]
         private readonly BlockProvider blockProvider;
 
-        private void Awake() {
-            voxelTypeText.text = currentBlock.ToString();
-        }
+        [Inject]
+        private readonly SelectedBlockText selectedBlockText;
+
+        [Inject]
+        private readonly UIController uIController;
 
         private void Update() {
+            if (!IsOwner)
+                return;
+
+			if (uIController.IsUsing)
+                return;
+
             Camera camera = Camera.main;
             if (Input.GetMouseButtonDown(0)) {
                 if (physicsSolver.Raycast(camera.ScreenPointToRay(Input.mousePosition), placementDistance, out RaycastHit hitInfo)) {
@@ -50,13 +59,13 @@ namespace Minecraft.Player {
 
 			if (Input.GetKeyDown(KeyCode.Alpha1)) {
                 currentBlock = BlockType.Stone;
-                voxelTypeText.text = currentBlock.ToString();
-            } else if (Input.GetKeyDown(KeyCode.Alpha2)) {
+                selectedBlockText.Text.text = currentBlock.ToString();
+			} else if (Input.GetKeyDown(KeyCode.Alpha2)) {
                 currentBlock = BlockType.Water;
-                voxelTypeText.text = currentBlock.ToString();
+                selectedBlockText.Text.text = currentBlock.ToString();
             } else if (Input.GetKeyDown(KeyCode.Alpha3)) {
                 currentBlock = BlockType.JackOLantern;
-                voxelTypeText.text = currentBlock.ToString();
+                selectedBlockText.Text.text = currentBlock.ToString();
             }
         }
     }

@@ -1,12 +1,14 @@
 ﻿using Minecraft.Physics;
+using Minecraft.UI;
 using Minecraft.Utilities;
+using Unity.Netcode;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft.Player {
 	[RequireComponent(typeof(Hitbox))]
-    public class MovementController : MonoBehaviour {
-        public bool IsSneaking => isSneaking;
+    public class MovementController : NetworkBehaviour {
+		public bool IsSneaking => isSneaking;
 
         public bool IsSprinting => isSprinting;
 
@@ -46,6 +48,14 @@ namespace Minecraft.Player {
 		[Inject]
 		private readonly PhysicsWorld PhysicsWorld;
 
+        [Inject]
+        private readonly UIController uIController;
+
+        [Inject]
+        private readonly GameManager gameManager;
+
+		[Inject]
+		private readonly ChunkLoader chunkLoader;
 
 		private float lastDoubleTapTime = 0.0f;
 
@@ -59,7 +69,7 @@ namespace Minecraft.Player {
 		private bool isSwiming = false;
 		private Vector3 lastPosition;
 
-        private void Awake() {
+		private void Awake() {
 			hitbox = GetComponent<Hitbox>();
 
             for (int y = World.HEIGHT * Chunk.SIZE; y >= 0; --y) {
@@ -70,7 +80,16 @@ namespace Minecraft.Player {
             }
 
             lastPosition = transform.position;
-        }
+		}
+
+		public override void OnNetworkSpawn() {
+			base.OnNetworkSpawn();
+            if (!IsOwner)
+                Destroy(this);
+
+			gameManager.SetPlayer(this);
+			chunkLoader.SetPlayer(transform);
+		}
 
 		private void Jump() {
             float velocity = Mathf.Sqrt(2 * Mathf.Abs(PhysicsWorld.Gravity.y) * jumpingHeight);
@@ -78,6 +97,12 @@ namespace Minecraft.Player {
         }
 
         private void Update() {
+            if (!IsOwner)
+                return;
+
+			if (uIController.IsUsing)
+                return;
+
             if (isSneaking) {
 				var extents = hitbox.Bounds.extents;
 				var offset = hitbox.Bounds.center;

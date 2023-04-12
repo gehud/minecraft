@@ -1,10 +1,13 @@
-﻿using UnityEditor;
+﻿using Minecraft.UI;
+using Unity.Netcode;
 using UnityEngine;
+using Zenject;
 
 namespace Minecraft.Player {
-    [RequireComponent(typeof(Camera))]
-    public class CameraController : MonoBehaviour {
-        [SerializeField, Min(0)]
+	[RequireComponent(typeof(Camera))]
+    public class CameraController : NetworkBehaviour {
+
+		[SerializeField, Min(0)]
         private float sencitivity = 5;
 
         public float FOV {
@@ -30,7 +33,11 @@ namespace Minecraft.Player {
         private float normalFOV;
         private float targetFOV = 1.0f;
 
-        private bool isInMenu = false;
+        [Inject]
+        private readonly UIController uIController;
+
+        [Inject]
+        private readonly FogController fogController;
 
 		private void Awake() {
 			camera = GetComponent<Camera>();
@@ -38,11 +45,21 @@ namespace Minecraft.Player {
             normalFOV = camera.fieldOfView;
 		}
 
+		public override void OnNetworkSpawn() {
+			base.OnNetworkSpawn();
+            if (!IsOwner)
+                Destroy(this.gameObject);
+            fogController.SetCamera(camera);   
+		}
+
 		private void Start() {
 			Cursor.lockState = CursorLockMode.Locked;
 		}
 
 		private void Update() {
+            if (!IsOwner)
+                return;
+
             if (movementController.IsSneaking) {
                 transform.localPosition = Vector3.up * sneakHeight;
             } else {
@@ -57,7 +74,7 @@ namespace Minecraft.Player {
 
             camera.fieldOfView = Mathf.MoveTowards(camera.fieldOfView, targetFOV, FOVDelta);
 
-            if (!isInMenu) { 
+            if (!uIController.IsUsing) { 
                 float mouseX = Input.GetAxis("Mouse X");
                 float mouseY = Input.GetAxis("Mouse Y");
 
@@ -66,23 +83,5 @@ namespace Minecraft.Player {
                 transform.localEulerAngles = new Vector3(rotationX, rotationY, 0.0f);
             }
         }
-
-        private void OnMenuEnter() {
-            isInMenu = true;
-        }
-
-		private void OnMenuExit() {
-			isInMenu = false;
-		}
-
-		private void OnEnable() {
-            MenuController.OnEnter += OnMenuEnter;
-            MenuController.OnExit += OnMenuExit;
-		}
-
-		private void OnDisable() {
-			MenuController.OnEnter -= OnMenuEnter;
-			MenuController.OnExit -= OnMenuExit;
-		}
 	}
 }

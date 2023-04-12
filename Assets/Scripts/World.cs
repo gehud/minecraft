@@ -2,11 +2,12 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using Unity.Netcode;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft {
-	public class World : MonoBehaviour {
+	public class World : NetworkBehaviour {
         /// <summary>
         /// World height in Chunks.
         /// </summary>
@@ -109,6 +110,10 @@ namespace Minecraft {
             chunks[ChunkToIndex(coordinate)] = chunk;
             return chunk;
         }
+
+        public void SetChunk(Vector3Int coordinate, Chunk chunk) {
+			chunks[ChunkToIndex(coordinate)] = chunk;
+		}
 
         public Chunk GetChunk(Vector3Int coordinate) {
             if (!HasChunk(coordinate))

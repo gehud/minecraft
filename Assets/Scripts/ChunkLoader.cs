@@ -10,13 +10,12 @@ using Zenject;
 
 namespace Minecraft {
 	public class ChunkLoader : MonoBehaviour {
+		public event Action OnWorldCreate;
 		public event Action<Vector2> OnStartLoading;
 
 		[SerializeField]
 		private UnityEvent onWorldCreate;
 
-		[SerializeField]
-		private Transform player;
 		[SerializeField]
 		private float loadCountdown = 0.5f;
 
@@ -35,6 +34,7 @@ namespace Minecraft {
 		[Inject]
 		private readonly SaveManager saveManager;
 
+		private Transform player;
 		private Vector2Int center;
 		private readonly ConcurrentStack<Vector3Int> chunks = new();
 		private readonly ConcurrentStack<Vector3Int> renderers = new();
@@ -45,8 +45,15 @@ namespace Minecraft {
 
 		private readonly CancellationTokenSource cancellationTokenSource = new();
 
+		public void SetPlayer(Transform player) {
+			this.player = player;
+		}
+
 		private Vector2Int GetPlayerCenter() {
-			var blockCoordinate = CoordinateUtility.ToCoordinate(player.position);
+			if (player == null)
+				return Vector2Int.zero;
+
+			var blockCoordinate = CoordinateUtility.ToCoordinate(player.transform.position);
 			var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
 			return new Vector2Int(chunkCoordinate.x, chunkCoordinate.z);
 		}
@@ -224,7 +231,8 @@ namespace Minecraft {
 			loading = Load();
 			StartCoroutine(LaunchLoadingIfNeeded());
 			yield return new WaitUntil(() => loading.IsCompleted);
-			onWorldCreate?.Invoke();
+			onWorldCreate.Invoke();
+			OnWorldCreate?.Invoke();
 		}
 
 		private void OnSaveLoaded(SaveLoadData data) {
