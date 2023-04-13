@@ -19,16 +19,13 @@ namespace Minecraft {
 	public class SaveManager : NetworkBehaviour {
 		public event Action<SaveLoadData> OnLoad;
 
-		private const int PACKAGE_SIZE = 4096;
+		private const int PAYLOAD_SIZE = 4096;
 
 		[Inject]
 		private readonly ISceneManager sceneManager;
 
 		[Inject]
-		private readonly ISaveNameContainer saveNameContainer;
-
-		[Inject]
-		private readonly IConnectionRoleContainer connectionRoleContainer;
+		private readonly ISavePayload savePayload;
 
 		private const string SAVE_EXCTENSION = ".world";
 
@@ -41,16 +38,26 @@ namespace Minecraft {
 			return savedChunks.ContainsKey(chunkCoordinate);
 		}
 
-		public void LoadSave(string saveName) {
-			saveNameContainer.Name = saveName;
-			connectionRoleContainer.Role = ConnectionRoles.Host;
+		private void LoadGame() {
 			sceneManager.LoadScene("Overworld");
 		}
 
-		public void ConnectToSave() {
-			saveNameContainer.Name = "__SERVER__";
-			connectionRoleContainer.Role = ConnectionRoles.Client;
-			sceneManager.LoadScene("Overworld");
+		public void HostGame(string saveName) {
+			savePayload.Name = saveName;
+			savePayload.Role = ConnectionRoles.Host;
+			LoadGame();
+		}
+
+		public void LoadGame(string saveName) {
+			savePayload.Name = saveName;
+			savePayload.Role = ConnectionRoles.None;
+			LoadGame();
+		}
+
+		public void ConnectToLocalHost() {
+			savePayload.Name = "__SERVER__";
+			savePayload.Role = ConnectionRoles.Client;
+			LoadGame();
 		}
 
 		public string CreateSave(string saveName) {
@@ -76,51 +83,78 @@ namespace Minecraft {
 		}
 
 		public void SaveChunk(Chunk chunk) {
+			chunk.IsModified = false;
 			chunk.IsSaved = true;
 			if (!savedChunks.ContainsKey(chunk.Coordinate))
 				savedChunks.Add(chunk.Coordinate, chunk);
-			if (IsClient) {
-				byte[] buffer = new byte[3 * sizeof(int) + Chunk.VOLUME * sizeof(BlockType) + Chunk.VOLUME * sizeof(byte)];
-				var stream = new MemoryStream(buffer);
-				var binaryWriter = new BinaryWriter(stream);
-				binaryWriter.Write(chunk.Coordinate.x);
-				binaryWriter.Write(chunk.Coordinate.y);
-				binaryWriter.Write(chunk.Coordinate.z);
-				unsafe {
-					fixed (BlockType* sourceData = chunk.BlockMap.Data)
-						binaryWriter.Write(new ReadOnlySpan<byte>(sourceData, chunk.BlockMap.Data.Length * sizeof(BlockType)));
-					fixed (byte* sourceData = chunk.LiquidMap.Data)
-						binaryWriter.Write(new ReadOnlySpan<byte>(sourceData, chunk.LiquidMap.Data.Length * sizeof(byte)));
-				}
-				SaveChunkServerRpc(chunk.Coordinate, buffer);
+			if (savePayload.Role == ConnectionRoles.None)
+				return;
+			byte[] buffer = new byte[3 * sizeof(int) + Chunk.VOLUME * sizeof(BlockType) + Chunk.VOLUME * sizeof(byte)];
+			var stream = new MemoryStream(buffer);
+			var binaryWriter = new BinaryWriter(stream);
+			binaryWriter.Write(chunk.Coordinate.x);
+			binaryWriter.Write(chunk.Coordinate.y);
+			binaryWriter.Write(chunk.Coordinate.z);
+			unsafe {
+				fixed (BlockType* sourceData = chunk.BlockMap.Data)
+					binaryWriter.Write(new ReadOnlySpan<byte>(sourceData, chunk.BlockMap.Data.Length * sizeof(BlockType)));
+				fixed (byte* sourceData = chunk.LiquidMap.Data)
+					binaryWriter.Write(new ReadOnlySpan<byte>(sourceData, chunk.LiquidMap.Data.Length * sizeof(byte)));
+			}
+			if (IsClient && !IsHost) {
+				TrySaveChunkFromDataServerRpc(chunk.Coordinate, buffer);
+			} else {
+				TrySaveChunkFromDataClientRpc(chunk.Coordinate, buffer);
+			}
+		}
+
+		private void TrySaveChunkFromData(Vector3Int coordinate, byte[] data) {
+			var world = World.Instance;
+
+			var binaryReader = new BinaryReader(new MemoryStream(data, false));
+			int x = binaryReader.ReadInt32();
+			int y = binaryReader.ReadInt32();
+			int z = binaryReader.ReadInt32();
+			Chunk chunk;
+			if (world.HasChunk(coordinate)) {
+				chunk = world.GetChunk(coordinate);
+				chunk.IsDirty = true;
+				chunk.IsSaved = true;
+			} else {
+				chunk = new Chunk {
+					Coordinate = coordinate,
+					IsSaved = true
+				};
+			}
+			var blockMapBytes = binaryReader.ReadBytes(Chunk.VOLUME * sizeof(BlockType));
+			var liquidMapBytes = binaryReader.ReadBytes(Chunk.VOLUME * sizeof(byte));
+			unsafe {
+				fixed (byte* sourceData = blockMapBytes)
+					fixed (BlockType* destinationData = chunk.BlockMap.Data)
+						Buffer.MemoryCopy(sourceData, destinationData, sizeof(BlockType) * chunk.BlockMap.Data.Length, sizeof(BlockType) * chunk.BlockMap.Data.Length);
+			}
+			unsafe {
+				fixed (byte* sourceData = liquidMapBytes)
+					fixed (byte* destinationData = chunk.LiquidMap.Data)
+						Buffer.MemoryCopy(sourceData, destinationData, sizeof(byte) * chunk.LiquidMap.Data.Length, sizeof(byte) * chunk.LiquidMap.Data.Length);
+			}
+
+			if (world.HasRenderer(chunk.Coordinate))
+				world.GetRenderer(chunk.Coordinate).Data = chunk;
+
+			if (!savedChunks.ContainsKey(coordinate)) {
+				savedChunks.Add(coordinate, chunk);
 			}
 		}
 
 		[ServerRpc(RequireOwnership = false)]
-		private void SaveChunkServerRpc(Vector3Int coordinate, byte[] data) {
-			if (!savedChunks.ContainsKey(coordinate)) {
-				var binaryReader = new BinaryReader(new MemoryStream(data, false));
-				int x = binaryReader.ReadInt32();
-				int y = binaryReader.ReadInt32();
-				int z = binaryReader.ReadInt32();
-				var chunk = new Chunk {
-					Coordinate = coordinate
-				};
-				var blockMapBytes = binaryReader.ReadBytes(Chunk.VOLUME * sizeof(BlockType));
-				var liquidMapBytes = binaryReader.ReadBytes(Chunk.VOLUME * sizeof(byte));
-				unsafe {
-					fixed (byte* sourceData = blockMapBytes)
-					fixed (BlockType* destinationData = chunk.BlockMap.Data)
-						Buffer.MemoryCopy(sourceData, destinationData, sizeof(BlockType) * chunk.BlockMap.Data.Length, sizeof(BlockType) * chunk.BlockMap.Data.Length);
-				}
-				unsafe {
-					fixed (byte* sourceData = liquidMapBytes)
-					fixed (byte* destinationData = chunk.LiquidMap.Data)
-						Buffer.MemoryCopy(sourceData, destinationData, sizeof(byte) * chunk.LiquidMap.Data.Length, sizeof(byte) * chunk.LiquidMap.Data.Length);
-				}
+		private void TrySaveChunkFromDataServerRpc(Vector3Int coordinate, byte[] data) {
+			TrySaveChunkFromData(coordinate, data);
+		}
 
-				savedChunks.Add(coordinate, chunk);
-			}
+		[ClientRpc]
+		private void TrySaveChunkFromDataClientRpc(Vector3Int coordinate, byte[] data) {
+			TrySaveChunkFromData(coordinate, data);
 		}
 
 		public Chunk LoadChunk(World world, Vector3Int coordinate) {
@@ -174,7 +208,8 @@ namespace Minecraft {
 				int z = binaryReader.ReadInt32();
 				var coordinate = new Vector3Int(x, y, z);
 				var chunk = new Chunk {
-					Coordinate = coordinate
+					Coordinate = coordinate,
+					IsSaved = true
 				};
 				var blockMapBytes = binaryReader.ReadBytes(Chunk.VOLUME * sizeof(BlockType));
 				var liquidMapBytes = binaryReader.ReadBytes(Chunk.VOLUME * sizeof(byte));
@@ -192,20 +227,33 @@ namespace Minecraft {
 			}
 		}
 
+		private void InitializeOnServer(string saveName) {
+			selectedPath = GetSavePath(saveName);
+			var data = File.ReadAllBytes(selectedPath);
+			var offset = SetupOffset(data);
+			saveLoadData = new SaveLoadData(offset);
+			ExtractSavedChunks(data);
+			OnLoad?.Invoke(saveLoadData.Value);
+		}
+
 		public override void OnNetworkSpawn() {
-			var saveName = saveNameContainer.Name;
+			var saveName = savePayload.Name;
 			if (string.IsNullOrEmpty(saveName))
 				return;
-			if (connectionRoleContainer.Role != ConnectionRoles.Client) {
-				selectedPath = GetSavePath(saveName);
-				var data = File.ReadAllBytes(selectedPath);
-				var offset = SetupOffset(data);
-				saveLoadData = new SaveLoadData(offset);
-				ExtractSavedChunks(data);
-				OnLoad?.Invoke(saveLoadData.Value);
+			if (IsServer) {
+				InitializeOnServer(saveName);
 			} else {
 				QerryWorldDataServerRpc();
 			}
+		}
+
+		private void Start() {
+			if (savePayload.Role != ConnectionRoles.None)
+				return;
+			var saveName = savePayload.Name;
+			if (string.IsNullOrEmpty(saveName))
+				return;
+			InitializeOnServer(saveName);
 		}
 
 		[ServerRpc(RequireOwnership = false)]
@@ -215,18 +263,18 @@ namespace Minecraft {
 			AllocateWorldDataBufferClientRpc(data.Length);
 			PassSaveOffsetClientRpc(saveLoadData.Value.Offset);
 
-			int packageCount = Mathf.CeilToInt(data.Length / PACKAGE_SIZE);
+			int packageCount = Mathf.CeilToInt(data.Length / PAYLOAD_SIZE);
 			for (int x = 0; x < packageCount; x++) {
 				byte[] package;
 				if (x == packageCount - 1) {
-					package = new byte[data.Length - (packageCount - 1) * PACKAGE_SIZE];
+					package = new byte[data.Length - (packageCount - 1) * PAYLOAD_SIZE];
 				} else {
-					package = new byte[PACKAGE_SIZE];
+					package = new byte[PAYLOAD_SIZE];
 				}
 
-				Buffer.BlockCopy(data, x * PACKAGE_SIZE, package, 0, package.Length);
+				Buffer.BlockCopy(data, x * PAYLOAD_SIZE, package, 0, package.Length);
 
-				PassWorldDataPackageClientRpc(package, x * PACKAGE_SIZE);
+				PassWorldDataPackageClientRpc(package, x * PAYLOAD_SIZE);
 			}
 
 			ExtractSavedChunksClientRpc();
@@ -265,12 +313,10 @@ namespace Minecraft {
 		}
 
 		private new void OnDestroy() {
-			if (IsClient)
+			if (savePayload.Role != ConnectionRoles.None && IsClient || saveLoadData == null)
 				return;
 
-			if (saveLoadData == null) {
-				return;
-			}
+			savePayload.Role = ConnectionRoles.None;
 
 			var binaryWriter = new BinaryWriter(File.OpenWrite(selectedPath));
 			binaryWriter.Write(saveLoadData.Value.Offset.x);

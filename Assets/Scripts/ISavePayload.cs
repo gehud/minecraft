@@ -1,5 +1,7 @@
 ﻿namespace Minecraft {
-	public interface IConnectionRoleContainer {
+	public interface ISavePayload {
+		string Name { get; set; }
+
 		ConnectionRoles Role { get; set; }
 	}
 }

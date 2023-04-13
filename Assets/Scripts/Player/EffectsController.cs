@@ -12,10 +12,13 @@ namespace Minecraft.Player {
         private float waterEffectHeight = 1.8f;
 
         [Inject]
-        private World World { get; } 
+        private World World { get; }
+
+        [Inject]
+        private readonly ISavePayload savePayload;
 
         private void Update() {
-			if (!IsOwner)
+			if (savePayload.Role != ConnectionRoles.None && !IsOwner)
 				return;
 
 			Vector3Int blockCoordinate = CoordinateUtility.ToCoordinate(transform.position + Vector3.up * waterEffectHeight);

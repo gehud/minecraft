@@ -6,11 +6,26 @@ using Minecraft.UI;
 
 namespace Minecraft {
 	public class SaveController : MonoBehaviour {
-		[SerializeField]
-		private SaveView view;
+		private enum GameTypes {
+			Local,
+			Multyplayer
+		}
+
+		private GameTypes gameType = GameTypes.Local;
 
 		[Inject]
 		private readonly SaveManager saveManager;
+
+		[SerializeField]
+		private SaveView view;
+
+		public void MarkAsLocal() {
+			gameType = GameTypes.Local;
+		}
+
+		public void MarkAsMultyplayer() {
+			gameType = GameTypes.Multyplayer;
+		}
 
 		public void CreateEmpty() {
 			Create(new Save { 
@@ -36,7 +51,14 @@ namespace Minecraft {
 		}
 
 		private void Play(SaveView saveView) {
-			saveManager.LoadSave(saveView.Model.Name);
+			switch (gameType) {
+				case GameTypes.Local:
+					saveManager.LoadGame(saveView.Model.Name);
+					break;
+				case GameTypes.Multyplayer:
+					saveManager.HostGame(saveView.Model.Name);
+					break;
+			}
 		}
 
 		private void Delete(SaveView saveView) {

@@ -53,8 +53,11 @@ namespace Minecraft {
             chunk.LightMap.Set(localBlockCoordinate, chanel, level);
             chunk.IsDirty = true;
             world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+			if (chunk.IsSaved) {
+				world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+			}
 
-            var entry = new Entry(blockCoordinate, level);
+			var entry = new Entry(blockCoordinate, level);
             addQueue.Enqueue(entry);
         }
 
@@ -93,8 +96,11 @@ namespace Minecraft {
             chunk.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
             chunk.IsDirty = true;
             world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+			if (chunk.IsSaved) {
+				world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+			}
 
-            var entry = new Entry(blockCoordinate, level);
+			var entry = new Entry(blockCoordinate, level);
             removeQueue.Enqueue(entry);
         }
 
@@ -138,10 +144,9 @@ namespace Minecraft {
                             chunk.LightMap.Set(localBlockCoordinate, chanel, LightMap.MIN);
                             chunk.IsDirty = true;
                             world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
-							if (chunk.IsModified) {
-                                chunk.IsSaved = false;
+							if (chunk.IsSaved) {
 								world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
-                            }
+							}
 						} else if (level >= entry.Level) {
                             var addEntry = new Entry(blockCoordinate, level);
                             addQueue.Enqueue(addEntry);
@@ -169,8 +174,7 @@ namespace Minecraft {
                             addQueue.Enqueue(addEntry);
                             chunk.IsDirty = true;
                             world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
-							if (chunk.IsModified) {
-                                chunk.IsSaved = false;
+							if (chunk.IsSaved) {
 								world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
                             }
 						}

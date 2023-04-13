@@ -8,6 +8,8 @@ using Zenject;
 
 namespace Minecraft {
 	public class World : NetworkBehaviour {
+        public static World Instance => instance;
+        private static World instance;
         /// <summary>
         /// World height in Chunks.
         /// </summary>
@@ -102,15 +104,6 @@ namespace Minecraft {
 			return renderers[RendererToIndex(coordinate)] != null;
 		}
 
-        public Chunk CreateChunk(Vector3Int coordinate) {
-            if (HasChunk(coordinate))
-                throw new Exception("Chunk allready exists.");
-			var chunk = new Chunk();
-            chunk.Coordinate = coordinate;
-            chunks[ChunkToIndex(coordinate)] = chunk;
-            return chunk;
-        }
-
         public void SetChunk(Vector3Int coordinate, Chunk chunk) {
 			chunks[ChunkToIndex(coordinate)] = chunk;
 		}
@@ -149,12 +142,6 @@ namespace Minecraft {
 			return renderer != null;
 		}
 
-		public Chunk GetOrCreateChunk(Vector3Int coordinate) {
-            if (TryGetChunk(coordinate, out Chunk chunk))
-                return chunk;
-            return CreateChunk(coordinate);
-        }
-
         public ChunkRenderer GetOrCreateRenderer(Vector3Int coordinate) {
             if (TryGetRenderer(coordinate, out ChunkRenderer renderer))
                 return renderer;
@@ -177,62 +164,44 @@ namespace Minecraft {
 		}
 
 		public void MarkModifiedIfNeeded(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
-			if (localBlockCoordinate.x == 0 && TryGetChunk(chunkCoordinate + Vector3Int.left, out var chunk)) {
-				chunk.IsModified = true; 
-                chunk.IsSaved = false;
-            }
-			if (localBlockCoordinate.y == 0 && TryGetChunk(chunkCoordinate + Vector3Int.down, out chunk)) {
+			if (localBlockCoordinate.x == 0 && TryGetChunk(chunkCoordinate + Vector3Int.left, out var chunk))
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
-			}
-			if (localBlockCoordinate.z == 0 && TryGetChunk(chunkCoordinate + Vector3Int.back, out chunk)) {
+			if (localBlockCoordinate.y == 0 && TryGetChunk(chunkCoordinate + Vector3Int.down, out chunk))
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
-			}
-			if (localBlockCoordinate.x == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.right, out chunk)) {
+			if (localBlockCoordinate.z == 0 && TryGetChunk(chunkCoordinate + Vector3Int.back, out chunk)) 
+                chunk.IsModified = true;
+			if (localBlockCoordinate.x == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.right, out chunk)) 
+                chunk.IsModified = true;
+			if (localBlockCoordinate.y == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.up, out chunk)) 
+                chunk.IsModified = true;
+			if (localBlockCoordinate.z == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.forward, out chunk))
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
-			}
-			if (localBlockCoordinate.y == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.up, out chunk)) {
-				chunk.IsModified = true;
-				chunk.IsSaved = false;
-			}
-			if (localBlockCoordinate.z == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.forward, out chunk)) {
-				chunk.IsModified = true;
-				chunk.IsSaved = false;
-			}
 		}
 
 		public void MarkDirtyAndModifiedIfNeeded(Vector3Int chunkCoordinate, Vector3Int localBlockCoordinate) {
 			if (localBlockCoordinate.x == 0 && TryGetChunk(chunkCoordinate + Vector3Int.left, out var chunk)) {
                 chunk.IsDirty = true;
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
 			}
 			if (localBlockCoordinate.y == 0 && TryGetChunk(chunkCoordinate + Vector3Int.down, out chunk)) {
 				chunk.IsDirty = true;
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
 			}
 			if (localBlockCoordinate.z == 0 && TryGetChunk(chunkCoordinate + Vector3Int.back, out chunk)) {
 				chunk.IsDirty = true;
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
 			}
 			if (localBlockCoordinate.x == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.right, out chunk)) {
 				chunk.IsDirty = true;
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
 			}
 			if (localBlockCoordinate.y == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.up, out chunk)) {
 				chunk.IsDirty = true;
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
 			}
 			if (localBlockCoordinate.z == Chunk.SIZE - 1 && TryGetChunk(chunkCoordinate + Vector3Int.forward, out chunk)) {
 				chunk.IsDirty = true;
 				chunk.IsModified = true;
-				chunk.IsSaved = false;
 			}
 		}
 
@@ -257,7 +226,6 @@ namespace Minecraft {
                 chunk.BlockMap[localBlockCoordinate] = voxelType;
                 chunk.IsDirty = true;
                 chunk.IsModified = true;
-                chunk.IsSaved = false;
 				MarkDirtyAndModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
             }
         }
@@ -509,6 +477,7 @@ namespace Minecraft {
 		}
 
 		private void Awake() {
+            instance = this;
 			chunksSize = DrawDistance * 2 + 3;
 			renderersSize = DrawDistance * 2 + 1;
 			chunksVolume = chunksSize * chunksSize * HEIGHT;
@@ -536,10 +505,11 @@ namespace Minecraft {
             foreach (var renderer in renderers) {
                 if (renderer == null)
                     continue;
-                if (renderer.Data.IsComplete && renderer.Data.IsDirty) { 
+                if (renderer.Data.IsDirty) { 
                     renderer.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Data, blockDataProvider), materialProvider);
-                } else if (renderer.Data.IsModified && !renderer.Data.IsSaved) {
-                    saveManager.SaveChunk(renderer.Data);
+                    if (renderer.Data.IsModified) {
+                        saveManager.SaveChunk(renderer.Data);
+                    }
                 }
             }
         }

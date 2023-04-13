@@ -20,8 +20,6 @@ namespace Minecraft {
 
         public bool IsDirty { get; set; } = true;
 
-        public bool IsComplete { get; set; } = false;
-
         public bool IsModified { get; set; } = false;
 
         public bool IsSaved { get; set; } = false;

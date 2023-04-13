@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using Zenject;
 
 namespace Minecraft {
 	public class MenuManager : MonoBehaviour {

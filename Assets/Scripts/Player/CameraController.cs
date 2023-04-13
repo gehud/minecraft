@@ -1,10 +1,11 @@
 ﻿using Minecraft.UI;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using Zenject;
 
 namespace Minecraft.Player {
-	[RequireComponent(typeof(Camera))]
+    [RequireComponent(typeof(Camera))]
     public class CameraController : NetworkBehaviour {
 
 		[SerializeField, Min(0)]
@@ -23,8 +24,12 @@ namespace Minecraft.Player {
         private float sprintFOVMultiplier = 1.5f;
         [SerializeField]
         private float FOVDelta = 1.0f;
-
-        private new Camera camera;
+        [SerializeField]
+        private Transform body;
+        [SerializeField]
+		private new Camera camera;
+        [SerializeField]
+        private Camera skyboxCamera;
 
         private float rotationX = 0.0f;
         private float rotationY = 0.0f;
@@ -33,34 +38,39 @@ namespace Minecraft.Player {
         private float normalFOV;
         private float targetFOV = 1.0f;
 
+        private Vector3 bodyRotation;
+
         [Inject]
         private readonly UIController uIController;
 
         [Inject]
-        private readonly FogController fogController;
+        private readonly ISavePayload savePayload;
 
 		private void Awake() {
-			camera = GetComponent<Camera>();
             normalHeight = transform.localPosition.y;
             normalFOV = camera.fieldOfView;
-		}
-
-		public override void OnNetworkSpawn() {
-			base.OnNetworkSpawn();
-            if (!IsOwner)
-                Destroy(this.gameObject);
-            fogController.SetCamera(camera);   
+            bodyRotation = body.eulerAngles;
 		}
 
 		private void Start() {
 			Cursor.lockState = CursorLockMode.Locked;
 		}
 
-		private void Update() {
-            if (!IsOwner)
-                return;
+		public override void OnNetworkSpawn() {
+			base.OnNetworkSpawn();
+            if (!IsOwner) {
+                body.gameObject.layer = LayerMask.GetMask("Default");
+                Destroy(GetComponent<AudioListener>());
+                camera.enabled = false;
+                skyboxCamera.enabled = false;
+			}
+		}
 
-            if (movementController.IsSneaking) {
+		private void Update() {
+			if (savePayload.Role != ConnectionRoles.None && !IsOwner)
+				return;
+
+			if (movementController.IsSneaking) {
                 transform.localPosition = Vector3.up * sneakHeight;
             } else {
                 transform.localPosition = Vector3.up * normalHeight;
@@ -81,6 +91,7 @@ namespace Minecraft.Player {
                 rotationX = Mathf.Clamp(rotationX - mouseY * sencitivity, -90.0f, 90.0f);
                 rotationY += mouseX * sencitivity;
                 transform.localEulerAngles = new Vector3(rotationX, rotationY, 0.0f);
+                body.rotation = Quaternion.Euler(bodyRotation.x, transform.eulerAngles.y, bodyRotation.z);
             }
         }
 	}

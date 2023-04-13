@@ -53,7 +53,6 @@ namespace Minecraft {
             meshRenderer.materials = materials.ToArray();
 
 			Data.IsDirty = false;
-			Data.IsComplete = true;
 		}
 
         private void Awake() {

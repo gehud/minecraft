@@ -15,8 +15,8 @@ namespace Minecraft {
 
 		private new Camera camera;
 
-		public void SetCamera(Camera camera) {
-			this.camera = camera;
+		public void OnPlayerSpawn(GameObject player) {
+			camera = player.GetComponentInChildren<Camera>();
 		}
 
 		private void LateUpdate() {
@@ -27,6 +27,14 @@ namespace Minecraft {
 			camera.farClipPlane = drawDistance + drawDistanceOffset;
 			RenderSettings.fogStartDistance = drawDistance - fogStartOffset;
 			RenderSettings.fogEndDistance = drawDistance + fogEndOffset;
+		}
+
+		private void OnEnable() {
+			PlayerEvents.OnSpawn += OnPlayerSpawn;
+		}
+
+		private void OnDisable() {
+			PlayerEvents.OnSpawn -= OnPlayerSpawn;
 		}
 	}
 }

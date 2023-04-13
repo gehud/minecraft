@@ -49,7 +49,9 @@ namespace Minecraft {
         }
 
 		public Chunk Generate(Vector3Int coordinate) {
-            Chunk result = world.CreateChunk(coordinate);
+            var result = new Chunk {
+                Coordinate = coordinate
+            };
 
             var treePositions = GetLocalMaxima(GenerateColumnNoise(new Vector2Int(coordinate.x, coordinate.z), trees));
 

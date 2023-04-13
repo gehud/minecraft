@@ -1,4 +1,5 @@
-﻿using Minecraft.Player;
+﻿using Minecraft.Extensions.Zenject;
+using Minecraft.Player;
 using Unity.Netcode;
 using UnityEngine;
 using Zenject;
@@ -11,22 +12,22 @@ namespace Minecraft {
 		private readonly ChunkLoader chunkLoader;
 
 		[Inject]
-		private readonly IConnectionRoleContainer connectionRoleContainer;
+		private readonly DiContainer diContainer;
+
+		[Inject]
+		private readonly ISavePayload savePayload;
 
 		[SerializeField]
 		private int spawnPlayerHeight = 160;
 
-		private MovementController player;
+		[SerializeField]
+		private GameObject player;
 
-		public void SetPlayer(MovementController player) {
-			this.player = player;
-		}
+		private MovementController movementController;
 
 		private void OnWorldCreate() {
-			if (player == null)
-				return;
-
-			player.enabled = true;
+			if (movementController != null)
+				movementController.enabled = true;
 		}
 
 		private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response) {
@@ -38,7 +39,7 @@ namespace Minecraft {
 
 		private void Start() {
 			NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
-			switch (connectionRoleContainer.Role) {
+			switch (savePayload.Role) {
 				case ConnectionRoles.Host:
 					NetworkManager.Singleton.StartHost();
 					break;
@@ -48,15 +49,24 @@ namespace Minecraft {
 				case ConnectionRoles.Client:
 					NetworkManager.Singleton.StartClient();
 					break;
+				case ConnectionRoles.None:
+					diContainer.InstantiateNetworkPrefub(player);
+					break;
 			}
+		}
+
+		private void OnPlayerSpawn(GameObject player) {
+			this.movementController = player.GetComponent<MovementController>();	
 		}
 
 		private void OnEnable() {
 			chunkLoader.OnWorldCreate += OnWorldCreate;
+			PlayerEvents.OnSpawn += OnPlayerSpawn;
 		}
 
 		private void OnDisable() {
 			chunkLoader.OnWorldCreate -= OnWorldCreate;
+			PlayerEvents.OnSpawn -= OnPlayerSpawn;
 		}
 
 		public override void OnNetworkDespawn() {

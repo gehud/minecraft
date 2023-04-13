@@ -52,10 +52,7 @@ namespace Minecraft.Player {
         private readonly UIController uIController;
 
         [Inject]
-        private readonly GameManager gameManager;
-
-		[Inject]
-		private readonly ChunkLoader chunkLoader;
+        private readonly ISavePayload savePayload;
 
 		private float lastDoubleTapTime = 0.0f;
 
@@ -69,8 +66,9 @@ namespace Minecraft.Player {
 		private bool isSwiming = false;
 		private Vector3 lastPosition;
 
-		private void Awake() {
+		private void OnEnable() {
 			hitbox = GetComponent<Hitbox>();
+            hitbox.enabled = true;
 
             for (int y = World.HEIGHT * Chunk.SIZE; y >= 0; --y) {
                 if (blockProvider.Get(world.GetBlock(new Vector3Int(0, y, 0))).IsSolid) {
@@ -82,23 +80,14 @@ namespace Minecraft.Player {
             lastPosition = transform.position;
 		}
 
-		public override void OnNetworkSpawn() {
-			base.OnNetworkSpawn();
-            if (!IsOwner)
-                Destroy(this);
-
-			gameManager.SetPlayer(this);
-			chunkLoader.SetPlayer(transform);
-		}
-
 		private void Jump() {
             float velocity = Mathf.Sqrt(2 * Mathf.Abs(PhysicsWorld.Gravity.y) * jumpingHeight);
             hitbox.Velocity += Vector3.up * velocity;
         }
 
         private void Update() {
-            if (!IsOwner)
-                return;
+			if (savePayload.Role != ConnectionRoles.None && !IsOwner)
+				return;
 
 			if (uIController.IsUsing)
                 return;

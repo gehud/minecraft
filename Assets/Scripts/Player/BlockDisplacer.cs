@@ -30,9 +30,12 @@ namespace Minecraft.Player {
         [Inject]
         private readonly UIController uIController;
 
+        [Inject]
+        private readonly ISavePayload savePayload;
+
         private void Update() {
-            if (!IsOwner)
-                return;
+			if (savePayload.Role != ConnectionRoles.None && !IsOwner)
+				return;
 
 			if (uIController.IsUsing)
                 return;

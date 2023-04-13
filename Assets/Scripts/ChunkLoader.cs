@@ -45,8 +45,8 @@ namespace Minecraft {
 
 		private readonly CancellationTokenSource cancellationTokenSource = new();
 
-		public void SetPlayer(Transform player) {
-			this.player = player;
+		public void OnPLayerSpawn(GameObject player) {
+			this.player = player.transform;
 		}
 
 		private Vector2Int GetPlayerCenter() {
@@ -123,6 +123,7 @@ namespace Minecraft {
 							else
 								chunk = await Task.Run(() => chunkGenerator.Generate(item), cancellationTokenSource.Token);
 							generatedData.TryAdd(item, chunk);
+							world.SetChunk(item, chunk);
 						}
 
 						await Task.Run(() => {
@@ -247,11 +248,13 @@ namespace Minecraft {
 		private void OnEnable() {
 			world.OnDrawDistanceChanged += StartRelaunchLoading;
 			saveManager.OnLoad += OnSaveLoaded;
+			PlayerEvents.OnSpawn += OnPLayerSpawn;
 		}
 
 		private void OnDisable() {
 			world.OnDrawDistanceChanged -= StartRelaunchLoading;
 			saveManager.OnLoad -= OnSaveLoaded;
+			PlayerEvents.OnSpawn -= OnPLayerSpawn;
 		}
 
 		private void OnDestroy() {

@@ -66,6 +66,9 @@ namespace Minecraft {
 			chunk.BlockMap[localBlockCoordinate] = liquidType;
 			chunk.IsDirty = true;
 			world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+			if (chunk.IsSaved) {
+				world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+			}
 
 			var entry = new Entry(blockCoordinate, amount);
 			addQueue.Enqueue(entry);
@@ -99,6 +102,9 @@ namespace Minecraft {
 			chunk.BlockMap[localBlockCoordinate] = BlockType.Air;
 			chunk.IsDirty = true;
 			world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
+			if (chunk.IsSaved) {
+				world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
+			}
 
 			Entry entry = new(blockCoordinate, amount);
 			removeQueue.Enqueue(entry);
@@ -180,8 +186,7 @@ namespace Minecraft {
 							chunk.BlockMap[localBlockCoordinate] = BlockType.Air;
 							chunk.IsDirty = true;
 							world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
-							if (chunk.IsModified) {
-								chunk.IsSaved = false;
+							if (chunk.IsSaved) {
 								world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
 							}
 						} else if (amount >= entry.Amount) {
@@ -221,8 +226,7 @@ namespace Minecraft {
 										toAdd.Add(addEntry);
 										chunk.IsDirty = true;
 										world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
-										if (chunk.IsModified) {
-											chunk.IsSaved = false;
+										if (chunk.IsSaved) {
 											world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
 										}
 									}
@@ -236,8 +240,7 @@ namespace Minecraft {
 						toAdd.Add(addEntry);
 						chunk.IsDirty = true;
 						world.MarkDirtyIfNeeded(chunkCoordinate, localBlockCoordinate);
-						if (chunk.IsModified) {
-							chunk.IsSaved = false;
+						if (chunk.IsSaved) {
 							world.MarkModifiedIfNeeded(chunkCoordinate, localBlockCoordinate);
 						}
 					}
