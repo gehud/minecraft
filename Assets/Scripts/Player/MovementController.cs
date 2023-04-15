@@ -1,4 +1,5 @@
-﻿using Minecraft.Physics;
+﻿using Minecraft.Extensions;
+using Minecraft.Physics;
 using Minecraft.UI;
 using Minecraft.Utilities;
 using Unity.Netcode;
@@ -66,7 +67,10 @@ namespace Minecraft.Player {
 		private bool isSwiming = false;
 		private Vector3 lastPosition;
 
+        private IInputProvider inputProvider;
+
 		private void OnEnable() {
+            inputProvider = GetComponent<IInputProvider>();
 			hitbox = GetComponent<Hitbox>();
             hitbox.enabled = true;
 
@@ -129,10 +133,7 @@ namespace Minecraft.Player {
             if (isGrounded && hitbox.IsKinematic)
                 hitbox.IsKinematic = false;
 
-            float horizontalInput = Input.GetAxis("Horizontal");
-            float verticalInput = Input.GetAxis("Vertical");
-            Vector2 input = new(horizontalInput, verticalInput);
-            input = input.magnitude > 1 ? input.normalized : input;
+            Vector2 input = inputProvider.Movement.NormalizeSmooth();
 
             isSneaking = Input.GetKey(sneakKey) && isGrounded;
             isSprinting = Input.GetKeyDown(sprintKey) || isSprinting && input.magnitude == 1.0f;

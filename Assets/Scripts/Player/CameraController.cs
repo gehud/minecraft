@@ -1,11 +1,9 @@
 ﻿using Minecraft.UI;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 using Zenject;
 
 namespace Minecraft.Player {
-    [RequireComponent(typeof(Camera))]
     public class CameraController : NetworkBehaviour {
 
 		[SerializeField, Min(0)]
@@ -27,9 +25,15 @@ namespace Minecraft.Player {
         [SerializeField]
         private Transform body;
         [SerializeField]
+        private Renderer bodyRenderer;
+        [SerializeField]
+        private Renderer handRenderer;
+        [SerializeField]
 		private new Camera camera;
         [SerializeField]
         private Camera skyboxCamera;
+
+        private IInputProvider inputProvider;
 
         private float rotationX = 0.0f;
         private float rotationY = 0.0f;
@@ -47,7 +51,8 @@ namespace Minecraft.Player {
         private readonly ISavePayload savePayload;
 
 		private void Awake() {
-            normalHeight = transform.localPosition.y;
+            inputProvider = GetComponent<IInputProvider>();
+            normalHeight = camera.transform.localPosition.y;
             normalFOV = camera.fieldOfView;
             bodyRotation = body.eulerAngles;
 		}
@@ -59,8 +64,9 @@ namespace Minecraft.Player {
 		public override void OnNetworkSpawn() {
 			base.OnNetworkSpawn();
             if (!IsOwner) {
-                body.gameObject.layer = LayerMask.GetMask("Default");
-                Destroy(GetComponent<AudioListener>());
+                bodyRenderer.gameObject.layer = 0;
+                handRenderer.gameObject.layer = LayerMask.NameToLayer("Player");
+				Destroy(camera.GetComponent<AudioListener>());
                 camera.enabled = false;
                 skyboxCamera.enabled = false;
 			}
@@ -71,9 +77,9 @@ namespace Minecraft.Player {
 				return;
 
 			if (movementController.IsSneaking) {
-                transform.localPosition = Vector3.up * sneakHeight;
+                camera.transform.localPosition = Vector3.up * sneakHeight;
             } else {
-                transform.localPosition = Vector3.up * normalHeight;
+				camera.transform.localPosition = Vector3.up * normalHeight;
             }
 
             if (movementController.IsSprinting) {
@@ -84,14 +90,13 @@ namespace Minecraft.Player {
 
             camera.fieldOfView = Mathf.MoveTowards(camera.fieldOfView, targetFOV, FOVDelta);
 
-            if (!uIController.IsUsing) { 
-                float mouseX = Input.GetAxis("Mouse X");
-                float mouseY = Input.GetAxis("Mouse Y");
+            if (!uIController.IsUsing) {
+                var input = inputProvider.Look;
 
-                rotationX = Mathf.Clamp(rotationX - mouseY * sencitivity, -90.0f, 90.0f);
-                rotationY += mouseX * sencitivity;
-                transform.localEulerAngles = new Vector3(rotationX, rotationY, 0.0f);
-                body.rotation = Quaternion.Euler(bodyRotation.x, transform.eulerAngles.y, bodyRotation.z);
+                rotationX = Mathf.Clamp(rotationX - input.y * sencitivity, -90.0f, 90.0f);
+                rotationY += input.x * sencitivity;
+                camera.transform.localEulerAngles = new Vector3(rotationX, rotationY, 0.0f);
+                body.rotation = Quaternion.Euler(bodyRotation.x, camera.transform.eulerAngles.y, bodyRotation.z);
             }
         }
 	}

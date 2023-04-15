@@ -125,6 +125,7 @@ namespace Minecraft {
 					Coordinate = coordinate,
 					IsSaved = true
 				};
+				world.SetChunk(coordinate, chunk);
 			}
 			var blockMapBytes = binaryReader.ReadBytes(Chunk.VOLUME * sizeof(BlockType));
 			var liquidMapBytes = binaryReader.ReadBytes(Chunk.VOLUME * sizeof(byte));

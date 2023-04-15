@@ -3,7 +3,7 @@ using UnityEngine;
 using Zenject;
 
 namespace Minecraft.Extensions.Zenject {
-	public static class Container {
+	public static class ContainerExtensions {
 		public static NetworkObject InstantiateNetworkPrefub(this DiContainer container, GameObject prefub, GameObjectCreationParameters gameObjectBindInfo) {
 			var isActive = prefub.activeSelf;
 			prefub.SetActive(false);
