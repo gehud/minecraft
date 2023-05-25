@@ -19,11 +19,13 @@ MonoBehaviour:
     bottomFace: {x: 6, y: 8}
     frontFace: {x: 8, y: 8}
     backFace: {x: 6, y: 8}
-  materialType: 0
   isSolid: 1
   isLiquid: 0
-  isTransparent: 0
+  isVegetation: 0
   emission:
     R: 15
     G: 14
-    B: 11
+    B: 13
+  isTransparent: 0
+  isTwoSided: 0
+  absorption: 0

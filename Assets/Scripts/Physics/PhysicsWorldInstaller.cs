@@ -3,14 +3,10 @@ using Zenject;
 
 namespace Minecraft.Physics {
 	public class PhysicsWorldInstaller : MonoInstaller {
-		[SerializeField] private PhysicsWorld physicsSolver;
+		[SerializeField] private PhysicsWorld instance;
 
 		public override void InstallBindings() {
-			Container
-				.Bind<PhysicsWorld>()
-				.FromInstance(physicsSolver)
-				.AsSingle()
-				.NonLazy();
+			Container.Bind<PhysicsWorld>().FromInstance(instance).AsSingle().NonLazy();
 		}
 	}
 }

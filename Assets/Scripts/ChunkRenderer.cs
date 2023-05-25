@@ -1,63 +1,79 @@
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace Minecraft {
-    [RequireComponent(typeof(MeshFilter))]
-    [RequireComponent(typeof(MeshRenderer))]
-    public class ChunkRenderer : MonoBehaviour {
+	public class ChunkRenderer {
 		public Chunk Data { get; set; }
 
-        [SerializeField]
-        private MeshFilter meshFilter;
-        [SerializeField]
-        private MeshRenderer meshRenderer;
+		private readonly Mesh sMesh;
+		private readonly Mesh tMesh;
 
-        private Mesh mesh;
+		private const MeshUpdateFlags UPDATE_FLAGS = 
+			MeshUpdateFlags.DontRecalculateBounds | 
+			MeshUpdateFlags.DontNotifyMeshUsers | 
+			MeshUpdateFlags.DontResetBoneBounds | 
+			MeshUpdateFlags.DontValidateIndices;
 
-		public void Initialize(Chunk data) {
+		public ChunkRenderer(Chunk data) {
 			Data = data;
-			transform.position = data.Coordinate * Chunk.SIZE;
+			sMesh = new();
+			sMesh.MarkDynamic();
+			tMesh = new();
+			tMesh.MarkDynamic();
 		}
 
-		public void UpdateMesh(ConcurrentDictionary<MaterialType, MeshData> meshData, MaterialProvider materialManager) {
-            List<SubMeshDescriptor> subMeshDescriptors = new();
-            List<ushort> indices = new();
-            List<Vertex> vertices = new();
-            List<Material> materials = new();
-            foreach (var pair in meshData) {
-                subMeshDescriptors.Add(new SubMeshDescriptor(indices.Count, pair.Value.Indices.Count));
-                int vertexCount = vertices.Count;
-                for (int i = 0; i < pair.Value.Indices.Count; i++) {
-                    indices.Add((ushort)(pair.Value.Indices[i] + vertexCount));
-                }
-                vertices.AddRange(pair.Value.Vertices);
-                materials.Add(materialManager.Get(pair.Key));
-            }
+		public void Render(Material sMaterial, Material tMaterial) {
+			Matrix4x4 transform = Matrix4x4.Translate(Data.Coordinate * Chunk.SIZE);
+			Graphics.DrawMesh(sMesh, transform, sMaterial, 0);
+			Graphics.DrawMesh(tMesh, transform, tMaterial, 0);
+		}
 
-            mesh.SetVertexBufferParams(vertices.Count,
-                new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
-                new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2),
-                new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 4),
-                new VertexAttributeDescriptor(VertexAttribute.TexCoord2, VertexAttributeFormat.Float32, 1));
-            mesh.SetVertexBufferData(vertices, 0, 0, vertices.Count);
-            mesh.SetIndexBufferParams(indices.Count, IndexFormat.UInt16);
-            mesh.SetIndexBufferData(indices, 0, 0, indices.Count);
-            mesh.SetSubMeshes(subMeshDescriptors);
-
-            Vector3 center = Vector3.one * Chunk.SIZE / 2.0f;
-            Vector3 size = Vector3.one * Chunk.SIZE;
-            mesh.bounds = new Bounds(center, size);
-
-            meshRenderer.materials = materials.ToArray();
+		public void UpdateMesh(ChunkRendererDataJob job) {
+			var center = Vector3.one * Chunk.SIZE / 2.0f;
+			var size = Vector3.one * Chunk.SIZE;
+			var bounds = new Bounds(center, size);
+			sMesh.SetVertexBufferParams(
+				job.OpaqueVertices.Count,
+				new VertexAttributeDescriptor(
+					VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2
+				),
+				new VertexAttributeDescriptor(
+					VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 2
+				),
+				new VertexAttributeDescriptor(
+					VertexAttribute.TexCoord2, VertexAttributeFormat.Float32, 2
+				),
+				new VertexAttributeDescriptor(
+					VertexAttribute.TexCoord3, VertexAttributeFormat.Float32, 1
+				)
+			);
+			sMesh.SetVertexBufferData(job.OpaqueVertices, 0, 0, job.OpaqueVertices.Count, 0, UPDATE_FLAGS);
+			sMesh.SetIndexBufferParams(job.OpaqueIndices.Count, IndexFormat.UInt16);
+			sMesh.SetIndexBufferData(job.OpaqueIndices, 0, 0, job.OpaqueIndices.Count, UPDATE_FLAGS);
+			sMesh.SetSubMesh(0, new SubMeshDescriptor(0, job.OpaqueIndices.Count), UPDATE_FLAGS);
+			sMesh.bounds = bounds;
+			tMesh.SetVertexBufferParams(
+				job.TransparentVertices.Count,
+				new VertexAttributeDescriptor(
+					VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2
+				),
+				new VertexAttributeDescriptor(
+					VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 2
+				),
+				new VertexAttributeDescriptor(
+					VertexAttribute.TexCoord2, VertexAttributeFormat.Float32, 2
+				),
+				new VertexAttributeDescriptor(
+					VertexAttribute.TexCoord3, VertexAttributeFormat.Float32, 1
+				)
+			);
+			tMesh.SetVertexBufferData(job.TransparentVertices, 0, 0, job.TransparentVertices.Count, 0, UPDATE_FLAGS);
+			tMesh.SetIndexBufferParams(job.TransparentIndices.Count, IndexFormat.UInt16);
+			tMesh.SetIndexBufferData(job.TransparentIndices, 0, 0, job.TransparentIndices.Count, UPDATE_FLAGS);
+			tMesh.SetSubMesh(0, new SubMeshDescriptor(0, job.TransparentIndices.Count), UPDATE_FLAGS);
+			tMesh.bounds = bounds;
 
 			Data.IsDirty = false;
 		}
-
-        private void Awake() {
-            mesh = new();
-            meshFilter.sharedMesh = mesh;
-        }
-    }
+	}
 }

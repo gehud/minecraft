@@ -79,7 +79,7 @@ GameObject:
   - component: {fileID: 6059434407887094940}
   - component: {fileID: 389944919279461012}
   m_Layer: 0
-  m_Name: SaveNameContainer
+  m_Name: SavePayload
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

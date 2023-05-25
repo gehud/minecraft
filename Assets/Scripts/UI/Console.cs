@@ -3,6 +3,7 @@ using System.Collections;
 using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
+using Zenject;
 
 namespace Minecraft {
 	public class Console : MonoBehaviour {

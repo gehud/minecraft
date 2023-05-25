@@ -1,7 +1,13 @@
 using UnityEngine;
+using Zenject;
 
 namespace Minecraft {
-	public class SkyboxController : MonoBehaviour {
+	public class SkyboxController : MonoInstaller {
+		public float Time {
+			get => transform.eulerAngles.z / 15.0f;
+			set => transform.rotation = Quaternion.Euler(0.0f, 0.0f, value * 15.0f);
+		}
+
 		[SerializeField]
 		private new Transform camera;
 		[SerializeField]
@@ -19,7 +25,11 @@ namespace Minecraft {
 				}
 			}
 
-			transform.Rotate(Vector3.forward, 360.0f / (cycleMinutes * 60.0f) * Time.deltaTime * multiplier);
+			transform.Rotate(Vector3.forward, 360.0f / (cycleMinutes * 60.0f) * UnityEngine.Time.deltaTime * multiplier);
+		}
+
+		public override void InstallBindings() {
+			Container.Bind<SkyboxController>().FromInstance(this);
 		}
 	}
 }

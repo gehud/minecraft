@@ -23,8 +23,6 @@ namespace Minecraft.Player {
         [SerializeField]
         private float FOVDelta = 1.0f;
         [SerializeField]
-        private Transform body;
-        [SerializeField]
         private Renderer bodyRenderer;
         [SerializeField]
         private Renderer handRenderer;
@@ -42,8 +40,6 @@ namespace Minecraft.Player {
         private float normalFOV;
         private float targetFOV = 1.0f;
 
-        private Vector3 bodyRotation;
-
         [Inject]
         private readonly UIController uIController;
 
@@ -54,7 +50,6 @@ namespace Minecraft.Player {
             inputProvider = GetComponent<IInputProvider>();
             normalHeight = camera.transform.localPosition.y;
             normalFOV = camera.fieldOfView;
-            bodyRotation = body.eulerAngles;
 		}
 
 		private void Start() {
@@ -96,7 +91,6 @@ namespace Minecraft.Player {
                 rotationX = Mathf.Clamp(rotationX - input.y * sencitivity, -90.0f, 90.0f);
                 rotationY += input.x * sencitivity;
                 camera.transform.localEulerAngles = new Vector3(rotationX, rotationY, 0.0f);
-                body.rotation = Quaternion.Euler(bodyRotation.x, camera.transform.eulerAngles.y, bodyRotation.z);
             }
         }
 	}

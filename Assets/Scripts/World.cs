@@ -1,15 +1,14 @@
 ﻿using Minecraft.Utilities;
 using System;
 using System.Collections;
-using System.Collections.Concurrent;
-using Unity.Netcode;
 using UnityEngine;
 using Zenject;
 
 namespace Minecraft {
-	public class World : NetworkBehaviour {
+	public class World : MonoBehaviour {
         public static World Instance => instance;
         private static World instance;
+
         /// <summary>
         /// World height in Chunks.
         /// </summary>
@@ -47,32 +46,26 @@ namespace Minecraft {
 
         private Vector2Int center = Vector2Int.zero;
 
-		public LightCalculator LightCalculatorSun { get; set; }
-
-        public LightCalculator LightCalculatorRed { get; set; }
-
-        public LightCalculator LightCalculatorGreen { get; set; }
-
-        public LightCalculator LightCalculatorBlue { get; set; }
-
         public LiquidCalculator LiquidCalculatorWater { get; set; }
 
         [SerializeField]
-        private new ChunkRenderer renderer;
-        [SerializeField]
+        private Material sMaterial;
+		[SerializeField]
+		private Material tMaterial;
+		[SerializeField]
         private bool debugChunks = false;
 
         [SerializeField, Min(0)]
         private float tick = 0.25f;
 
         [Inject]
-        private readonly BlockProvider blockDataProvider;
-         
-        [Inject]
-        private readonly MaterialProvider materialProvider;
+        private readonly BlockProvider blockProvider;
 
         [Inject]
         private readonly SaveManager saveManager;
+
+        [Inject]
+        private readonly LightSolver lightSolver;
 
 		private int chunksSize;
 		private int chunksVolume;
@@ -82,7 +75,6 @@ namespace Minecraft {
 		private int renderersVolume;
         private ChunkRenderer[] renderers;
         private ChunkRenderer[] renderersBuffer;
-		private readonly ConcurrentQueue<ChunkRenderer> renderersToDestroy = new();
 
 		public bool HasChunk(Vector3Int coordinate) {
 			var arrayCoordinate = new Vector3Int(coordinate.x - Center.x + DrawDistance + 1,
@@ -119,9 +111,8 @@ namespace Minecraft {
 				throw new Exception("Renderer allready exists.");
             if (!HasChunk(coordinate))
                 throw new Exception("Renderer requires chunk.");
-			var renderer = Instantiate(this.renderer);
             var chunk = GetChunk(coordinate);
-            renderer.Initialize(chunk);
+            var renderer = new ChunkRenderer(chunk);
             renderers[RendererToIndex(coordinate)] = renderer;
             return renderer;
         }
@@ -230,7 +221,7 @@ namespace Minecraft {
             }
         }
 
-        public int GetLightLevel(Vector3Int blockCoordinate, LightChanel chanel) {
+        public int GetLightLevel(Vector3Int blockCoordinate, int chanel) {
             Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                 Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
@@ -254,19 +245,19 @@ namespace Minecraft {
             SetBlock(blockCoordinate, BlockType.Air);
             LiquidCalculatorWater.Remove(blockCoordinate);
 
-			LightCalculatorRed.Remove(blockCoordinate);
-            LightCalculatorGreen.Remove(blockCoordinate);
-            LightCalculatorBlue.Remove(blockCoordinate);
-            LightCalculatorRed.Calculate();
-            LightCalculatorGreen.Calculate();
-            LightCalculatorBlue.Calculate();
+			lightSolver.RemoveLight(LightMap.RED, blockCoordinate);
+			lightSolver.RemoveLight(LightMap.GREEN, blockCoordinate);
+			lightSolver.RemoveLight(LightMap.BLUE, blockCoordinate);
+			lightSolver.Solve(LightMap.RED);
+			lightSolver.Solve(LightMap.GREEN);
+			lightSolver.Solve(LightMap.BLUE);
 
             if (GetBlock(blockCoordinate + Vector3Int.up) == BlockType.Air
-                && GetLightLevel(blockCoordinate + Vector3Int.up, LightChanel.Sun) == LightMap.MAX) {
+                && GetLightLevel(blockCoordinate + Vector3Int.up, LightMap.SUN) == LightMap.MAX) {
                 for (int y = blockCoordinate.y; y >= 0; y--) {
                     if (GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z)) != BlockType.Air)
                         break;
-                    LightCalculatorSun.Add(blockCoordinate.x, y, blockCoordinate.z, LightMap.MAX);
+					lightSolver.AddLight(LightMap.SUN, blockCoordinate.x, y, blockCoordinate.z, LightMap.MAX);
                 }
             }
 
@@ -276,37 +267,37 @@ namespace Minecraft {
             LiquidCalculatorWater.Add(blockCoordinate + Vector3Int.forward);
             LiquidCalculatorWater.Add(blockCoordinate + Vector3Int.back);
 
-            LightCalculatorRed.Add(blockCoordinate + Vector3Int.right);
-            LightCalculatorRed.Add(blockCoordinate + Vector3Int.left);
-            LightCalculatorRed.Add(blockCoordinate + Vector3Int.up);
-            LightCalculatorRed.Add(blockCoordinate + Vector3Int.down);
-            LightCalculatorRed.Add(blockCoordinate + Vector3Int.forward);
-            LightCalculatorRed.Add(blockCoordinate + Vector3Int.back);
-            LightCalculatorRed.Calculate();
+            lightSolver.AddLight(LightMap.RED, blockCoordinate + Vector3Int.right);
+            lightSolver.AddLight(LightMap.RED, blockCoordinate + Vector3Int.left);
+            lightSolver.AddLight(LightMap.RED, blockCoordinate + Vector3Int.up);
+            lightSolver.AddLight(LightMap.RED, blockCoordinate + Vector3Int.down);
+            lightSolver.AddLight(LightMap.RED, blockCoordinate + Vector3Int.forward);
+            lightSolver.AddLight(LightMap.RED, blockCoordinate + Vector3Int.back);
+			lightSolver.Solve(LightMap.RED);
 
-            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.right);
-            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.left);
-            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.up);
-            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.down);
-            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.forward);
-            LightCalculatorGreen.Add(blockCoordinate + Vector3Int.back);
-            LightCalculatorGreen.Calculate();
+            lightSolver.AddLight(LightMap.GREEN, blockCoordinate + Vector3Int.right);
+            lightSolver.AddLight(LightMap.GREEN, blockCoordinate + Vector3Int.left);
+            lightSolver.AddLight(LightMap.GREEN, blockCoordinate + Vector3Int.up);
+            lightSolver.AddLight(LightMap.GREEN, blockCoordinate + Vector3Int.down);
+            lightSolver.AddLight(LightMap.GREEN, blockCoordinate + Vector3Int.forward);
+            lightSolver.AddLight(LightMap.GREEN, blockCoordinate + Vector3Int.back);
+			lightSolver.Solve(LightMap.GREEN);
 
-            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.right);
-            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.left);
-            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.up);
-            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.down);
-            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.forward);
-            LightCalculatorBlue.Add(blockCoordinate + Vector3Int.back);
-            LightCalculatorBlue.Calculate();
+            lightSolver.AddLight(LightMap.BLUE, blockCoordinate + Vector3Int.right);
+            lightSolver.AddLight(LightMap.BLUE, blockCoordinate + Vector3Int.left);
+            lightSolver.AddLight(LightMap.BLUE, blockCoordinate + Vector3Int.up);
+            lightSolver.AddLight(LightMap.BLUE, blockCoordinate + Vector3Int.down);
+            lightSolver.AddLight(LightMap.BLUE, blockCoordinate + Vector3Int.forward);
+            lightSolver.AddLight(LightMap.BLUE, blockCoordinate + Vector3Int.back);
+			lightSolver.Solve(LightMap.BLUE);
 
-            LightCalculatorSun.Add(blockCoordinate + Vector3Int.right);
-            LightCalculatorSun.Add(blockCoordinate + Vector3Int.left);
-            LightCalculatorSun.Add(blockCoordinate + Vector3Int.up);
-            LightCalculatorSun.Add(blockCoordinate + Vector3Int.down);
-            LightCalculatorSun.Add(blockCoordinate + Vector3Int.forward);
-            LightCalculatorSun.Add(blockCoordinate + Vector3Int.back);
-            LightCalculatorSun.Calculate();
+            lightSolver.AddLight(LightMap.SUN, blockCoordinate + Vector3Int.right);
+            lightSolver.AddLight(LightMap.SUN, blockCoordinate + Vector3Int.left);
+            lightSolver.AddLight(LightMap.SUN, blockCoordinate + Vector3Int.up);
+            lightSolver.AddLight(LightMap.SUN, blockCoordinate + Vector3Int.down);
+            lightSolver.AddLight(LightMap.SUN, blockCoordinate + Vector3Int.forward);
+            lightSolver.AddLight(LightMap.SUN, blockCoordinate + Vector3Int.back);
+			lightSolver.Solve(LightMap.SUN);
         }
 
         public void PlaceVoxel(Vector3Int blockCoordinate, BlockType voxelType) {
@@ -314,32 +305,32 @@ namespace Minecraft {
 
             SetBlock(blockCoordinate, voxelType);
 
-            LightCalculatorRed.Remove(blockCoordinate);
-            LightCalculatorGreen.Remove(blockCoordinate);
-            LightCalculatorBlue.Remove(blockCoordinate);
-            LightCalculatorSun.Remove(blockCoordinate);
+			lightSolver.RemoveLight(LightMap.RED, blockCoordinate);
+			lightSolver.RemoveLight(LightMap.GREEN, blockCoordinate);
+			lightSolver.RemoveLight(LightMap.BLUE, blockCoordinate);
+			lightSolver.RemoveLight(LightMap.SUN, blockCoordinate);
             for (int y = blockCoordinate.y - 1; y >= 0; y--) {
-                if (!blockDataProvider.Get(GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))).IsTransparent)
+                if (!blockProvider.Get(GetBlock(new Vector3Int(blockCoordinate.x, y, blockCoordinate.z))).IsTransparent)
                     break;
-                LightCalculatorSun.Remove(blockCoordinate.x, y, blockCoordinate.z);
+				lightSolver.RemoveLight(LightMap.SUN, blockCoordinate.x, y, blockCoordinate.z);
             }
-            LightCalculatorRed.Calculate();
-            LightCalculatorGreen.Calculate();
-            LightCalculatorBlue.Calculate();
-            LightCalculatorSun.Calculate();
+            lightSolver.Solve(LightMap.RED);
+            lightSolver.Solve(LightMap.GREEN);
+            lightSolver.Solve(LightMap.BLUE);
+            lightSolver.Solve(LightMap.SUN);
 
-            LightColor emission = blockDataProvider.Get(voxelType).Emission;
+			LightColor emission = blockProvider.Get(voxelType).Emission;
             if (emission.R != 0) {
-                LightCalculatorRed.Add(blockCoordinate, emission.R);
-                LightCalculatorRed.Calculate();
+				lightSolver.AddLight(LightMap.RED, blockCoordinate, emission.R);
+				lightSolver.Solve(LightMap.RED);
             }
             if (emission.G != 0) {
-                LightCalculatorGreen.Add(blockCoordinate, emission.G);
-                LightCalculatorGreen.Calculate();
+				lightSolver.AddLight(LightMap.GREEN, blockCoordinate, emission.G);
+				lightSolver.Solve(LightMap.GREEN);
             }
             if (emission.B != 0) {
-                LightCalculatorBlue.Add(blockCoordinate, emission.B);
-                LightCalculatorBlue.Calculate();
+				lightSolver.AddLight(LightMap.BLUE, blockCoordinate, emission.B);
+				lightSolver.Solve(LightMap.BLUE);
             }
 
             if (voxelType == BlockType.Water) {
@@ -388,10 +379,8 @@ namespace Minecraft {
                             continue;
                         int nx = x + d / 2;
                         int nz = z + d / 2;
-                        if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
-                            Destroy(renderer.gameObject);
+                        if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize)
                             continue;
-                        }
                         renderers[Array3DUtility.To1D(nx, y, nz, renderersSize, HEIGHT)] = renderer;
                     }
                 }
@@ -443,7 +432,6 @@ namespace Minecraft {
                         int nx = x - d.x;
                         int nz = z - d.y;
                         if (nx < 0 || nz < 0 || nx >= renderersSize || nz >= renderersSize) {
-                            renderersToDestroy.Enqueue(renderer);
                             renderers[index] = null;
                             continue;
                         }
@@ -465,17 +453,6 @@ namespace Minecraft {
 			}
 		}
 
-		private IEnumerator CleanRenderers() {
-			while (true) {
-				while (renderersToDestroy.TryDequeue(out ChunkRenderer chunkRenderer)) {
-					Destroy(chunkRenderer.gameObject);
-					yield return null;
-				}
-
-				yield return null;
-			}
-		}
-
 		private void Awake() {
             instance = this;
 			chunksSize = DrawDistance * 2 + 3;
@@ -486,31 +463,25 @@ namespace Minecraft {
 			chunksBuffer = new Chunk[chunksVolume];
 			renderers = new ChunkRenderer[renderersVolume];
 			renderersBuffer = new ChunkRenderer[renderersVolume];
-
-			LightCalculator.SetBlockDataManager(blockDataProvider);
-			LightCalculatorRed = new LightCalculator(this, LightChanel.Red);
-			LightCalculatorGreen = new LightCalculator(this, LightChanel.Green);
-			LightCalculatorBlue = new LightCalculator(this, LightChanel.Blue);
-			LightCalculatorSun = new LightCalculator(this, LightChanel.Sun);
-			LiquidCalculator.SetBlockDataManager(blockDataProvider);
+			LiquidCalculator.SetBlockDataManager(blockProvider);
 			LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
 		}
 
 		private void Start() {
             StartCoroutine(SolveLiquid());
-            StartCoroutine(CleanRenderers());
 		}
 
 		private void Update() {
             foreach (var renderer in renderers) {
                 if (renderer == null)
                     continue;
-                if (renderer.Data.IsDirty) { 
-                    renderer.UpdateMesh(ChunkUtility.GenerateMeshData(this, renderer.Data, blockDataProvider), materialProvider);
+                if (renderer.Data.IsDirty) {
+                    renderer.UpdateMesh(new ChunkRendererDataJob(this, renderer.Data, blockProvider));
                     if (renderer.Data.IsModified) {
                         saveManager.SaveChunk(renderer.Data);
                     }
                 }
+                renderer.Render(sMaterial, tMaterial);
             }
         }
 

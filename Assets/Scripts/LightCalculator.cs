@@ -16,12 +16,11 @@ namespace Minecraft {
             public Entry(int x, int y, int z, byte level) : this(new Vector3Int(x, y, z), level) { }
         }
 
+        private readonly int chanel;
         private readonly World world;
-        private readonly LightChanel chanel;
+        private readonly BlockProvider blockProvider;
         private readonly ConcurrentQueue<Entry> addQueue = new();
         private readonly ConcurrentQueue<Entry> removeQueue = new();
-
-		private static BlockProvider BlockDataProvider { get; set; }
 
         private static readonly Vector3Int[] blockSides = {
             new Vector3Int( 0,  0,  1),
@@ -32,16 +31,13 @@ namespace Minecraft {
             new Vector3Int(-1,  0,  0),
         };
 
-        public static void SetBlockDataManager(BlockProvider blockDataManager) {
-            BlockDataProvider = blockDataManager;
-        }
-
-        public LightCalculator(World world, LightChanel chanel) {
+        public LightCalculator(int chanel, World world, BlockProvider blockProvider) {
             this.world = world;
             this.chanel = chanel;
+            this.blockProvider = blockProvider;
         }
 
-        public void Add(Vector3Int blockCoordinate, byte level) {
+        public void AddLight(Vector3Int blockCoordinate, byte level) {
             if (level <= 1)
                 return;
 
@@ -61,11 +57,11 @@ namespace Minecraft {
             addQueue.Enqueue(entry);
         }
 
-        public void Add(int x, int y, int z, byte level) {
-            Add(new Vector3Int(x, y, z), level);
+        public void AddLight(int x, int y, int z, byte level) {
+            AddLight(new Vector3Int(x, y, z), level);
         }
 
-        public void Add(Vector3Int blockCoordinate) {
+        public void AddLight(Vector3Int blockCoordinate) {
             var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (!world.TryGetChunk(chunkCoordinate, out Chunk chunk))
                 return;
@@ -79,11 +75,11 @@ namespace Minecraft {
             addQueue.Enqueue(entry);
         }
 
-        public void Add(int x, int y, int z) {
-            Add(new Vector3Int(x, y, z));
+        public void AddLight(int x, int y, int z) {
+            AddLight(new Vector3Int(x, y, z));
         }
 
-        public void Remove(Vector3Int blockCoordinate) {
+        public void RemoveLight(Vector3Int blockCoordinate) {
             var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
             if (!world.TryGetChunk(chunkCoordinate, out Chunk chunk))
                 return;
@@ -104,28 +100,8 @@ namespace Minecraft {
             removeQueue.Enqueue(entry);
         }
 
-        public void Remove(int x, int y, int z) {
-            Remove(new Vector3Int(x, y, z));
-        }
-
-        public static void AddSunlight(World world, Vector2Int column) {
-            int startX = column.x * Chunk.SIZE;
-            int endX = column.x * Chunk.SIZE + Chunk.SIZE;
-            int startZ = column.y * Chunk.SIZE;
-            int endZ = column.y * Chunk.SIZE + Chunk.SIZE;
-            for (int x = startX; x < endX; x++)
-                for (int z = startZ; z < endZ; z++) {
-                    for (int y = World.HEIGHT * Chunk.SIZE - 1; y >= 0; y--) {
-                        var blockCoordinate = new Vector3Int(x, y, z);
-                        var chunkCoordinate = CoordinateUtility.ToChunk(blockCoordinate);
-                        if (!world.TryGetChunk(chunkCoordinate, out Chunk chunk))
-                            break;
-                        var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
-                        if (chunk.BlockMap[localBlockCoordinate] != BlockType.Air)
-                            break;
-                        world.LightCalculatorSun.Add(blockCoordinate, LightMap.MAX);
-                    }
-                }
+        public void RemoveLight(int x, int y, int z) {
+            RemoveLight(new Vector3Int(x, y, z));
         }
 
         public void Calculate() {
@@ -137,7 +113,7 @@ namespace Minecraft {
                         var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                         var level = chunk.LightMap.Get(localBlockCoordinate, chanel);
                         var blockType = chunk.BlockMap[localBlockCoordinate];
-                        var absorption = BlockDataProvider.Get(blockType).Absorption;
+                        var absorption = blockProvider.Get(blockType).Absorption;
                         if (level != 0 && level == entry.Level - absorption - 1) {
                             var removeEntry = new Entry(blockCoordinate, level);
                             removeQueue.Enqueue(removeEntry);
@@ -165,9 +141,9 @@ namespace Minecraft {
                     var localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, blockCoordinate);
                     if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
                         var blockType = chunk.BlockMap[localBlockCoordinate];
-                        var absorption = BlockDataProvider.Get(blockType).Absorption;
+                        var absorption = blockProvider.Get(blockType).Absorption;
                         var level = chunk.LightMap.Get(localBlockCoordinate, chanel);
-                        if (BlockDataProvider.Get(blockType).IsTransparent && level + absorption + 1 < entry.Level) {
+                        if (blockProvider.Get(blockType).IsTransparent && level + absorption + 1 < entry.Level) {
                             var newLevel = (byte)(entry.Level - absorption - 1);
                             chunk.LightMap.Set(localBlockCoordinate, chanel, newLevel);
                             var addEntry = new Entry(blockCoordinate, newLevel);

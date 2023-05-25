@@ -6,9 +6,6 @@ namespace Minecraft {
         public BlockTexturingData TexturingData => texturingData;
         [SerializeField] private BlockTexturingData texturingData;
 
-        public MaterialType MaterialType => materialType;
-        [SerializeField] private MaterialType materialType;
-
         public bool IsSolid => isSolid;
         [SerializeField] private bool isSolid = true;
 
@@ -23,6 +20,10 @@ namespace Minecraft {
 
         public bool IsTransparent => isTransparent;
         [SerializeField] private bool isTransparent = false;
+
+        public bool IsTwoSided => isTwoSided;
+        [SerializeField]
+        private bool isTwoSided = false;
 
         public byte Absorption => absorption;
 		[SerializeField, Range(LightMap.MIN, LightMap.MAX)] private byte absorption;

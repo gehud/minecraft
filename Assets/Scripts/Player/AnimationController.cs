@@ -12,11 +12,23 @@ namespace Minecraft.Player {
 		private Animator avatarAnimator;
 		[SerializeField]
 		private Animator handAnimator;
+		[SerializeField]
+		private new Camera camera;
+		[SerializeField]
+		private Transform head;
+		[SerializeField]
+		private Transform body;
+		[SerializeField, Min(0.0f)]
+		private float rotationTreshold = 45.0f;
+		[SerializeField, Min(0.0f)]
+		private float rotationSpeed = 10.0f;
 
 		private IInputProvider inputProvider;
 
 		private int inputHash;
 		private int miningHash;
+
+		private Vector3 bodyTargetRotation = Vector3.zero;
 
 		private void Awake() {
 			inputProvider = GetComponent<IInputProvider>();
@@ -30,6 +42,14 @@ namespace Minecraft.Player {
 
 			avatarAnimator.SetFloat(inputHash, inputProvider.Movement.NormalizeSmooth().magnitude);
 			handAnimator.SetFloat(inputHash, inputProvider.Movement.NormalizeSmooth().magnitude);
+
+			float angle = Quaternion.Angle(Quaternion.Euler(0.0f, camera.transform.eulerAngles.y, 0.0f), Quaternion.Euler(0.0f, body.eulerAngles.y, 0.0f));
+			if (angle > rotationTreshold) {
+				bodyTargetRotation = new Vector3(0.0f, camera.transform.eulerAngles.y, 0.0f);
+			}
+
+			body.rotation = Quaternion.RotateTowards(body.rotation, Quaternion.Euler(bodyTargetRotation), rotationSpeed * Time.deltaTime);
+			head.rotation = camera.transform.rotation;
 		}
 
 		private void OnEnterMining() {
@@ -52,12 +72,18 @@ namespace Minecraft.Player {
 			inputProvider.OnLeftMouseButtonDown += OnEnterMining;
 			inputProvider.OnLeftMouseButton += OnEnterMining;
 			inputProvider.OnLeftMouseButtonUp += OnExitMining;
+			inputProvider.OnRightMouseButtonDown += OnEnterMining;
+			inputProvider.OnRightMouseButton += OnEnterMining;
+			inputProvider.OnRightMouseButtonUp += OnExitMining;
 		}
 
 		private void OnDisable() {
 			inputProvider.OnLeftMouseButtonDown -= OnEnterMining;
 			inputProvider.OnLeftMouseButton -= OnEnterMining;
 			inputProvider.OnLeftMouseButtonUp -= OnExitMining;
+			inputProvider.OnRightMouseButtonDown -= OnEnterMining;
+			inputProvider.OnRightMouseButton -= OnEnterMining;
+			inputProvider.OnRightMouseButtonUp -= OnExitMining;
 		}
 	}
 }

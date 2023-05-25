@@ -14,6 +14,10 @@ namespace Minecraft.Player {
 		event Action OnLeftMouseButtonUp;
 
 		event Action OnRightMouseButtonDown;
+
+		event Action OnRightMouseButton;
+
+		event Action OnRightMouseButtonUp;
 	}
 
 	public class InputProvider : MonoBehaviour, IInputProvider {
@@ -28,6 +32,10 @@ namespace Minecraft.Player {
 		public event Action OnLeftMouseButtonUp;
 
 		public event Action OnRightMouseButtonDown;
+
+		public event Action OnRightMouseButton;
+		
+		public event Action OnRightMouseButtonUp;
 
 		private Vector2 movement;
 		private Vector2 look;
@@ -49,6 +57,10 @@ namespace Minecraft.Player {
 				OnLeftMouseButtonUp?.Invoke();
 			} else if (Input.GetMouseButtonDown(1)) {
 				OnRightMouseButtonDown?.Invoke();
+			} else if (Input.GetMouseButton(1)) {
+				OnRightMouseButton?.Invoke();
+			} else if (Input.GetMouseButtonUp(1)) {
+				OnRightMouseButtonUp?.Invoke();
 			}
 		}
 	}

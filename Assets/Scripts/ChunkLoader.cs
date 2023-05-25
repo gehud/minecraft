@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -23,10 +24,10 @@ namespace Minecraft {
 		private readonly World world;
 
 		[Inject]
-		private readonly BlockProvider blockDataProvider;
+		private readonly BlockProvider blockProvider;
 
 		[Inject]
-		private readonly MaterialProvider materialManager;
+		private readonly LightSolver lightSolver;
 
 		[Inject]
 		private readonly ChunkGenerator chunkGenerator;
@@ -107,7 +108,7 @@ namespace Minecraft {
 				for (int x = startX; x <= endX; x++) {
 					for (int z = startZ; z <= endZ; z++) {
 						ConcurrentDictionary<Vector3Int, Chunk> generatedData = new();
-						ConcurrentDictionary<Vector3Int, ConcurrentDictionary<MaterialType, MeshData>> generatedMeshDatas = new();
+						ConcurrentDictionary<Vector3Int, ChunkRendererDataJob> generatedMeshDatas = new();
 						if (isLoadingCanceled)
 							return;
 						await Task.Run(() => { 
@@ -144,19 +145,20 @@ namespace Minecraft {
 							}
 
 							foreach (var item in sunlights)
-								LightCalculator.AddSunlight(world, item);
+								lightSolver.AddSunlight(item);
 
-							world.LightCalculatorSun.Calculate();
+							lightSolver.Solve(LightMap.SUN);
 
-							foreach (var item in renderers)
-								generatedMeshDatas.TryAdd(item, ChunkUtility.GenerateMeshData(world, world.GetChunk(item), blockDataProvider));
+							foreach (var item in renderers) {
+								generatedMeshDatas.TryAdd(item, new ChunkRendererDataJob(world, world.GetChunk(item), blockProvider));
+							}
 						}, cancellationTokenSource.Token);
 
 						foreach (var item in generatedMeshDatas) {
 							if (isLoadingCanceled)
 								return;
 							ChunkRenderer renderer = world.CreateRenderer(item.Key);
-							renderer.UpdateMesh(item.Value, materialManager);
+							renderer.UpdateMesh(item.Value);
 							await Task.Yield();
 						}
 					}
@@ -180,7 +182,7 @@ namespace Minecraft {
 				Vector3Int chunkCoordinate = CoordinateUtility.ToChunk(leavesCoordinate);
 				if (world.TryGetChunk(chunkCoordinate, out Chunk chunk)) {
 					Vector3Int localBlockCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, leavesCoordinate);
-					if (!blockDataProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
+					if (!blockProvider.Get(chunk.BlockMap[localBlockCoordinate]).IsSolid)
 						chunk.BlockMap[localBlockCoordinate] = BlockType.Leaves;
 				}
 			}

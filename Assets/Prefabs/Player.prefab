@@ -277,7 +277,7 @@ GameObject:
   - component: {fileID: 1908525712884884810}
   m_Layer: 0
   m_Name: Camera
-  m_TagString: MainCamera
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -564,6 +564,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   avatarAnimator: {fileID: 4890830395538115879}
   handAnimator: {fileID: 6804864299872179405}
+  camera: {fileID: 1908525712804416577}
+  head: {fileID: 7381763751299875575}
+  body: {fileID: 8339593730484955176}
+  rotationTreshold: 45
+  rotationSpeed: 250
 --- !u!114 &613080035655396573
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -581,7 +586,6 @@ MonoBehaviour:
   sneakHeight: 1.4
   sprintFOVMultiplier: 1.2
   FOVDelta: 1
-  body: {fileID: 8339593730484955176}
   bodyRenderer: {fileID: 7104206646991835793}
   handRenderer: {fileID: 4525915606542456480}
   camera: {fileID: 1908525712804416577}
@@ -810,7 +814,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 577792532d788fd4d991f1d2c86a30b1, type: 2}
+  - {fileID: 2100000, guid: a8263641868d02241880a005dffc14d5, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -956,6 +960,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7381763751299875575}
+  - component: {fileID: 6133345277226013969}
   m_Layer: 0
   m_Name: Head
   m_TagString: Untagged
@@ -979,6 +984,32 @@ Transform:
   m_Father: {fileID: 5735999374443814640}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6133345277226013969
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8411783219212643004}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e10fc103524213646af6c011362aa74f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SyncPositionX: 0
+  SyncPositionY: 0
+  SyncPositionZ: 0
+  SyncRotAngleX: 1
+  SyncRotAngleY: 1
+  SyncRotAngleZ: 1
+  SyncScaleX: 0
+  SyncScaleY: 0
+  SyncScaleZ: 0
+  PositionThreshold: 0.001
+  RotAngleThreshold: 0.01
+  ScaleThreshold: 0.01
+  InLocalSpace: 1
+  Interpolate: 1
 --- !u!1 &8716682979118756498
 GameObject:
   m_ObjectHideFlags: 0
@@ -1084,7 +1115,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8716682979118756498}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b2d8418b0b9634b1892b0268dd9c2743, type: 3}
   m_Name: 

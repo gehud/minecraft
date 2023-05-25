@@ -3,29 +3,34 @@ using UnityEngine;
 
 namespace Minecraft {
     public class LightMap : Array3D<ushort> {
+        public const int RED = 0;
+        public const int GREEN = 1;
+        public const int BLUE = 2;
+        public const int SUN = 3;
+
         public const byte MIN = 0;
         public const byte MAX = 15;
 
         public LightMap() : base(Chunk.SIZE, Chunk.SIZE, Chunk.SIZE) { }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte Get(int x, int y, int z, LightChanel chanel) {
-            return (byte)((Data[z * XY + y * X + x] >> ((int)chanel << 2)) & 0xF);
+        public byte Get(int x, int y, int z, int chanel) {
+            return (byte)((Data[z * XY + y * X + x] >> (chanel << 2)) & 0xF);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte Get(Vector3Int coordinate, LightChanel chanel) {
-			return (byte)((Data[coordinate.z * XY + coordinate.y * X + coordinate.x] >> ((int)chanel << 2)) & 0xF);
+        public byte Get(Vector3Int coordinate, int chanel) {
+			return (byte)((Data[coordinate.z * XY + coordinate.y * X + coordinate.x] >> (chanel << 2)) & 0xF);
 		}
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Set(int x, int y, int z, LightChanel chanel, byte value) {
-            Data[z * XY + y * X + x] = (ushort)((Data[z * XY + y * X + x] & (0xFFFF & (~(0xF << ((int)chanel * 4))))) | (value << ((int)chanel << 2)));
+        public void Set(int x, int y, int z, int chanel, byte value) {
+            Data[z * XY + y * X + x] = (ushort)((Data[z * XY + y * X + x] & (0xFFFF & (~(0xF << (chanel * 4))))) | (value << (chanel << 2)));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Set(Vector3Int coordinate, LightChanel chanel, byte value) {
-			Data[coordinate.z * XY + coordinate.y * X + coordinate.x] = (ushort)((Data[coordinate.z * XY + coordinate.y * X + coordinate.x] & (0xFFFF & (~(0xF << ((int)chanel * 4))))) | (value << ((int)chanel << 2)));
+        public void Set(Vector3Int coordinate, int chanel, byte value) {
+			Data[coordinate.z * XY + coordinate.y * X + coordinate.x] = (ushort)((Data[coordinate.z * XY + coordinate.y * X + coordinate.x] & (0xFFFF & (~(0xF << (chanel * 4))))) | (value << (chanel << 2)));
         }
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
