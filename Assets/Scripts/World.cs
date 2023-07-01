@@ -49,9 +49,9 @@ namespace Minecraft {
         public LiquidCalculator LiquidCalculatorWater { get; set; }
 
         [SerializeField]
-        private Material sMaterial;
+        private Material opaqueMaterial;
 		[SerializeField]
-		private Material tMaterial;
+		private Material transparentMaterial;
 		[SerializeField]
         private bool debugChunks = false;
 
@@ -475,13 +475,13 @@ namespace Minecraft {
             foreach (var renderer in renderers) {
                 if (renderer == null)
                     continue;
-                if (renderer.Data.IsDirty) {
-                    renderer.UpdateMesh(new ChunkRendererDataJob(this, renderer.Data, blockProvider));
-                    if (renderer.Data.IsModified) {
-                        saveManager.SaveChunk(renderer.Data);
+                if (renderer.Chunk.IsDirty) {
+                    renderer.Update(this, renderer.Chunk, blockProvider);
+                    if (renderer.Chunk.IsModified) {
+                        saveManager.SaveChunk(renderer.Chunk);
                     }
                 }
-                renderer.Render(sMaterial, tMaterial);
+                renderer.Render(opaqueMaterial, transparentMaterial);
             }
         }
 

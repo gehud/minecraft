@@ -141,7 +141,7 @@ namespace Minecraft {
 			}
 
 			if (world.HasRenderer(chunk.Coordinate))
-				world.GetRenderer(chunk.Coordinate).Data = chunk;
+				world.GetRenderer(chunk.Coordinate).Chunk = chunk;
 
 			if (!savedChunks.ContainsKey(coordinate)) {
 				savedChunks.Add(coordinate, chunk);
@@ -203,7 +203,7 @@ namespace Minecraft {
 			var stream = new MemoryStream(bytes);
 			using var binaryReader = new BinaryReader(stream);
 			binaryReader.BaseStream.Position += sizeof(float) * 2;
-			while (binaryReader.BaseStream.Position != binaryReader.BaseStream.Length) {
+			while (binaryReader.BaseStream.Position < binaryReader.BaseStream.Length) {
 				int x = binaryReader.ReadInt32();
 				int y = binaryReader.ReadInt32();
 				int z = binaryReader.ReadInt32();

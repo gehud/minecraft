@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -108,7 +107,7 @@ namespace Minecraft {
 				for (int x = startX; x <= endX; x++) {
 					for (int z = startZ; z <= endZ; z++) {
 						ConcurrentDictionary<Vector3Int, Chunk> generatedData = new();
-						ConcurrentDictionary<Vector3Int, ChunkRendererDataJob> generatedMeshDatas = new();
+						ConcurrentDictionary<Vector3Int, ChunkUpdateJob> generatedMeshDatas = new();
 						if (isLoadingCanceled)
 							return;
 						await Task.Run(() => { 
@@ -150,7 +149,7 @@ namespace Minecraft {
 							lightSolver.Solve(LightMap.SUN);
 
 							foreach (var item in renderers) {
-								generatedMeshDatas.TryAdd(item, new ChunkRendererDataJob(world, world.GetChunk(item), blockProvider));
+								generatedMeshDatas.TryAdd(item, new ChunkUpdateJob(world, world.GetChunk(item), blockProvider));
 							}
 						}, cancellationTokenSource.Token);
 
@@ -158,7 +157,7 @@ namespace Minecraft {
 							if (isLoadingCanceled)
 								return;
 							ChunkRenderer renderer = world.CreateRenderer(item.Key);
-							renderer.UpdateMesh(item.Value);
+							renderer.Update(item.Value);
 							await Task.Yield();
 						}
 					}

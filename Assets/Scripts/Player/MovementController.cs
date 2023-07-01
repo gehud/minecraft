@@ -93,9 +93,6 @@ namespace Minecraft.Player {
 			if (savePayload.Role != ConnectionRoles.None && !IsOwner)
 				return;
 
-			if (uIController.IsUsing)
-                return;
-
             if (isSneaking) {
 				var extents = hitbox.Bounds.extents;
 				var offset = hitbox.Bounds.center;
@@ -133,10 +130,12 @@ namespace Minecraft.Player {
             if (isGrounded && hitbox.IsKinematic)
                 hitbox.IsKinematic = false;
 
-            Vector2 input = inputProvider.Movement.NormalizeSmooth();
+            var input = Vector2.zero;
+            if (!uIController.IsUsing)
+                input = inputProvider.Movement.NormalizeSmooth();
 
-            isSneaking = Input.GetKey(sneakKey) && isGrounded;
-            isSprinting = Input.GetKeyDown(sprintKey) || isSprinting && input.magnitude == 1.0f;
+            isSneaking = !uIController.IsUsing && Input.GetKey(sneakKey) && isGrounded;
+            isSprinting = !uIController.IsUsing && (Input.GetKeyDown(sprintKey) || isSprinting && input.magnitude == 1.0f);
             isSwiming = blockProvider.Get(world.GetBlock(CoordinateUtility.ToCoordinate(transform.position))).IsLiquid;
 
             if (isSneaking) {
@@ -147,7 +146,7 @@ namespace Minecraft.Player {
                 targetSpeed = walkSpeed;
             }
 
-            if (Input.GetKeyDown(jumpKey)) {
+            if (!uIController.IsUsing && Input.GetKeyDown(jumpKey)) {
                 if (isGrounded && !isSwiming)
                     Jump();
                 if (Time.time - lastDoubleTapTime < doubleTapTime)
