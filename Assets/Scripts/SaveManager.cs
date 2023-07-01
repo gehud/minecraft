@@ -319,7 +319,7 @@ namespace Minecraft {
 
 			savePayload.Role = ConnectionRoles.None;
 
-			var binaryWriter = new BinaryWriter(File.OpenWrite(selectedPath));
+			using var binaryWriter = new BinaryWriter(File.OpenWrite(selectedPath));
 			binaryWriter.Write(saveLoadData.Value.Offset.x);
 			binaryWriter.Write(saveLoadData.Value.Offset.y);
 			foreach (var pair in savedChunks) {
@@ -333,6 +333,8 @@ namespace Minecraft {
 						binaryWriter.Write(new ReadOnlySpan<byte>(sourceData, pair.Value.LiquidMap.Data.Length * sizeof(byte)));
 				}
 			}
+
+			savePayload.Name = string.Empty;
 		}
 	}
 }

@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 7851184799170533611}
   - component: {fileID: 5914602188671737697}
   - component: {fileID: 7851184799170533610}
+  - component: {fileID: 5130329487549852359}
   m_Layer: 5
   m_Name: Button
   m_TagString: Untagged
@@ -62,7 +63,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.71300006, g: 0.70579803, b: 0.6517829, a: 1}
+  m_Color: {r: 0.8773585, g: 0.8773585, b: 0.8773585, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -115,11 +116,11 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
-    m_HighlightedColor: {r: 0.85, g: 0.85, b: 0.85, a: 1}
-    m_PressedColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
-    m_SelectedColor: {r: 0.85, g: 0.85, b: 0.85, a: 1}
-    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_NormalColor: {r: 0.95, g: 0.95, b: 0.95, a: 1}
+    m_HighlightedColor: {r: 0, g: 0.73800004, b: 0.18860006, a: 1}
+    m_PressedColor: {r: 0, g: 0.7372549, b: 0.18823531, a: 1}
+    m_SelectedColor: {r: 0, g: 0.7372549, b: 0.18823531, a: 1}
+    m_DisabledColor: {r: 0.95, g: 0.95, b: 0.95, a: 0.5019608}
     m_ColorMultiplier: 1
     m_FadeDuration: 0
   m_SpriteState:
@@ -138,11 +139,27 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &5130329487549852359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7851184799170533608}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77892f3912d5af44d8f65be70064d045, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  text: {fileID: 2564973157563887302}
+  normal: {r: 0, g: 0, b: 0, a: 1}
+  hover: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1001 &7851184799877860995
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
+    serializedVersion: 3
     m_TransformParent: {fileID: 7851184799170533609}
     m_Modifications:
     - target: {fileID: 1182438497965853343, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
@@ -234,11 +251,45 @@ PrefabInstance:
       value: Text
       objectReference: {fileID: 0}
     - target: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+      propertyPath: m_text
+      value: Play
+      objectReference: {fileID: 0}
+    - target: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+      propertyPath: m_fontColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+      propertyPath: m_fontColor.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+      propertyPath: m_fontColor.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+      propertyPath: m_fontSizeBase
+      value: 44
+      objectReference: {fileID: 0}
+    - target: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4294967295
+      value: 4278190080
       objectReference: {fileID: 0}
     m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+--- !u!114 &2564973157563887302 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5723406096608747589, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
+  m_PrefabInstance: {fileID: 7851184799877860995}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!224 &8979578934084158492 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1182438497965853343, guid: e83cbef5b99020b44868fbeb9080caf3, type: 3}
