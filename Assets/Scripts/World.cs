@@ -467,6 +467,10 @@ namespace Minecraft {
 			LiquidCalculatorWater = new LiquidCalculator(this, BlockType.Water);
 		}
 
+		private void OnDestroy() {
+            instance = null;
+		}
+
 		private void Start() {
             StartCoroutine(SolveLiquid());
 		}

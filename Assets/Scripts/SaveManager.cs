@@ -42,6 +42,10 @@ namespace Minecraft {
 			sceneManager.LoadScene("Overworld");
 		}
 
+		private AsyncOperation LoadGameAsync() {
+			return sceneManager.LoadSceneAsync("Overworld");
+		}
+
 		public void HostGame(string saveName) {
 			savePayload.Name = saveName;
 			savePayload.Role = ConnectionRoles.Host;
@@ -52,6 +56,18 @@ namespace Minecraft {
 			savePayload.Name = saveName;
 			savePayload.Role = ConnectionRoles.None;
 			LoadGame();
+		}
+
+		public AsyncOperation HostGameAsync(string saveName) {
+			savePayload.Name = saveName;
+			savePayload.Role = ConnectionRoles.Host;
+			return LoadGameAsync();
+		}
+
+		public AsyncOperation LoadGameAsync(string saveName) {
+			savePayload.Name = saveName;
+			savePayload.Role = ConnectionRoles.None;
+			return LoadGameAsync();
 		}
 
 		public void ConnectToLocalHost() {
@@ -318,6 +334,7 @@ namespace Minecraft {
 				return;
 
 			savePayload.Role = ConnectionRoles.None;
+			savePayload.Name = string.Empty;
 
 			using var binaryWriter = new BinaryWriter(File.OpenWrite(selectedPath));
 			binaryWriter.Write(saveLoadData.Value.Offset.x);
@@ -334,7 +351,6 @@ namespace Minecraft {
 				}
 			}
 
-			savePayload.Name = string.Empty;
 		}
 	}
 }

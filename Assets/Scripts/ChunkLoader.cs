@@ -10,6 +10,12 @@ using Zenject;
 
 namespace Minecraft {
 	public class ChunkLoader : MonoBehaviour {
+		public bool IsWorldCreated => isWorldCreated;
+		private bool isWorldCreated = false;
+
+		public float WorldLoadingProgress => worldLoadingProgress;
+		private float worldLoadingProgress = 0.0f;
+
 		public event Action OnWorldCreate;
 		public event Action<Vector2> OnStartLoading;
 
@@ -94,7 +100,10 @@ namespace Minecraft {
 		}
 
 		private async Task Load() {
-			world.Center = center; 
+			world.Center = center;
+
+			worldLoadingProgress = 0.0f;
+			float step = 1.0f / world.DrawDistance;
 
 			for (int zone = 1; zone <= world.DrawDistance; zone++) {
 				if (isLoadingCanceled)
@@ -162,6 +171,8 @@ namespace Minecraft {
 						}
 					}
 				}
+
+				worldLoadingProgress += step;
 			}
 		}
 
@@ -235,6 +246,7 @@ namespace Minecraft {
 			yield return new WaitUntil(() => loading.IsCompleted);
 			onWorldCreate.Invoke();
 			OnWorldCreate?.Invoke();
+			isWorldCreated = true;
 		}
 
 		private void OnSaveLoaded(SaveLoadData data) {

@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 namespace Minecraft.UI {
-	public class TitleScreen : MonoBehaviour {
+	public class Title : MonoBehaviour {
 		[SerializeField]
 		private Image front;
 		[SerializeField]

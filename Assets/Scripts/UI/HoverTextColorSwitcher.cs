@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 namespace Minecraft.UI {
-	public class HoverTextColorSwitcher : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler {
+	public class HoverTextColorSwitcher : UIBehaviour, IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler {
 		[SerializeField]
 		private TMP_Text text;
 		[SerializeField]
@@ -11,8 +11,20 @@ namespace Minecraft.UI {
 		[SerializeField]
 		private Color hover = Color.white;
 
-		private void Start() {
+		private bool isSelected = false;
+
+		private new void Start() {
 			text.color = normal;
+		}
+
+		void ISelectHandler.OnSelect(BaseEventData eventData) {
+			text.color = hover;
+			isSelected = true;
+		}
+
+		void IDeselectHandler.OnDeselect(BaseEventData eventData) {
+			text.color = normal;
+			isSelected = false;
 		}
 
 		void IPointerEnterHandler.OnPointerEnter(PointerEventData eventData) {
@@ -20,11 +32,9 @@ namespace Minecraft.UI {
 		}
 
 		void IPointerExitHandler.OnPointerExit(PointerEventData eventData) {
-			text.color = normal;
-		}
-
-		void IPointerClickHandler.OnPointerClick(PointerEventData eventData) {
-			text.color = normal;
+			if (!isSelected) {
+				text.color = normal;
+			}
 		}
 	}
 }
