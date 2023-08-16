@@ -1,15 +1,11 @@
 ﻿namespace Minecraft {
-    public struct Vertex {
-		public float X, Z, U, V, RG, BS, D;
+	public struct Vertex {
+		public float X, Y, Z;
 
-		public Vertex(float x, float z, float u, float v, float rG, float bS, float d) {
+		public Vertex(float x, float y, float z) {
 			X = x;
+			Y = y;
 			Z = z;
-			U = u;
-			V = v;
-			RG = rG;
-			BS = bS;
-			D = d;
 		}
 	}
 }
