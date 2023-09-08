@@ -1,8 +1,9 @@
+using System;
 using Unity.Collections;
 using Unity.Entities;
 
 namespace Minecraft.Components {
-	public struct Chunk : IComponentData {
+	public struct Chunk : IComponentData, IDisposable {
 		public const int SIZE = 16;
 		public const int VOLUME = SIZE * SIZE * SIZE;
 
@@ -11,5 +12,10 @@ namespace Minecraft.Components {
 		/// </summary>
 		public NativeArray<Entity> Claster;
 		public NativeArray<Voxel> Voxels;
+
+		public void Dispose() {
+			Claster.Dispose();
+			Voxels.Dispose();
+		}
 	}
 }

@@ -19,6 +19,10 @@ namespace Minecraft.Systems {
 				for (int x = 0; x < Chunk.SIZE; x++) {
 					for (int y = 0; y < Chunk.SIZE; y++) {
 						for (int z = 0; z < Chunk.SIZE; z++) {
+							if (GetVoxel(ref state, chunk.ValueRO, new int3(x, y, z)).Type == 0) {
+								continue;
+							}
+
 							var localVoxelCoordinate = new int3(x, y, z);
 
 							// Right face
