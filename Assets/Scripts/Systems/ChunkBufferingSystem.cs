@@ -229,7 +229,7 @@ namespace Minecraft.Systems {
 						var newChunk = state.EntityManager.CreateEntity();
 						state.EntityManager.AddComponentData(newChunk, new ChunkInitializer {
 							Coordinate = item,
-							HasRenderer = true
+							HasRenderer = false
 						});
 
 						chunkBuffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle);
