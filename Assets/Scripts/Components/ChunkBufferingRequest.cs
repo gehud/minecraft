@@ -2,13 +2,7 @@
 using Unity.Mathematics;
 
 namespace Minecraft.Components {
-	public readonly struct ChunkBufferingRequest : IComponentData {
-		public readonly int2 NewCenter;
-		public readonly int NewDrawDistance;
-
-		public ChunkBufferingRequest(int2 newCenter, int newDrawDistance) {
-			NewCenter = newCenter;
-			NewDrawDistance = newDrawDistance;
-		}
+	public struct ChunkBufferingRequest : IComponentData {
+		public int2 NewCenter;
 	}
 }

@@ -1,20 +1,17 @@
 using System;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Minecraft.Components {
 	public struct Chunk : IComponentData, IDisposable {
 		public const int SIZE = 16;
 		public const int VOLUME = SIZE * SIZE * SIZE;
 
-		/// <summary>
-		/// Claster includes this chunk and chunks around. Claster is 3x3 array;
-		/// </summary>
-		public NativeArray<Entity> Claster;
+		public int3 Coordinate;
 		public NativeArray<Voxel> Voxels;
 
 		public void Dispose() {
-			Claster.Dispose();
 			Voxels.Dispose();
 		}
 	}
