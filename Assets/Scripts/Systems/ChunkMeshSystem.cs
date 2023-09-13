@@ -24,7 +24,7 @@ namespace Minecraft.Systems {
 		};
 
 		protected override void OnUpdate() {
-			var entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+			var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
 
 			Entities.ForEach((Entity entity, in ChunkMeshData chunkMeshData, in RenderMeshArray renderMeshArray) => {
 				var mesh = new Mesh();
@@ -43,14 +43,14 @@ namespace Minecraft.Systems {
 
 				renderMeshArray.Meshes[0] = mesh;
 
-				entityCommandBuffer.RemoveComponent<ChunkMeshData>(entity);
+				commandBuffer.RemoveComponent<ChunkMeshData>(entity);
 			}).WithoutBurst().Run();
 
 			CompleteDependency();
 
-			entityCommandBuffer.Playback(EntityManager);
+			commandBuffer.Playback(EntityManager);
 
-			entityCommandBuffer.Dispose();
+			commandBuffer.Dispose();
 		}
 	}
 }

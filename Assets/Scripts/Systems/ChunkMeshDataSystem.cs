@@ -3,6 +3,8 @@ using Minecraft.Utilities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Rendering;
+using UnityEngine.Rendering;
 
 namespace Minecraft.Systems {
 	[UpdateAfter(typeof(ChunkGenerationSystem))]
@@ -14,7 +16,25 @@ namespace Minecraft.Systems {
 		}
 
 		void ISystem.OnUpdate(ref SystemState state) {
-			var entityCommandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+			var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+
+			foreach (var (_, entity) in SystemAPI.
+				Query<RefRO<Chunk>>().
+				WithAll<DataOnlyChunk>().
+				WithNone<DisableRendering>().
+				WithEntityAccess()) {
+
+				commandBuffer.AddComponent<DisableRendering>(entity);
+			}
+
+			foreach (var (_, entity) in SystemAPI.
+				Query<RefRO<Chunk>>().
+				WithAll<DisableRendering>().
+				WithNone<DataOnlyChunk>().
+				WithEntityAccess()) {
+
+				commandBuffer.RemoveComponent<DisableRendering>(entity);
+			}
 
 			foreach (var (chunk, entity) in SystemAPI.
 				Query<RefRO<Chunk>>().
@@ -133,17 +153,17 @@ namespace Minecraft.Systems {
 					}
 				}
 
-				entityCommandBuffer.AddComponent(entity, new ChunkMeshData {
+				commandBuffer.AddComponent(entity, new ChunkMeshData {
 					Vertices = vertices.AsArray(),
 					Indices = indices.AsArray()
 				});
 
-				entityCommandBuffer.RemoveComponent<DirtyChunk>(entity);
+				commandBuffer.RemoveComponent<DirtyChunk>(entity);
 			}
 
-			entityCommandBuffer.Playback(state.EntityManager);
+			commandBuffer.Playback(state.EntityManager);
 
-			entityCommandBuffer.Dispose();
+			commandBuffer.Dispose();
 		}
 
 		private Voxel GetVoxel(ref SystemState state, in Chunk chunk, int3 coordinate) {

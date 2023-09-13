@@ -52,9 +52,7 @@ namespace Minecraft.Systems {
 					Voxels = voxels
 				});
 
-#if UNITY_EDITOR
 				commandBuffer.SetName(entity, $"Chunk({chunkInitializer.Coordinate.x}, {chunkInitializer.Coordinate.y}, {chunkInitializer.Coordinate.z})");
-#endif
 				commandBuffer.AddComponent<RawChunk>(entity);
 				commandBuffer.RemoveComponent<ChunkInitializer>(entity);
 			}

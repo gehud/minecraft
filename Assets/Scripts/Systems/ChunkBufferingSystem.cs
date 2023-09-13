@@ -1,6 +1,5 @@
 ﻿using Minecraft.Components;
 using Minecraft.Utilities;
-using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -167,8 +166,7 @@ namespace Minecraft.Systems {
 		}
 
 		private void GenerateLoadData(ref ChunkLoadData loadData, in ChunkBuffer chunkBuffer, int2 center, int zone) {
-			loadData.Chunks = new NativeList<int3>(Allocator.TempJob);
-			loadData.Renderers = new NativeList<int3>(Allocator.TempJob);
+			loadData.Data = new NativeList<ChunkLoadDescription>(Allocator.TempJob);
 
 			int startX = center.x - zone - 1;
 			int endX = center.x + zone + 1;
@@ -179,13 +177,11 @@ namespace Minecraft.Systems {
 					for (int y = 0; y < ChunkBuffer.HEIGHT; y++) {
 						var chunkCoordinate = new int3(x, y, z);
 
-						if (!HasChunk(chunkBuffer, chunkCoordinate)) {
-							loadData.Chunks.Add(chunkCoordinate);
-						}
-
-						if (x != startX && x != endX && z != startZ && z != endZ) {
-							loadData.Renderers.Add(chunkCoordinate);
-						}
+						bool isRendered = x != startX && x != endX && z != startZ && z != endZ;
+						loadData.Data.Add(new ChunkLoadDescription {
+							Coordinate = chunkCoordinate,
+							IsRendered = isRendered
+						});
 					}
 				}
 			}
@@ -195,68 +191,72 @@ namespace Minecraft.Systems {
 			state.EntityManager.AddComponent<ChunkBuffer>(state.SystemHandle);
 			state.EntityManager.AddComponent<ChunkLoadData>(state.SystemHandle);
 
-			state.EntityManager.AddComponentData(state.SystemHandle, new ChunkBufferingResizeRequest {
+			var requestEntity = state.EntityManager.CreateEntity();
+			state.EntityManager.AddComponentData(requestEntity, new ChunkBufferingResizeRequest {
 				NewDrawDistance = 2,
 			});
 
-			state.EntityManager.AddComponentData(state.SystemHandle, new ChunkBufferingRequest {
+			requestEntity = state.EntityManager.CreateEntity();
+			state.EntityManager.AddComponentData(requestEntity, new ChunkBufferingRequest {
 				NewCenter = int2.zero
 			});
 		}
 
 		void ISystem.OnUpdate(ref SystemState state) {
-			if (state.EntityManager.HasComponent<ChunkBufferingResizeRequest>(state.SystemHandle)) {
-				var request = state.EntityManager.GetComponentData<ChunkBufferingResizeRequest>(state.SystemHandle);
+			var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+
+			foreach (var (request, entity) in SystemAPI.
+				Query<RefRO<ChunkBufferingResizeRequest>>().
+				WithEntityAccess()) {
+
 				var buffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle);
-				UpdateMetrics(ref buffer.ValueRW, request.NewDrawDistance);
-				state.EntityManager.RemoveComponent<ChunkBufferingResizeRequest>(state.SystemHandle);
+				UpdateMetrics(ref buffer.ValueRW, request.ValueRO.NewDrawDistance);
+				commandBuffer.DestroyEntity(entity);
 			}
 
-			if (state.EntityManager.HasComponent<ChunkBufferingRequest>(state.SystemHandle)) {
-				var request = state.EntityManager.GetComponentData<ChunkBufferingRequest>(state.SystemHandle);
+			foreach (var (request, entity) in SystemAPI.
+				Query<RefRO<ChunkBufferingRequest>>().
+				WithEntityAccess()) {
 
-				var chunkBuffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle);
-				UpdateBuffer(state.EntityManager, ref chunkBuffer.ValueRW, request.NewCenter);
+				var buffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle);
+				UpdateBuffer(state.EntityManager, ref buffer.ValueRW, request.ValueRO.NewCenter);
 
-				var buffer = state.EntityManager.GetComponentData<ChunkBuffer>(state.SystemHandle);
-				for (int zone = 0; zone <= buffer.DrawDistance; zone++) {
-					var loadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
-					chunkBuffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle);
-					GenerateLoadData(ref loadData.ValueRW, chunkBuffer.ValueRO, request.NewCenter, zone);
+				var loadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
 
-					loadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
-					foreach (var item in loadData.ValueRO.Chunks) {
-						var newChunk = state.EntityManager.CreateEntity();
-						state.EntityManager.AddComponentData(newChunk, new ChunkInitializer {
-							Coordinate = item,
-							HasRenderer = false
-						});
+				for (int zone = 0; zone <= buffer.ValueRO.DrawDistance; zone++) {
+					GenerateLoadData(ref loadData.ValueRW, buffer.ValueRO, request.ValueRO.NewCenter, zone);
 
-						chunkBuffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle);
-						chunkBuffer.ValueRW.Chunks[ChunkToIndex(state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle).ValueRO, item)] = newChunk;
-					}
+					foreach (var item in loadData.ValueRO.Data) {
+						if (!HasChunk(buffer.ValueRO, item.Coordinate)) {
+							var newChunk = state.EntityManager.CreateEntity();
+							commandBuffer.AddComponent(newChunk, new ChunkInitializer {
+								Coordinate = item.Coordinate,
+								HasRenderer = item.IsRendered
+							});
 
-					loadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
-					foreach (var item in loadData.ValueRO.Renderers) {
-						chunkBuffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle);
-						var chunk = GetChunk(chunkBuffer.ValueRO, item);
-						if (state.EntityManager.HasComponent<ChunkInitializer>(chunk)) {
-							var initializer = state.EntityManager.GetComponentData<ChunkInitializer>(chunk);
-							initializer.HasRenderer = true;
-							state.EntityManager.SetComponentData(chunk, initializer);
-						} else if (state.EntityManager.HasComponent<DataOnlyChunk>(chunk)) {
-							state.EntityManager.RemoveComponent<DataOnlyChunk>(chunk);
+							buffer.ValueRW.Chunks[ChunkToIndex(buffer.ValueRO, item.Coordinate)] = newChunk;
+						} else {
+							var chunk = GetChunk(buffer.ValueRO, item.Coordinate);
+							if (item.IsRendered) {
+								if (state.EntityManager.HasComponent<DataOnlyChunk>(chunk)) {
+									commandBuffer.RemoveComponent<DataOnlyChunk>(chunk);
+								}
+							} else {
+								if (!state.EntityManager.HasComponent<DataOnlyChunk>(chunk)) {
+									commandBuffer.AddComponent<DataOnlyChunk>(chunk);
+								}
+							}
 						}
 					}
 
-					loadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
-					loadData.ValueRW.Chunks.Dispose();
-					loadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
-					loadData.ValueRW.Renderers.Dispose();
+					loadData.ValueRW.Data.Dispose();
 				}
 
-				state.EntityManager.RemoveComponent<ChunkBufferingRequest>(state.SystemHandle);
+				commandBuffer.DestroyEntity(entity);
 			}
+
+			commandBuffer.Playback(state.EntityManager);
+			commandBuffer.Dispose();
 		}
 	}
 }
