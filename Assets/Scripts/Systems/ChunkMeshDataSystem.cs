@@ -1,47 +1,37 @@
 ﻿using Minecraft.Components;
 using Minecraft.Utilities;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Rendering;
-using UnityEngine.Rendering;
 
 namespace Minecraft.Systems {
 	[UpdateAfter(typeof(ChunkGenerationSystem))]
-	public partial struct ChunkMeshDataSystem : ISystem {
-		private SystemHandle chunkBufferingSystem;
-
-		void ISystem.OnCreate(ref SystemState state) {
-			chunkBufferingSystem = state.WorldUnmanaged.GetExistingUnmanagedSystem<ChunkBufferingSystem>();
+	public partial class ChunkMeshDataSystem : SystemBase {
+		protected override void OnCreate() {
+			EntityManager.AddComponentData(SystemHandle, new ChunkMeshDataSystemData {
+				ChunkBufferingSystem = World.GetExistingSystem<ChunkBufferingSystem>()
+			});
 		}
 
-		void ISystem.OnUpdate(ref SystemState state) {
-			var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
+		protected override void OnUpdate() {
+			Entities.WithAll<DataOnlyChunk>().WithNone<DisableRendering>().ForEach((Entity entity) => {
+				EntityManager.AddComponent<DisableRendering>(entity);
+			}).WithStructuralChanges().Run();
 
-			foreach (var (_, entity) in SystemAPI.
-				Query<RefRO<Chunk>>().
-				WithAll<DataOnlyChunk>().
-				WithNone<DisableRendering>().
-				WithEntityAccess()) {
+			Entities.WithAll<DisableRendering>().WithNone<DataOnlyChunk>().ForEach((Entity entity) => {
+				EntityManager.RemoveComponent<DisableRendering>(entity);
+			}).WithStructuralChanges().Run();
 
-				commandBuffer.AddComponent<DisableRendering>(entity);
-			}
+			var entityManager = EntityManager;
+			var commandBuffer = new EntityCommandBuffer(Allocator.Persistent);
+			var chunkBufferingSystem = EntityManager.GetComponentData<ChunkMeshDataSystemData>(SystemHandle).ChunkBufferingSystem;
 
-			foreach (var (_, entity) in SystemAPI.
-				Query<RefRO<Chunk>>().
-				WithAll<DisableRendering>().
-				WithNone<DataOnlyChunk>().
-				WithEntityAccess()) {
-
-				commandBuffer.RemoveComponent<DisableRendering>(entity);
-			}
-
-			foreach (var (chunk, entity) in SystemAPI.
-				Query<RefRO<Chunk>>().
-				WithAll<DirtyChunk>().
-				WithNone<DataOnlyChunk>().
-				WithEntityAccess()) {
-
+			Chunk chunk = default;
+			Entities.WithNativeDisableContainerSafetyRestriction(chunk).WithAll<DirtyChunk>().WithNone<DataOnlyChunk>().ForEach((Entity entity) => {
+				chunk = entityManager.GetComponentData<Chunk>(entity);
 				var vertices = new NativeList<Vertex>(Allocator.Persistent);
 				var indices = new NativeList<ushort>(Allocator.Persistent);
 
@@ -50,12 +40,12 @@ namespace Minecraft.Systems {
 						for (int z = 0; z < Chunk.SIZE; z++) {
 							var localVoxelCoordinate = new int3(x, y, z);
 
-							if (GetVoxel(ref state, chunk.ValueRO, localVoxelCoordinate).Type == 0) {
+							if (GetVoxel(entityManager, chunkBufferingSystem, chunk, localVoxelCoordinate).Type == 0) {
 								continue;
 							}
 
 							// Right face
-							if (HasFace(ref state, chunk.ValueRO, localVoxelCoordinate + new int3(1, 0, 0))) {
+							if (HasFace(entityManager, chunkBufferingSystem, chunk, localVoxelCoordinate + new int3(1, 0, 0))) {
 								var vertexCount = vertices.Length;
 								indices.Add((ushort)(vertexCount + 0));
 								indices.Add((ushort)(vertexCount + 1));
@@ -71,7 +61,7 @@ namespace Minecraft.Systems {
 							}
 
 							// Left face
-							if (HasFace(ref state, chunk.ValueRO, localVoxelCoordinate + new int3(-1, 0, 0))) {
+							if (HasFace(entityManager, chunkBufferingSystem, chunk, localVoxelCoordinate + new int3(-1, 0, 0))) {
 								var vertexCount = vertices.Length;
 								indices.Add((ushort)(vertexCount + 0));
 								indices.Add((ushort)(vertexCount + 1));
@@ -87,7 +77,7 @@ namespace Minecraft.Systems {
 							}
 
 							// Top face
-							if (HasFace(ref state, chunk.ValueRO, localVoxelCoordinate + new int3(0, 1, 0))) {
+							if (HasFace(entityManager, chunkBufferingSystem, chunk, localVoxelCoordinate + new int3(0, 1, 0))) {
 								var vertexCount = vertices.Length;
 								indices.Add((ushort)(vertexCount + 0));
 								indices.Add((ushort)(vertexCount + 1));
@@ -103,7 +93,7 @@ namespace Minecraft.Systems {
 							}
 
 							// Buttom face
-							if (HasFace(ref state, chunk.ValueRO, localVoxelCoordinate + new int3(0, -1, 0))) {
+							if (HasFace(entityManager, chunkBufferingSystem, chunk, localVoxelCoordinate + new int3(0, -1, 0))) {
 								var vertexCount = vertices.Length;
 								indices.Add((ushort)(vertexCount + 0));
 								indices.Add((ushort)(vertexCount + 1));
@@ -119,7 +109,7 @@ namespace Minecraft.Systems {
 							}
 
 							// Front face
-							if (HasFace(ref state, chunk.ValueRO, localVoxelCoordinate + new int3(0, 0, 1))) {
+							if (HasFace(entityManager, chunkBufferingSystem, chunk, localVoxelCoordinate + new int3(0, 0, 1))) {
 								var vertexCount = vertices.Length;
 								indices.Add((ushort)(vertexCount + 0));
 								indices.Add((ushort)(vertexCount + 1));
@@ -135,7 +125,7 @@ namespace Minecraft.Systems {
 							}
 
 							// Back face
-							if (HasFace(ref state, chunk.ValueRO, localVoxelCoordinate + new int3(0, 0, -1))) {
+							if (HasFace(entityManager, chunkBufferingSystem, chunk, localVoxelCoordinate + new int3(0, 0, -1))) {
 								var vertexCount = vertices.Length;
 								indices.Add((ushort)(vertexCount + 0));
 								indices.Add((ushort)(vertexCount + 1));
@@ -159,14 +149,15 @@ namespace Minecraft.Systems {
 				});
 
 				commandBuffer.RemoveComponent<DirtyChunk>(entity);
-			}
+			}).ScheduleParallel();
 
-			commandBuffer.Playback(state.EntityManager);
-
+			CompleteDependency();
+			
+			commandBuffer.Playback(EntityManager);
 			commandBuffer.Dispose();
 		}
 
-		private Voxel GetVoxel(ref SystemState state, in Chunk chunk, int3 coordinate) {
+		private static Voxel GetVoxel(EntityManager entityManager, in SystemHandle chunkBufferingSystem, in Chunk chunk, int3 coordinate) {
 			var voxelCoordinate = chunk.Coordinate * Chunk.SIZE + coordinate;
 			var chunkCoordinate = new int3 {
 				x = (int)math.floor(voxelCoordinate.x / (float)Chunk.SIZE),
@@ -181,13 +172,13 @@ namespace Minecraft.Systems {
 				Chunk.SIZE,
 				Chunk.SIZE);
 
-			var chunkBuffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(chunkBufferingSystem);
+			var chunkBuffer = entityManager.GetComponentDataRW<ChunkBuffer>(chunkBufferingSystem);
 			var chunkEntity = ChunkBufferingSystem.GetChunk(chunkBuffer.ValueRO, chunkCoordinate);
-			return chunkEntity == Entity.Null ? new Voxel(0) : state.EntityManager.GetComponentData<Chunk>(chunkEntity).Voxels[localVoxelIndex];
+			return chunkEntity == Entity.Null ? new Voxel(0) : entityManager.GetComponentData<Chunk>(chunkEntity).Voxels[localVoxelIndex];
 		}
 
-		private bool HasFace(ref SystemState state, in Chunk chunk, int3 coordinate) {
-			return GetVoxel(ref state, chunk, coordinate).Type == 0;
+		private static bool HasFace(EntityManager entityManager, in SystemHandle chunkBufferingSystem, in Chunk chunk, int3 coordinate) {
+			return GetVoxel(entityManager, chunkBufferingSystem, chunk, coordinate).Type == 0;
 		}
 	}
 }

@@ -3,6 +3,7 @@ using Minecraft.Utilities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace Minecraft.Systems {
 	[UpdateBefore(typeof(ChunkSystem))]
@@ -125,7 +126,7 @@ namespace Minecraft.Systems {
 			}
 		}
 
-		private static void UpdateBuffer(EntityManager entityManager, 
+		private static void UpdateBuffer(EntityCommandBuffer commandBuffer, 
 			ref ChunkBuffer chunkBuffer, int2 newCenter)  {
 
 			for (int i = 0; i < chunkBuffer.ChunksBuffer.Length; i++) {
@@ -148,7 +149,7 @@ namespace Minecraft.Systems {
 						if (nx < 0 || nz < 0 || nx >= chunkBuffer.ChunksSize || 
 							nz >= chunkBuffer.ChunksSize) {
 
-							entityManager.DestroyEntity(chunkBuffer.Chunks[index]);
+							commandBuffer.DestroyEntity(chunkBuffer.Chunks[index]);
 							chunkBuffer.Chunks[index] = Entity.Null;
 							continue;
 						}
@@ -165,7 +166,7 @@ namespace Minecraft.Systems {
 			chunkBuffer.Center = newCenter;
 		}
 
-		private void GenerateLoadData(ref ChunkLoadData loadData, in ChunkBuffer chunkBuffer, int2 center, int zone) {
+		private void GenerateLoadData(ref ChunkLoadData loadData, int2 center, int zone) {
 			loadData.Data = new NativeList<ChunkLoadDescription>(Allocator.TempJob);
 
 			int startX = center.x - zone - 1;
@@ -205,6 +206,24 @@ namespace Minecraft.Systems {
 		void ISystem.OnUpdate(ref SystemState state) {
 			var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
 
+			foreach (var transform in SystemAPI.Query<RefRO<LocalToWorld>>().WithAll<PlayerMovement>()) {
+				var position = transform.ValueRO.Position;
+				var column = new int2 {
+					x = (int)math.floor(position.x / Chunk.SIZE),
+					y = (int)math.floor(position.z / Chunk.SIZE)
+				};
+
+				var loadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
+				var lastPlayerColumn = loadData.ValueRO.LastPlayerColumn;
+				if (lastPlayerColumn.x != column.x || lastPlayerColumn.y != column.y) {
+					loadData.ValueRW.LastPlayerColumn = column;
+					var requestEntity = state.EntityManager.CreateEntity();
+					commandBuffer.AddComponent(requestEntity, new ChunkBufferingRequest {
+						NewCenter = column
+					});
+				}
+			}
+
 			foreach (var (request, entity) in SystemAPI.
 				Query<RefRO<ChunkBufferingResizeRequest>>().
 				WithEntityAccess()) {
@@ -219,38 +238,37 @@ namespace Minecraft.Systems {
 				WithEntityAccess()) {
 
 				var buffer = state.EntityManager.GetComponentDataRW<ChunkBuffer>(state.SystemHandle);
-				UpdateBuffer(state.EntityManager, ref buffer.ValueRW, request.ValueRO.NewCenter);
+				UpdateBuffer(commandBuffer, ref buffer.ValueRW, request.ValueRO.NewCenter);
 
 				var loadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
 
-				for (int zone = 0; zone <= buffer.ValueRO.DrawDistance; zone++) {
-					GenerateLoadData(ref loadData.ValueRW, buffer.ValueRO, request.ValueRO.NewCenter, zone);
+				GenerateLoadData(ref loadData.ValueRW, request.ValueRO.NewCenter, buffer.ValueRO.DrawDistance);
 
-					foreach (var item in loadData.ValueRO.Data) {
-						if (!HasChunk(buffer.ValueRO, item.Coordinate)) {
-							var newChunk = state.EntityManager.CreateEntity();
-							commandBuffer.AddComponent(newChunk, new ChunkInitializer {
-								Coordinate = item.Coordinate,
-								HasRenderer = item.IsRendered
-							});
+				foreach (var item in loadData.ValueRO.Data) {
+					if (!HasChunk(buffer.ValueRO, item.Coordinate)) {
+						var newChunk = state.EntityManager.CreateEntity();
+						commandBuffer.AddComponent(newChunk, new ChunkInitializer {
+							Coordinate = item.Coordinate,
+							HasRenderer = item.IsRendered
+						});
 
-							buffer.ValueRW.Chunks[ChunkToIndex(buffer.ValueRO, item.Coordinate)] = newChunk;
+						buffer.ValueRW.Chunks[ChunkToIndex(buffer.ValueRO, item.Coordinate)] = newChunk;
+					} else {
+						var chunk = GetChunk(buffer.ValueRO, item.Coordinate);
+
+						if (item.IsRendered) {
+							if (state.EntityManager.HasComponent<DataOnlyChunk>(chunk)) {
+								commandBuffer.RemoveComponent<DataOnlyChunk>(chunk);
+							} 
 						} else {
-							var chunk = GetChunk(buffer.ValueRO, item.Coordinate);
-							if (item.IsRendered) {
-								if (state.EntityManager.HasComponent<DataOnlyChunk>(chunk)) {
-									commandBuffer.RemoveComponent<DataOnlyChunk>(chunk);
-								}
-							} else {
-								if (!state.EntityManager.HasComponent<DataOnlyChunk>(chunk)) {
-									commandBuffer.AddComponent<DataOnlyChunk>(chunk);
-								}
+							if (!state.EntityManager.HasComponent<DataOnlyChunk>(chunk)) {
+								commandBuffer.AddComponent<DataOnlyChunk>(chunk);
 							}
 						}
 					}
-
-					loadData.ValueRW.Data.Dispose();
 				}
+
+				loadData.ValueRW.Data.Dispose();
 
 				commandBuffer.DestroyEntity(entity);
 			}

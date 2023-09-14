@@ -138,7 +138,7 @@ namespace Minecraft
                 {
                     ""name"": ""negative"",
                     ""id"": ""ea0d5ac1-77a1-46c8-a363-5db82497caba"",
-                    ""path"": ""<Keyboard>/q"",
+                    ""path"": ""<Keyboard>/shift"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""KeyboardAndMouse"",
@@ -149,7 +149,7 @@ namespace Minecraft
                 {
                     ""name"": ""positive"",
                     ""id"": ""f54a4ece-e3c9-4821-a54f-a453c729a9bd"",
-                    ""path"": ""<Keyboard>/e"",
+                    ""path"": ""<Keyboard>/space"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""KeyboardAndMouse"",
