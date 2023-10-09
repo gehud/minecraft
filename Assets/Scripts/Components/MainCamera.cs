@@ -2,7 +2,7 @@
 using UnityEngine;
 
 namespace Minecraft.Components {
-	public class MainCamera : IComponentData {
-		public Camera Camera;
-	}
+    public class MainCamera : IComponentData {
+        public Camera Camera;
+    }
 }

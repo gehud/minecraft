@@ -1,5 +1,4 @@
 using Minecraft.Components;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -9,77 +8,64 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace Minecraft.Systems {
-	[BurstCompile]
-	public partial struct ChunkSystem : ISystem {
-		void ISystem.OnUpdate(ref SystemState state) {
-			var commandBuffer = new EntityCommandBuffer(Allocator.TempJob);
-			var entities = new NativeList<Entity>(Allocator.TempJob);
-			
-			foreach (var (chunkInitializer, entity) in SystemAPI.
-				Query<ChunkInitializer>().
-				WithEntityAccess()) {
+    public partial class ChunkSystem : SystemBase {
+        protected override void OnUpdate() {
+            Entities.ForEach((Entity entity, in ChunkInitializer chunkInitializer) => {
+                if (!chunkInitializer.HasRenderer) {
+                    EntityManager.AddComponent<DisableRendering>(entity);
+                }
 
-				entities.Add(entity);
+                var position = chunkInitializer.Coordinate * Chunk.SIZE;
 
-				if (!chunkInitializer.HasRenderer) {
-					commandBuffer.AddComponent<DataOnlyChunk>(entity);
-				}
-				
-				var position = chunkInitializer.Coordinate * Chunk.SIZE;
+                EntityManager.AddComponentData(entity, new LocalToWorld {
+                    Value = float4x4.Translate(position)
+                });
 
-				commandBuffer.AddComponent(entity, new LocalToWorld {
-					Value = float4x4.Translate(position)
-				});
+                var materials = new Material[] {
+                    new Material(Shader.Find("Universal Render Pipeline/Unlit"))
+                };
 
-				commandBuffer.SetComponent(entity, new RenderBounds {
-					Value = new AABB {
-						Center = new float3(8.0f, 8.0f, 8.0f),
-						Extents = new float3(8.0f, 8.0f, 8.0f)
-					}
-				});
+                var mesh = new Mesh {
+                    name = "Empty"
+                };
 
-				commandBuffer.SetComponent(entity, new WorldRenderBounds {
-					Value = new AABB {
-						Center = new float3(8.0f, 8.0f, 8.0f) + position,
-						Extents = new float3(8.0f, 8.0f, 8.0f)
-					}
-				});
+                var meshes = new Mesh[] {
+                    mesh
+                };
 
-				var voxels = new NativeArray<Voxel>(Chunk.VOLUME, Allocator.Persistent);
+                RenderMeshUtility.AddComponents(
+                    entity,
+                    EntityManager,
+                    new RenderMeshDescription(ShadowCastingMode.Off),
+                    new RenderMeshArray(materials, meshes),
+                    MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0)
+                );
 
-				commandBuffer.AddComponent(entity, new Chunk {
-					Coordinate = chunkInitializer.Coordinate,
-					Voxels = voxels
-				});
+                EntityManager.SetComponentData(entity, new RenderBounds {
+                    Value = new AABB {
+                        Center = new float3(8.0f, 8.0f, 8.0f),
+                        Extents = new float3(8.0f, 8.0f, 8.0f)
+                    }
+                });
 
-				commandBuffer.SetName(entity, $"Chunk({chunkInitializer.Coordinate.x}, {chunkInitializer.Coordinate.y}, {chunkInitializer.Coordinate.z})");
-				commandBuffer.AddComponent<RawChunk>(entity);
-				commandBuffer.RemoveComponent<ChunkInitializer>(entity);
-			}
+                EntityManager.SetComponentData(entity, new WorldRenderBounds {
+                    Value = new AABB {
+                        Center = new float3(8.0f, 8.0f, 8.0f) + position,
+                        Extents = new float3(8.0f, 8.0f, 8.0f)
+                    }
+                });
 
-			foreach (var entity in entities) {
-				var materials = new Material[] {
-					new Material(Shader.Find("Universal Render Pipeline/Unlit"))
-				};
+                var voxels = new NativeArray<Voxel>(Chunk.VOLUME, Allocator.Persistent);
 
-				var mesh = new Mesh();
-				mesh.name = "Empty";
-				var meshes = new Mesh[] {
-					mesh
-				};
+                EntityManager.AddComponentData(entity, new Chunk {
+                    Coordinate = chunkInitializer.Coordinate,
+                    Voxels = voxels
+                });
 
-				RenderMeshUtility.AddComponents(
-					entity,
-					state.EntityManager,
-					new RenderMeshDescription(ShadowCastingMode.Off),
-					new RenderMeshArray(materials, meshes),
-					MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0)
-				);
-			}
-
-			commandBuffer.Playback(state.EntityManager);
-			commandBuffer.Dispose();
-			entities.Dispose();
-		}
-	}
+                EntityManager.SetName(entity, $"Chunk({chunkInitializer.Coordinate.x}, {chunkInitializer.Coordinate.y}, {chunkInitializer.Coordinate.z})");
+                EntityManager.AddComponent<RawChunk>(entity);
+                EntityManager.RemoveComponent<ChunkInitializer>(entity);
+            }).WithStructuralChanges().Run();
+        }
+    }
 }

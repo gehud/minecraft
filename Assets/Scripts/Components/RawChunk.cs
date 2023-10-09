@@ -1,5 +1,5 @@
 ﻿using Unity.Entities;
 
 namespace Minecraft.Components {
-	public struct RawChunk : IComponentData {}
+    public struct RawChunk : IComponentData { }
 }
