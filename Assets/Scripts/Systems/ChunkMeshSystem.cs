@@ -28,9 +28,11 @@ namespace Minecraft.Systems {
             public void Execute() {
                 var mesh = meshDataArray[0];
 
-                var descriptors = new NativeArray<VertexAttributeDescriptor>(1, Allocator.Temp);
+                var descriptors = new NativeArray<VertexAttributeDescriptor>(2, Allocator.Temp);
                 descriptors[0] = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3);
+                descriptors[1] = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2);
                 mesh.SetVertexBufferParams(chunkMeshData.Vertices.Length, descriptors);
+                descriptors.Dispose();
                 var vertices = mesh.GetVertexData<Vertex>();
                 for (int i = 0; i < chunkMeshData.Vertices.Length; i++) {
                     vertices[i] = chunkMeshData.Vertices[i];

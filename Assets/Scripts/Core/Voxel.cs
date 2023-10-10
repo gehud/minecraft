@@ -1,8 +1,8 @@
 ﻿namespace Minecraft {
     public struct Voxel {
-        public byte Type;
+        public BlockType Type;
 
-        public Voxel(byte type) {
+        public Voxel(BlockType type) {
             Type = type;
         }
     }

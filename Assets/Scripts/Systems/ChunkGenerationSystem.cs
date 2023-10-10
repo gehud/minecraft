@@ -3,6 +3,7 @@ using Minecraft.Utilities;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Minecraft.Systems {
     [BurstCompile]
@@ -18,9 +19,16 @@ namespace Minecraft.Systems {
                 WithEntityAccess()) {
 
                 for (int i = 0; i < Chunk.VOLUME; i++) {
-                    var coordinate = Array3DUtility.To3D(i, Chunk.SIZE, Chunk.SIZE);
-                    if (chunk.ValueRO.Coordinate.y * Chunk.SIZE + coordinate.y <= 32) {
-                        chunk.ValueRW.Voxels[i] = new Voxel(1);
+                    var localCoordinate = Array3DUtility.To3D(i, Chunk.SIZE, Chunk.SIZE);
+                    var coordinate = chunk.ValueRO.Coordinate * Chunk.SIZE + localCoordinate;
+                    var noiseCoordinate = new float2 {
+                        x = coordinate.x / 500.0f,
+                        y = coordinate.z / 500.0f
+                    };
+
+                    int height = (int)math.floor(noise.snoise(noiseCoordinate) * 32);
+                    if (coordinate.y <= height) {
+                        chunk.ValueRW.Voxels[i] = new Voxel(BlockType.Stone);
                     }
                 }
 

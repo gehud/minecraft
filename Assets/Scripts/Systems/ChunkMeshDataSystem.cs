@@ -27,11 +27,12 @@ namespace Minecraft.Systems
 
         [BurstCompile]
         private struct ChunkMeshDataGenerationJob : IJob {
-            public EntityCommandBuffer commandBuffer;
-            [ReadOnly] public Entity entity;
-            [ReadOnly] public int3 chunkCoordinate;
+            public EntityCommandBuffer CommandBuffer;
+            [ReadOnly] public Entity Entity;
+            [ReadOnly] public int3 ChunkCoordinate;
             [ReadOnly, NativeDisableContainerSafetyRestriction]
             public NativeArray<NativeArray<Voxel>> Claster;
+            [ReadOnly] public NativeArray<BlockDescription> Blocks; 
 
             public void Execute() {
                 var vertices = new NativeList<Vertex>(Allocator.Persistent);
@@ -41,13 +42,17 @@ namespace Minecraft.Systems
                     for (int y = 0; y < Chunk.SIZE; y++) {
                         for (int z = 0; z < Chunk.SIZE; z++) {
                             var localVoxelCoordinate = new int3(x, y, z);
+                            var voxel = GetVoxel(Claster, ChunkCoordinate, localVoxelCoordinate);
 
-                            if (GetVoxel(Claster, chunkCoordinate, localVoxelCoordinate).Type == 0) {
+                            if (voxel.Type == BlockType.Air) {
                                 continue;
                             }
 
+                            var texturing = Blocks[(int)voxel.Type].Texturing;
+                            float uvStep = 16.0f / 256.0f;
+
                             // Right face
-                            if (HasFace(Claster, chunkCoordinate, localVoxelCoordinate + new int3(1, 0, 0))) {
+                            if (HasFace(Claster, ChunkCoordinate, localVoxelCoordinate + new int3(1, 0, 0))) {
                                 var vertexCount = vertices.Length;
                                 indices.Add((ushort)(vertexCount + 0));
                                 indices.Add((ushort)(vertexCount + 1));
@@ -56,14 +61,14 @@ namespace Minecraft.Systems
                                 indices.Add((ushort)(vertexCount + 2));
                                 indices.Add((ushort)(vertexCount + 3));
 
-                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 0.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 0.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 1.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 0.0f, texturing.Right.x * uvStep + uvStep * 0.0f, texturing.Right.y * uvStep + uvStep * 0.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 0.0f, texturing.Right.x * uvStep + uvStep * 0.0f, texturing.Right.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 1.0f, texturing.Right.x * uvStep + uvStep * 1.0f, texturing.Right.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 1.0f, texturing.Right.x * uvStep + uvStep * 1.0f, texturing.Right.y * uvStep + uvStep * 0.0f));
                             }
 
                             // Left face
-                            if (HasFace(Claster, chunkCoordinate, localVoxelCoordinate + new int3(-1, 0, 0))) {
+                            if (HasFace(Claster, ChunkCoordinate, localVoxelCoordinate + new int3(-1, 0, 0))) {
                                 var vertexCount = vertices.Length;
                                 indices.Add((ushort)(vertexCount + 0));
                                 indices.Add((ushort)(vertexCount + 1));
@@ -72,14 +77,14 @@ namespace Minecraft.Systems
                                 indices.Add((ushort)(vertexCount + 2));
                                 indices.Add((ushort)(vertexCount + 3));
 
-                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 0.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 0.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 1.0f, texturing.Left.x * uvStep + uvStep * 0.0f, texturing.Left.y * uvStep + uvStep * 0.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 1.0f, texturing.Left.x * uvStep + uvStep * 0.0f, texturing.Left.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 0.0f, texturing.Left.x * uvStep + uvStep * 1.0f, texturing.Left.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 0.0f, texturing.Left.x * uvStep + uvStep * 1.0f, texturing.Left.y * uvStep + uvStep * 0.0f));
                             }
 
                             // Top face
-                            if (HasFace(Claster, chunkCoordinate, localVoxelCoordinate + new int3(0, 1, 0))) {
+                            if (HasFace(Claster, ChunkCoordinate, localVoxelCoordinate + new int3(0, 1, 0))) {
                                 var vertexCount = vertices.Length;
                                 indices.Add((ushort)(vertexCount + 0));
                                 indices.Add((ushort)(vertexCount + 1));
@@ -88,14 +93,14 @@ namespace Minecraft.Systems
                                 indices.Add((ushort)(vertexCount + 2));
                                 indices.Add((ushort)(vertexCount + 3));
 
-                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 0.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 0.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 0.0f, texturing.Top.x * uvStep + uvStep * 0.0f, texturing.Top.y * uvStep + uvStep * 0.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 1.0f, texturing.Top.x * uvStep + uvStep * 0.0f, texturing.Top.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 1.0f, texturing.Top.x * uvStep + uvStep * 1.0f, texturing.Top.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 0.0f, texturing.Top.x * uvStep + uvStep * 1.0f, texturing.Top.y * uvStep + uvStep * 0.0f));
                             }
 
                             // Buttom face
-                            if (HasFace(Claster, chunkCoordinate, localVoxelCoordinate + new int3(0, -1, 0))) {
+                            if (HasFace(Claster, ChunkCoordinate, localVoxelCoordinate + new int3(0, -1, 0))) {
                                 var vertexCount = vertices.Length;
                                 indices.Add((ushort)(vertexCount + 0));
                                 indices.Add((ushort)(vertexCount + 1));
@@ -104,14 +109,14 @@ namespace Minecraft.Systems
                                 indices.Add((ushort)(vertexCount + 2));
                                 indices.Add((ushort)(vertexCount + 3));
 
-                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 0.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 0.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 0.0f, texturing.Bottom.x * uvStep + uvStep * 0.0f, texturing.Bottom.y * uvStep + uvStep * 0.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 1.0f, texturing.Bottom.x * uvStep + uvStep * 0.0f, texturing.Bottom.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 1.0f, texturing.Bottom.x * uvStep + uvStep * 1.0f, texturing.Bottom.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 0.0f, texturing.Bottom.x * uvStep + uvStep * 1.0f, texturing.Bottom.y * uvStep + uvStep * 0.0f));
                             }
 
                             // Front face
-                            if (HasFace(Claster, chunkCoordinate, localVoxelCoordinate + new int3(0, 0, 1))) {
+                            if (HasFace(Claster, ChunkCoordinate, localVoxelCoordinate + new int3(0, 0, 1))) {
                                 var vertexCount = vertices.Length;
                                 indices.Add((ushort)(vertexCount + 0));
                                 indices.Add((ushort)(vertexCount + 1));
@@ -120,14 +125,14 @@ namespace Minecraft.Systems
                                 indices.Add((ushort)(vertexCount + 2));
                                 indices.Add((ushort)(vertexCount + 3));
 
-                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 1.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 1.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 1.0f, texturing.Front.x * uvStep + uvStep * 0.0f, texturing.Front.y * uvStep + uvStep * 0.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 1.0f, texturing.Front.x * uvStep + uvStep * 0.0f, texturing.Front.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 1.0f, texturing.Front.x * uvStep + uvStep * 1.0f, texturing.Front.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 1.0f, texturing.Front.x * uvStep + uvStep * 1.0f, texturing.Front.y * uvStep + uvStep * 0.0f));
                             }
 
                             // Back face
-                            if (HasFace(Claster, chunkCoordinate, localVoxelCoordinate + new int3(0, 0, -1))) {
+                            if (HasFace(Claster, ChunkCoordinate, localVoxelCoordinate + new int3(0, 0, -1))) {
                                 var vertexCount = vertices.Length;
                                 indices.Add((ushort)(vertexCount + 0));
                                 indices.Add((ushort)(vertexCount + 1));
@@ -136,21 +141,21 @@ namespace Minecraft.Systems
                                 indices.Add((ushort)(vertexCount + 2));
                                 indices.Add((ushort)(vertexCount + 3));
 
-                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 0.0f));
-                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 0.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 0.0f));
-                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 0.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 0.0f, z + 0.0f, texturing.Back.x * uvStep + uvStep * 0.0f, texturing.Back.y * uvStep + uvStep * 0.0f));
+                                vertices.Add(new Vertex(x + 0.0f, y + 1.0f, z + 0.0f, texturing.Back.x * uvStep + uvStep * 0.0f, texturing.Back.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 1.0f, z + 0.0f, texturing.Back.x * uvStep + uvStep * 1.0f, texturing.Back.y * uvStep + uvStep * 1.0f));
+                                vertices.Add(new Vertex(x + 1.0f, y + 0.0f, z + 0.0f, texturing.Back.x * uvStep + uvStep * 1.0f, texturing.Back.y * uvStep + uvStep * 0.0f));
                             }
                         }
                     }
                 }
 
-                commandBuffer.AddComponent(entity, new ChunkMeshData {
+                CommandBuffer.AddComponent(Entity, new ChunkMeshData {
                     Vertices = vertices.AsArray(),
                     Indices = indices.AsArray()
                 });
 
-                commandBuffer.RemoveComponent<DirtyChunk>(entity);
+                CommandBuffer.RemoveComponent<DirtyChunk>(Entity);
             }
         }
 
@@ -190,17 +195,18 @@ namespace Minecraft.Systems
                 }
 
 				lastJob = new ChunkMeshDataGenerationJob {
-                    chunkCoordinate = chunkCoordinate,
-                    commandBuffer = cmd,
-                    entity = entity,
-                    Claster = claster
+                    ChunkCoordinate = chunkCoordinate,
+                    CommandBuffer = cmd,
+                    Entity = entity,
+                    Claster = claster,
+                    Blocks = StaticBlockDatabase.Data
                 };
 
                 processed = new Vector3
                 {
-                    x = lastJob.chunkCoordinate.x,
-                    y = lastJob.chunkCoordinate.y,
-                    z = lastJob.chunkCoordinate.z
+                    x = lastJob.ChunkCoordinate.x,
+                    y = lastJob.ChunkCoordinate.y,
+                    z = lastJob.ChunkCoordinate.z
                 } * Chunk.SIZE;
 
 				lastJobHandle = lastJob.Schedule();
@@ -228,7 +234,7 @@ namespace Minecraft.Systems
             sideChunkCoordinate += new int3(1, 1, 1);
             var clasterIndex = Array3DUtility.To1D(sideChunkCoordinate, 3, 3);
             if (!claster[clasterIndex].IsCreated) {
-                return new Voxel(0);
+                return new Voxel(BlockType.Air);
             }
 
             var sideLocalVoxelIndex = Array3DUtility.To1D(sideLocalVoxelCoordinate, Chunk.SIZE, Chunk.SIZE);

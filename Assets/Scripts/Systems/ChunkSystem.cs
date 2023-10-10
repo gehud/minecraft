@@ -22,7 +22,7 @@ namespace Minecraft.Systems {
                 });
 
                 var materials = new Material[] {
-                    new Material(Shader.Find("Universal Render Pipeline/Unlit"))
+                    StaticBlockDatabase.TerrainMaterial
                 };
 
                 var mesh = new Mesh {
