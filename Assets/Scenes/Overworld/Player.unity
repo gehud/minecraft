@@ -198,7 +198,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78b5478fe94ad7b498e9938d2d480992, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Sensitivity: 0.25
+  Sensitivity: 0.15
   OrientationTarget: {fileID: 946829685}
 --- !u!1 &1818157018
 GameObject:
