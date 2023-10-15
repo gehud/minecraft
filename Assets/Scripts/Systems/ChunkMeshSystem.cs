@@ -93,9 +93,25 @@ namespace Minecraft.Systems {
         }
 
         protected override void OnUpdate() {
+            Entities.WithAll<ImmediateChunk>().ForEach((Entity entity, in ChunkMeshData chunkMeshData, in RenderMeshArray renderMeshArray) => {
+                var job = new MeshJob {
+                    MeshData = chunkMeshData,
+                    MeshDataArray = Mesh.AllocateWritableMeshData(1)
+                };
+
+                job.Schedule().Complete();
+
+                var mesh = new Mesh();
+                Mesh.ApplyAndDisposeWritableMeshData(job.MeshDataArray, mesh, MESH_UPDATE_FLAGS);
+                EntityManager.GetSharedComponentManaged<RenderMeshArray>(entity).Meshes[0] = mesh;
+                EntityManager.RemoveComponent<ChunkMeshData>(entity);
+                EntityManager.RemoveComponent<ImmediateChunk>(entity);
+            }).WithStructuralChanges().Run();
+
             var querry = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<ChunkMeshData>()
                 .WithAll<RenderMeshArray>()
+                .WithNone<ImmediateChunk>()
                 .Build(EntityManager);
 
             var entities = querry.ToEntityArray(Allocator.TempJob);

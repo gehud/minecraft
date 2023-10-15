@@ -2,6 +2,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace Minecraft.Systems {
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
@@ -9,7 +10,117 @@ namespace Minecraft.Systems {
         private float3 gravity;
         private float contactOffset;
 
-        private SystemHandle chunkBufferingSystem;
+        private static SystemHandle chunkBufferingSystem;
+
+        public static bool Raycast(EntityManager entityManager, Ray ray, float maxDistance, out RaycastHit raycastHit) {
+            float px = ray.origin.x;
+            float py = ray.origin.y;
+            float pz = ray.origin.z;
+
+            float dx = ray.direction.x;
+            float dy = ray.direction.y;
+            float dz = ray.direction.z;
+
+            float t = 0.0f;
+            float ix = Mathf.Floor(px);
+            float iy = Mathf.Floor(py);
+            float iz = Mathf.Floor(pz);
+
+            float stepx = dx > 0.0f ? 1.0f : -1.0f;
+            float stepy = dy > 0.0f ? 1.0f : -1.0f;
+            float stepz = dz > 0.0f ? 1.0f : -1.0f;
+
+            float infinity = float.PositiveInfinity;
+
+            float txDelta = dx == 0.0f ? infinity : Mathf.Abs(1.0f / dx);
+            float tyDelta = dy == 0.0f ? infinity : Mathf.Abs(1.0f / dy);
+            float tzDelta = dz == 0.0f ? infinity : Mathf.Abs(1.0f / dz);
+
+            float xdist = stepx > 0 ? ix + 1 - px : px - ix;
+            float ydist = stepy > 0 ? iy + 1 - py : py - iy;
+            float zdist = stepz > 0 ? iz + 1 - pz : pz - iz;
+
+            float txMax = txDelta < infinity ? txDelta * xdist : infinity;
+            float tyMax = tyDelta < infinity ? tyDelta * ydist : infinity;
+            float tzMax = tzDelta < infinity ? tzDelta * zdist : infinity;
+
+            int steppedIndex = -1;
+
+            Vector3 end;
+            Vector3 iend;
+            Vector3 norm;
+
+            while (t <= maxDistance) {
+                var chunkBuffer = entityManager.GetComponentData<ChunkBuffer>(chunkBufferingSystem);
+                var block = (int)ChunkBufferingSystem.GetVoxel(entityManager, chunkBuffer, new int3((int)ix, (int)iy, (int)iz)).Type;
+                if (StaticBlockDatabase.Data[block].IsSolid) {
+                    end.x = px + t * dx;
+                    end.y = py + t * dy;
+                    end.z = pz + t * dz;
+
+                    iend.x = ix;
+                    iend.y = iy;
+                    iend.z = iz;
+
+                    norm.x = norm.y = norm.z = 0.0f;
+                    if (steppedIndex == 0)
+                        norm.x = -stepx;
+                    if (steppedIndex == 1)
+                        norm.y = -stepy;
+                    if (steppedIndex == 2)
+                        norm.z = -stepz;
+
+                    raycastHit = new() {
+                        point = iend,
+                        normal = norm
+                    };
+
+                    return true;
+                }
+
+                if (txMax < tyMax) {
+                    if (txMax < tzMax) {
+                        ix += stepx;
+                        t = txMax;
+                        txMax += txDelta;
+                        steppedIndex = 0;
+                    } else {
+                        iz += stepz;
+                        t = tzMax;
+                        tzMax += tzDelta;
+                        steppedIndex = 2;
+                    }
+                } else {
+                    if (tyMax < tzMax) {
+                        iy += stepy;
+                        t = tyMax;
+                        tyMax += tyDelta;
+                        steppedIndex = 1;
+                    } else {
+                        iz += stepz;
+                        t = tzMax;
+                        tzMax += tzDelta;
+                        steppedIndex = 2;
+                    }
+                }
+            }
+
+            iend.x = ix;
+            iend.y = iy;
+            iend.z = iz;
+
+            end.x = px + t * dx;
+            end.y = py + t * dy;
+            end.z = pz + t * dz;
+            norm.x = norm.y = norm.z = 0.0f;
+
+            raycastHit = new() {
+                point = iend,
+                normal = norm
+            };
+
+            return false;
+        }
 
         void ISystem.OnCreate(ref SystemState state) {
             gravity = new(0.0f, -9.81f, 0.0f);

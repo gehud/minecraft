@@ -5,6 +5,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 namespace Minecraft.Systems {
@@ -86,7 +87,7 @@ namespace Minecraft.Systems {
             };
 
             var chunk = GetChunk(chunkBuffer, chunkCoordinate);
-            if (chunk == Entity.Null) {
+            if (chunk == Entity.Null || !entityManager.HasComponent<Chunk>(chunk)) {
                 return default;
             }
 
@@ -94,6 +95,106 @@ namespace Minecraft.Systems {
             var localVoxelIndex = Array3DUtility.To1D(localVoxelCoordinate, Chunk.SIZE, Chunk.SIZE);
 
             return entityManager.GetComponentData<Chunk>(chunk).Voxels[localVoxelIndex];
+        }
+
+        private static void MarkChunkDirtyIfExistsImmediate(EntityManager entityManager, in ChunkBuffer chunkBuffer, int3 coordinate) {
+            var entity = GetChunk(chunkBuffer, coordinate);
+            if (entity == Entity.Null || !entityManager.HasComponent<Chunk>(entity)) {
+                return;
+            }
+
+            entityManager.AddComponent<DirtyChunk>(entity);
+            entityManager.AddComponent<ImmediateChunk>(entity);
+        }
+
+        public static void DestroyVoxel(EntityManager entityManager, in ChunkBuffer chunkBuffer, int3 coordinate) {
+            var chunkCoordinate = new int3 {
+                x = (int)math.floor(coordinate.x / (float)Chunk.SIZE),
+                y = (int)math.floor(coordinate.y / (float)Chunk.SIZE),
+                z = (int)math.floor(coordinate.z / (float)Chunk.SIZE)
+            };
+
+            var entity = GetChunk(chunkBuffer, chunkCoordinate);
+            if (entity == Entity.Null || !entityManager.HasComponent<Chunk>(entity)) {
+                return;
+            }
+
+            var localVoxelCoordinate = coordinate - chunkCoordinate * Chunk.SIZE;
+
+            var chunk = entityManager.GetComponentData<Chunk>(entity);
+            var localVoxelIndex = Array3DUtility.To1D(localVoxelCoordinate, Chunk.SIZE, Chunk.SIZE);
+            chunk.Voxels[localVoxelIndex] = new Voxel(BlockType.Air);
+            entityManager.AddComponent<DirtyChunk>(entity);
+            entityManager.AddComponent<ImmediateChunk>(entity);
+
+            if (localVoxelCoordinate.x == 0) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(-1, 0, 0));
+            }
+
+            if (localVoxelCoordinate.y == 0) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(0, -1, 0));
+            }
+
+            if (localVoxelCoordinate.z == 0) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(0, 0, -1));
+            }
+
+            if (localVoxelCoordinate.x == Chunk.SIZE - 1) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(1, 0, 0));
+            }
+
+            if (localVoxelCoordinate.y == Chunk.SIZE - 1) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(0, 1, 0));
+            }
+
+            if (localVoxelCoordinate.z == Chunk.SIZE - 1) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(0, 0, 1));
+            }
+        }
+
+        public static void PlaceVoxel(EntityManager entityManager, in ChunkBuffer chunkBuffer, int3 coordinate, Voxel voxel) {
+            var chunkCoordinate = new int3 {
+                x = (int)math.floor(coordinate.x / (float)Chunk.SIZE),
+                y = (int)math.floor(coordinate.y / (float)Chunk.SIZE),
+                z = (int)math.floor(coordinate.z / (float)Chunk.SIZE)
+            };
+
+            var entity = GetChunk(chunkBuffer, chunkCoordinate);
+            if (entity == Entity.Null || !entityManager.HasComponent<Chunk>(entity)) {
+                return;
+            }
+
+            var localVoxelCoordinate = coordinate - chunkCoordinate * Chunk.SIZE;
+
+            var chunk = entityManager.GetComponentData<Chunk>(entity);
+            var localVoxelIndex = Array3DUtility.To1D(localVoxelCoordinate, Chunk.SIZE, Chunk.SIZE);
+            chunk.Voxels[localVoxelIndex] = voxel;
+            entityManager.AddComponent<DirtyChunk>(entity);
+            entityManager.AddComponent<ImmediateChunk>(entity);
+
+            if (localVoxelCoordinate.x == 0) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(-1, 0, 0));
+            }
+
+            if (localVoxelCoordinate.y == 0) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(0, -1, 0));
+            }
+
+            if (localVoxelCoordinate.z == 0) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(0, 0, -1));
+            }
+
+            if (localVoxelCoordinate.x == Chunk.SIZE - 1) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(1, 0, 0));
+            }
+
+            if (localVoxelCoordinate.y == Chunk.SIZE - 1) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(0, 1, 0));
+            }
+
+            if (localVoxelCoordinate.z == Chunk.SIZE - 1) {
+                MarkChunkDirtyIfExistsImmediate(entityManager, chunkBuffer, chunkCoordinate + new int3(0, 0, 1));
+            }
         }
 
         private static void UpdateMetrics(ref ChunkBuffer chunkBuffer, int newDrawDistance) {
@@ -298,19 +399,13 @@ namespace Minecraft.Systems {
                     } else {
                         var chunk = GetChunk(EntityManager.GetComponentDataRW<ChunkBuffer>(SystemHandle).ValueRO, item.Coordinate);
 
-                        if (EntityManager.HasComponent<ChunkInitializer>(chunk)) {
-                            var initializer = EntityManager.GetComponentData<ChunkInitializer>(chunk);
-                            initializer.HasRenderer = item.IsRendered;
-                            EntityManager.SetComponentData(chunk, initializer);
+                        if (item.IsRendered) {
+                            if (EntityManager.HasComponent<DisableRendering>(chunk)) {
+                                EntityManager.RemoveComponent<DisableRendering>(chunk);
+                            }
                         } else {
-                            if (item.IsRendered) {
-                                if (EntityManager.HasComponent<DisableRendering>(chunk)) {
-                                    EntityManager.RemoveComponent<DisableRendering>(chunk);
-                                }
-                            } else {
-                                if (!EntityManager.HasComponent<DisableRendering>(chunk)) {
-                                    EntityManager.AddComponent<DisableRendering>(chunk);
-                                }
+                            if (!EntityManager.HasComponent<DisableRendering>(chunk)) {
+                                EntityManager.AddComponent<DisableRendering>(chunk);
                             }
                         }
                     }

@@ -222,10 +222,56 @@ namespace Minecraft.Systems {
         }
 
         protected override void OnUpdate() {
+            Entities
+                .WithAll<ImmediateChunk>()
+                .WithAll<DirtyChunk>()
+                .WithNone<DisableRendering>()
+                .ForEach((Entity entity, in Chunk chunk) => {
+                    var claster = new NativeArray<Voxel>(3 * 3 * 3 * Chunk.VOLUME, Allocator.TempJob);
+                    var chunkCoordinate = EntityManager.GetComponentData<Chunk>(entity).Coordinate;
+                    var origin = chunkCoordinate - new int3(1, 1, 1);
+                    var chunkBuffer = EntityManager.GetComponentDataRW<ChunkBuffer>(chunkBufferingSystem);
+
+                    for (int j = 0; j < 3 * 3 * 3; j++) {
+                        var coordinate = origin + Array3DUtility.To3D(j, 3, 3);
+                        var sideChunk = ChunkBufferingSystem.GetChunk(chunkBuffer.ValueRO, coordinate);
+                        bool isValidChunk = EntityManager.Exists(sideChunk) && EntityManager.HasComponent<Chunk>(sideChunk) && !EntityManager.HasComponent<RawChunk>(sideChunk);
+
+                        if (isValidChunk) {
+                            var sourceSlice = new NativeSlice<Voxel>(EntityManager.GetComponentData<Chunk>(sideChunk).Voxels);
+                            var destinationSlice = new NativeSlice<Voxel>(claster, j * Chunk.VOLUME, Chunk.VOLUME);
+                            destinationSlice.CopyFrom(sourceSlice);
+                        } else if (coordinate.y != -1 && coordinate.y != ChunkBuffer.HEIGHT && !isValidChunk) {
+                            claster.Dispose();
+                            return;
+                        }
+                    }
+
+                    var job = new MeshJob {
+                        Blocks = StaticBlockDatabase.Data,
+                        ChunkCoordinate = chunk.Coordinate,
+                        Indices = new NativeList<ushort>(Allocator.TempJob),
+                        Vertices = new NativeList<Vertex>(Allocator.TempJob),
+                        Claster = claster,
+                    };
+
+                    job.Schedule().Complete();
+
+                    job.Claster.Dispose();
+
+                    EntityManager.AddComponentData(entity, new ChunkMeshData {
+                        Vertices = job.Vertices.AsArray(),
+                        Indices = job.Indices.AsArray()
+                    });
+
+                    EntityManager.RemoveComponent<DirtyChunk>(entity);
+                }).WithStructuralChanges().Run();
+
             var querry = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<Chunk>()
                 .WithAll<DirtyChunk>()
                 .WithNone<DisableRendering>()
+                .WithNone<ImmediateChunk>()
                 .Build(EntityManager);
 
             var entities = querry.ToEntityArray(Allocator.Temp);

@@ -13,9 +13,22 @@ MonoBehaviour:
   m_Name: Air
   m_EditorClassIdentifier: 
   texturing:
-    Right: {x: 0, y: 0}
-    Left: {x: 0, y: 0}
-    Top: {x: 0, y: 0}
-    Bottom: {x: 0, y: 0}
-    Front: {x: 0, y: 0}
-    Back: {x: 0, y: 0}
+    Right:
+      x: 0
+      y: 0
+    Left:
+      x: 0
+      y: 0
+    Top:
+      x: 0
+      y: 0
+    Bottom:
+      x: 0
+      y: 0
+    Front:
+      x: 0
+      y: 0
+    Back:
+      x: 0
+      y: 0
+  isSolid: 0

@@ -8,5 +8,8 @@ namespace Minecraft.Components {
         public float Air;
         public bool IsJump;
         public bool IsSprint;
+
+        public bool IsAttack;
+        public bool IsDefend;
     }
 }

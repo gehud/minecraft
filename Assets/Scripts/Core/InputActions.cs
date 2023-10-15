@@ -73,6 +73,24 @@ namespace Minecraft
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""Attack"",
+                    ""type"": ""Value"",
+                    ""id"": ""68a93b6c-9c0c-401a-8758-25f5fb907fb3"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""Defend"",
+                    ""type"": ""Value"",
+                    ""id"": ""31d8d5dc-da05-4581-829c-22fa2d41572d"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
                 }
             ],
             ""bindings"": [
@@ -196,6 +214,28 @@ namespace Minecraft
                     ""action"": ""Sprint"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""d362375e-31a2-4579-875f-9f858c0ad479"",
+                    ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""KeyboardAndMouse"",
+                    ""action"": ""Attack"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""09d89d76-23a8-4a59-acd4-09a2ffefde75"",
+                    ""path"": ""<Mouse>/rightButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""KeyboardAndMouse"",
+                    ""action"": ""Defend"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -226,6 +266,8 @@ namespace Minecraft
             m_Player_Air = m_Player.FindAction("Air", throwIfNotFound: true);
             m_Player_Jump = m_Player.FindAction("Jump", throwIfNotFound: true);
             m_Player_Sprint = m_Player.FindAction("Sprint", throwIfNotFound: true);
+            m_Player_Attack = m_Player.FindAction("Attack", throwIfNotFound: true);
+            m_Player_Defend = m_Player.FindAction("Defend", throwIfNotFound: true);
         }
 
         public void Dispose()
@@ -292,6 +334,8 @@ namespace Minecraft
         private readonly InputAction m_Player_Air;
         private readonly InputAction m_Player_Jump;
         private readonly InputAction m_Player_Sprint;
+        private readonly InputAction m_Player_Attack;
+        private readonly InputAction m_Player_Defend;
         public struct PlayerActions
         {
             private @InputActions m_Wrapper;
@@ -301,6 +345,8 @@ namespace Minecraft
             public InputAction @Air => m_Wrapper.m_Player_Air;
             public InputAction @Jump => m_Wrapper.m_Player_Jump;
             public InputAction @Sprint => m_Wrapper.m_Player_Sprint;
+            public InputAction @Attack => m_Wrapper.m_Player_Attack;
+            public InputAction @Defend => m_Wrapper.m_Player_Defend;
             public InputActionMap Get() { return m_Wrapper.m_Player; }
             public void Enable() { Get().Enable(); }
             public void Disable() { Get().Disable(); }
@@ -325,6 +371,12 @@ namespace Minecraft
                 @Sprint.started += instance.OnSprint;
                 @Sprint.performed += instance.OnSprint;
                 @Sprint.canceled += instance.OnSprint;
+                @Attack.started += instance.OnAttack;
+                @Attack.performed += instance.OnAttack;
+                @Attack.canceled += instance.OnAttack;
+                @Defend.started += instance.OnDefend;
+                @Defend.performed += instance.OnDefend;
+                @Defend.canceled += instance.OnDefend;
             }
 
             private void UnregisterCallbacks(IPlayerActions instance)
@@ -344,6 +396,12 @@ namespace Minecraft
                 @Sprint.started -= instance.OnSprint;
                 @Sprint.performed -= instance.OnSprint;
                 @Sprint.canceled -= instance.OnSprint;
+                @Attack.started -= instance.OnAttack;
+                @Attack.performed -= instance.OnAttack;
+                @Attack.canceled -= instance.OnAttack;
+                @Defend.started -= instance.OnDefend;
+                @Defend.performed -= instance.OnDefend;
+                @Defend.canceled -= instance.OnDefend;
             }
 
             public void RemoveCallbacks(IPlayerActions instance)
@@ -377,6 +435,8 @@ namespace Minecraft
             void OnAir(InputAction.CallbackContext context);
             void OnJump(InputAction.CallbackContext context);
             void OnSprint(InputAction.CallbackContext context);
+            void OnAttack(InputAction.CallbackContext context);
+            void OnDefend(InputAction.CallbackContext context);
         }
     }
 }
