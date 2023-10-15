@@ -17,7 +17,11 @@ namespace Minecraft {
     public class Block : ScriptableObject {
         public Texturing Texturing => texturing;
 
+        public bool IsSolid => isSolid;
+
         [SerializeField]
         private Texturing texturing;
+        [SerializeField]
+        private bool isSolid = true;
     }
 }

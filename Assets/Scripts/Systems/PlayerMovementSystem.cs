@@ -1,5 +1,6 @@
 ﻿using Minecraft.Components;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 
 namespace Minecraft.Systems {
@@ -14,15 +15,24 @@ namespace Minecraft.Systems {
         protected override void OnUpdate() {
             var playerInput = EntityManager.GetComponentDataRW<PlayerInput>(playerInputSystem);
 
-            Entities.ForEach((ref LocalTransform transform, in PlayerMovement movement) => {
+            Entities.ForEach((ref Hitbox hitbox, in PlayerMovement movement) => {
                 var orientation = EntityManager.GetComponentData<LocalToWorld>(movement.OrientationSource);
 
-                var translation = (orientation.Forward * playerInput.ValueRO.Movement.y +
-                    orientation.Right * playerInput.ValueRO.Movement.x +
-                    orientation.Up * playerInput.ValueRO.Air) *
-                        movement.Speed * World.Time.DeltaTime;
+                var velocity = hitbox.Velocity;
 
-                transform = transform.Translate(translation);
+                var translation = orientation.Forward * playerInput.ValueRO.Movement.y
+                    + orientation.Right * playerInput.ValueRO.Movement.x;
+
+                translation *= movement.Speed * (playerInput.ValueRO.IsSprint ? 1.5f : 1.0f);
+
+                velocity.z = translation.z;
+                velocity.x = translation.x;
+
+                if (playerInput.ValueRO.IsJump) {
+                    velocity.y += math.sqrt(2 * movement.JumpHeight * 9.81f);
+                }
+
+                hitbox.Velocity = velocity;
             }).WithoutBurst().Run();
         }
     }

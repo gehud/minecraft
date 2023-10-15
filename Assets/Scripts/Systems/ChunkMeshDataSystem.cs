@@ -172,6 +172,8 @@ namespace Minecraft.Systems {
                 lastJob.Indices.Dispose();
             }
 
+            lastJob = default;
+
             for (int i = 0; i < entities.Length; i++) {
                 var entity = entities[i];
 

@@ -24,7 +24,8 @@ namespace Minecraft {
             data = new NativeArray<BlockDescription>(blockCount, Allocator.Persistent);
             foreach (var item in database.Data) {
                 data[(int)item.Key] = new BlockDescription {
-                    Texturing = item.Value.Texturing
+                    Texturing = item.Value.Texturing,
+                    IsSolid = item.Value.IsSolid,
                 };
             }
         }

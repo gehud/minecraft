@@ -4,15 +4,17 @@ using UnityEngine;
 
 namespace Minecraft.Authorings {
     public class PlayerCameraAuthoring : MonoBehaviour {
-        public float Sensitivity = 10.0f;
-        public GameObject OrientationTarget;
+        [SerializeField]
+        private float sensitivity = 0.15f;
+        [SerializeField]
+        public GameObject orientationTarget;
 
         private class Baker : Baker<PlayerCameraAuthoring> {
             public override void Bake(PlayerCameraAuthoring authoring) {
                 var entity = GetEntity(TransformUsageFlags.Dynamic);
                 AddComponent(entity, new PlayerCamera {
-                    Sensitivity = authoring.Sensitivity,
-                    OrientationTarget = GetEntity(authoring.OrientationTarget, TransformUsageFlags.Dynamic)
+                    Sensitivity = authoring.sensitivity,
+                    OrientationTarget = GetEntity(authoring.orientationTarget, TransformUsageFlags.Dynamic)
                 });
             }
         }

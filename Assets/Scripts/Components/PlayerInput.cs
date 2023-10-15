@@ -6,5 +6,7 @@ namespace Minecraft.Components {
         public float2 Movement;
         public float2 Look;
         public float Air;
+        public bool IsJump;
+        public bool IsSprint;
     }
 }

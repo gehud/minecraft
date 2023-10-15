@@ -78,6 +78,24 @@ namespace Minecraft.Systems {
 #endif
         }
 
+        public static Voxel GetVoxel(EntityManager entityManager, in ChunkBuffer chunkBuffer, int3 coordinate) {
+            var chunkCoordinate = new int3 {
+                x = (int)math.floor(coordinate.x / (float)Chunk.SIZE),
+                y = (int)math.floor(coordinate.y / (float)Chunk.SIZE),
+                z = (int)math.floor(coordinate.z / (float)Chunk.SIZE)
+            };
+
+            var chunk = GetChunk(chunkBuffer, chunkCoordinate);
+            if (chunk == Entity.Null) {
+                return default;
+            }
+
+            var localVoxelCoordinate = coordinate - chunkCoordinate * Chunk.SIZE;
+            var localVoxelIndex = Array3DUtility.To1D(localVoxelCoordinate, Chunk.SIZE, Chunk.SIZE);
+
+            return entityManager.GetComponentData<Chunk>(chunk).Voxels[localVoxelIndex];
+        }
+
         private static void UpdateMetrics(ref ChunkBuffer chunkBuffer, int newDrawDistance) {
             var oldChunksSize = chunkBuffer.ChunksSize;
             var oldChunks = chunkBuffer.Chunks;

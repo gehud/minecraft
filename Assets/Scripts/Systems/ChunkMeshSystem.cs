@@ -71,7 +71,6 @@ namespace Minecraft.Systems {
                 lastJob.MeshDataArray.Dispose();
             }
             
-
             lastJob = default;
 
             for (int i = 0; i < entities.Length; i++) {
