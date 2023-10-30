@@ -7,30 +7,24 @@ namespace Minecraft.Systems {
     [UpdateAfter(typeof(PlayerInputSystem))]
     [UpdateAfter(typeof(PlayerCameraSystem))]
     public partial class PlayerMovementSystem : SystemBase {
-        private SystemHandle playerInputSystem;
-
-        protected override void OnCreate() {
-            playerInputSystem = World.GetExistingSystem<PlayerInputSystem>();
-        }
-
         protected override void OnUpdate() {
-            var playerInput = EntityManager.GetComponentDataRW<PlayerInput>(playerInputSystem);
+            var playerInput = SystemAPI.GetSingleton<PlayerInput>();
 
             Entities.ForEach((ref Hitbox hitbox, in PlayerMovement movement) => {
                 var orientation = EntityManager.GetComponentData<LocalToWorld>(movement.OrientationSource);
 
                 var velocity = hitbox.Velocity;
 
-                var translation = orientation.Forward * playerInput.ValueRO.Movement.y
-                    + orientation.Right * playerInput.ValueRO.Movement.x;
+                var translation = orientation.Forward * playerInput.Movement.y
+                    + orientation.Right * playerInput.Movement.x;
 
-                translation *= movement.Speed * (playerInput.ValueRO.IsSprint ? 1.5f : 1.0f);
+                translation *= movement.Speed * (playerInput.IsSprint ? 1.5f : 1.0f);
 
                 velocity.z = translation.z;
                 velocity.x = translation.x;
 
-                if (playerInput.ValueRO.IsJump) {
-                    velocity.y += math.sqrt(2 * movement.JumpHeight * 9.81f);
+                if (playerInput.IsJump) {
+                    velocity -= math.sign(PhysicsSystem.Gravity) * math.sqrt(2.0f * movement.JumpHeight * math.abs(PhysicsSystem.Gravity));
                 }
 
                 hitbox.Velocity = velocity;

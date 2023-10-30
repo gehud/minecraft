@@ -235,7 +235,10 @@ namespace Minecraft.Systems {
             };
 
             GetEntity(systemData, chunkCoordinate, out Entity entity);
-            if (entity == Entity.Null || !entityManager.HasComponent<Chunk>(entity)) {
+            if (entity == Entity.Null 
+                || !entityManager.HasComponent<Chunk>(entity)
+                || entityManager.HasComponent<RawChunk>(entity) 
+                || !entityManager.HasComponent<Sunlight>(entity)) {
                 return;
             }
 
@@ -303,11 +306,14 @@ namespace Minecraft.Systems {
         }
 
         [BurstCompile]
-        public static void PlaceVoxel(in ChunkBufferingSystemData systemData, in BlockSystemData blockSystemData, in LightingSystemData lightingSystemData, in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in int3 voxelCoordinate, in Voxel voxel) {
+        public static void PlaceVoxel(in ChunkBufferingSystemData systemData, in BlockSystemData blockSystemData, in LightingSystemData lightingSystemData, in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in int3 voxelCoordinate, BlockType blockType) {
             var chunkCoordinate = CoordinateUtility.ToChunk(voxelCoordinate);
 
             GetEntity(systemData, chunkCoordinate, out Entity entity);
-            if (entity == Entity.Null || !entityManager.HasComponent<Chunk>(entity)) {
+            if (entity == Entity.Null 
+                || !entityManager.HasComponent<Chunk>(entity)
+                || entityManager.HasComponent<RawChunk>(entity)
+                || !entityManager.HasComponent<Sunlight>(entity)) {
                 return;
             }
 
@@ -315,6 +321,8 @@ namespace Minecraft.Systems {
 
             var chunk = entityManager.GetComponentData<Chunk>(entity);
             var index = IndexUtility.ToIndex(localVoxelCoordinate, Chunk.Size, Chunk.Size);
+            var voxel = chunk.Voxels[index];
+            voxel.Type = blockType;
             chunk.Voxels[index] = voxel;
             commandBuffer.AddComponent<DirtyChunk>(entity);
             commandBuffer.AddComponent<ImmediateChunk>(entity);
@@ -339,7 +347,7 @@ namespace Minecraft.Systems {
             LightingSystem.Calculate(lightingSystemData, blockSystemData, systemData, entityManager, commandBuffer, LightChanel.Blue);
             LightingSystem.Calculate(lightingSystemData, blockSystemData, systemData, entityManager, commandBuffer, LightChanel.Sun);
 
-            var emission = blockSystemData.Blocks[(int)voxel.Type].Emission;
+            var emission = blockSystemData.Blocks[(int)blockType].Emission;
 
             if (emission.Red != 0) {
                 LightingSystem.AddLight(lightingSystemData, systemData, entityManager, commandBuffer, voxelCoordinate, LightChanel.Red, emission.Red);
@@ -486,7 +494,7 @@ namespace Minecraft.Systems {
 
                 if (lightRecalculationRequired) {
                     var requestEntity = entityManager.CreateEntity();
-                    commandBuffer.AddComponent(requestEntity, new LightingRecalculationRequest {
+                    commandBuffer.AddComponent(requestEntity, new SunlightRequest {
                         Column = new int2(x, z)
                     });
                 }

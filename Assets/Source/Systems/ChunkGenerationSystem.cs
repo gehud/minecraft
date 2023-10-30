@@ -29,7 +29,13 @@ namespace Minecraft.Systems {
 
                 int height = (int)math.floor(noise.snoise(noiseCoordinate) * 32);
                 if (coordinate.y <= height) {
-                    Voxels[index] = new Voxel(BlockType.Stone);
+                    if (coordinate.y == height) {
+                        Voxels[index] = new Voxel(BlockType.Grass);
+                    } else if (coordinate.y >= height - 4) {
+                        Voxels[index] = new Voxel(BlockType.Dirt);
+                    } else {
+                        Voxels[index] = new Voxel(BlockType.Stone);
+                    }
                 }
             }
         }

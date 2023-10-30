@@ -49,7 +49,7 @@ namespace Minecraft.Systems {
                 } else if (playerInput.IsDefend) {
                     if (PhysicsSystem.Raycast(blockSystemData, EntityManager, chunkBufferingSystemData, ray, 15.0f, out RaycastHit hitInfo)) {
                         var voxelCoordinate = (int3)math.floor(hitInfo.point + hitInfo.normal);
-                        ChunkBufferingSystem.PlaceVoxel(chunkBufferingSystemData, blockSystemData, lightingSystemData, EntityManager, commandBuffer, voxelCoordinate, new Voxel(BlockType.Stone));
+                        ChunkBufferingSystem.PlaceVoxel(chunkBufferingSystemData, blockSystemData, lightingSystemData, EntityManager, commandBuffer, voxelCoordinate, BlockType.Stone);
                     }
                 }
             }).WithStructuralChanges().Run();

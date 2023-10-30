@@ -10,6 +10,10 @@ namespace Minecraft.Utilities {
             return ToIndex(coordinate.x, coordinate.y, coordinate.z, xMax, yMax);
         }
 
+        public static int ToIndex(int x, int y, int xMax) {
+            return y * xMax + x;
+        }
+
         public static int3 ToCoordinate(int index, int xMax, int yMax) {
             int z = index / (xMax * yMax);
             index -= z * xMax * yMax;

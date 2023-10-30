@@ -32,10 +32,8 @@ namespace Minecraft.Systems {
             public void Execute() {
                 var mesh = MeshDataArray[0];
 
-                var descriptors = new NativeArray<VertexAttributeDescriptor>(3, Allocator.Temp);
-                descriptors[0] = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3);
-                descriptors[1] = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2);
-                descriptors[2] = new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.Float32, 4);
+                var descriptors = new NativeArray<VertexAttributeDescriptor>(1, Allocator.Temp);
+                descriptors[0] = new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.UInt32, 2);
                 mesh.SetVertexBufferParams(MeshData.Vertices.Length, descriptors);
                 descriptors.Dispose();
                 var vertices = mesh.GetVertexData<Vertex>();

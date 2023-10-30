@@ -14,12 +14,12 @@ namespace Minecraft.Systems {
         public const int ChanelCount = 4;
 
         private static readonly int3[] blockSides = {
-            new int3( 0,  0,  1),
-            new int3( 0,  0, -1),
-            new int3( 0,  1,  0),
-            new int3( 0, -1,  0),
-            new int3( 1,  0,  0),
-            new int3(-1,  0,  0),
+            new int3(0, 0, 1),
+            new int3(0, 0, -1),
+            new int3(0, 1, 0),
+            new int3(0, -1, 0),
+            new int3(1, 0, 0),
+            new int3(-1, 0, 0),
         };
 
         private SunlightCalculationJob lastJob;
@@ -215,7 +215,7 @@ namespace Minecraft.Systems {
 
             for (int i = 0; i < entities.Length; i++) {
                 var entity = entities[i];
-                var request = state.EntityManager.GetComponentData<LightingRecalculationRequest>(entity);
+                var request = state.EntityManager.GetComponentData<SunlightRequest>(entity);
 
                 var systemData = state.EntityManager.GetComponentData<LightingSystemData>(state.SystemHandle);
                 var blockSystemData = SystemAPI.GetSingleton<BlockSystemData>();
@@ -232,7 +232,9 @@ namespace Minecraft.Systems {
                 for (int j = 0; j < 3 * 3 * clasterHeight; j++) {
                     var coordinate = origin + IndexUtility.ToCoordinate(j, 3, clasterHeight);
                     ChunkBufferingSystem.GetEntity(chunkBufferingSystemData, coordinate, out Entity clasterEntity);
-                    bool isValidChunk = state.EntityManager.Exists(clasterEntity) && state.EntityManager.HasComponent<Chunk>(clasterEntity) && !state.EntityManager.HasComponent<RawChunk>(clasterEntity);
+                    bool isValidChunk = state.EntityManager.Exists(clasterEntity) 
+                        && state.EntityManager.HasComponent<Chunk>(clasterEntity) 
+                        && !state.EntityManager.HasComponent<RawChunk>(clasterEntity);
 
                     if (isValidChunk) {
                         claster[j] = state.EntityManager.GetComponentData<Chunk>(clasterEntity).Voxels;
@@ -270,7 +272,7 @@ namespace Minecraft.Systems {
         [BurstCompile]
         void ISystem.OnUpdate(ref SystemState state) {
             var querry = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<LightingRecalculationRequest>()
+                .WithAll<SunlightRequest>()
                 .Build(state.EntityManager);
 
             var entities = querry.ToEntityArray(Allocator.Temp);
@@ -284,14 +286,14 @@ namespace Minecraft.Systems {
 
             var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
 
-            foreach (var (_, entity) in SystemAPI
+            foreach (var (chunk, entity) in SystemAPI
                 .Query<RefRO<Chunk>>()
                 .WithAll<Sunlight>()
                 .WithAll<SunlightCalculated>()
                 .WithNone<DirtyChunk>()
                 .WithEntityAccess()) {
 
-                var chunkCoordinate = state.EntityManager.GetComponentData<Chunk>(entity).Coordinate;
+                var chunkCoordinate = chunk.ValueRO.Coordinate;
                 var origin = chunkCoordinate - new int3(1, 1, 1);
 
                 var isValidClaster = true;
