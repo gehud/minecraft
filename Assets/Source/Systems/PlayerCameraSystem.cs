@@ -1,4 +1,5 @@
 ﻿using Minecraft.Components;
+using Minecraft.UI;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -8,12 +9,12 @@ using UnityEngine;
 namespace Minecraft.Systems {
     [UpdateAfter(typeof(PlayerInputSystem))]
     public partial class PlayerCameraSystem : SystemBase {
-        protected override void OnCreate() {
-            Cursor.lockState = CursorLockMode.Locked;
-        }
-
         protected override void OnUpdate() {
-            var camera = EntityManager.GetComponentObject<MainCamera>(SystemHandle).Camera;
+            var camera = Camera.main;
+            if (!camera) {
+                return;
+            }
+
             var playerInput = SystemAPI.GetSingleton<PlayerInput>();
 
             var chunkBufferingSystemData = SystemAPI.GetSingleton<ChunkBufferingSystemData>();
@@ -21,9 +22,13 @@ namespace Minecraft.Systems {
             var lightingSystemData = SystemAPI.GetSingleton<LightingSystemData>();
 
             var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
-
             Entities.ForEach((ref LocalTransform localTransform, ref PlayerCamera playerCamera, in LocalToWorld transform) => {                
                 camera.transform.position = transform.Position;
+
+                if (Cursor.lockState != CursorLockMode.Locked) {
+                    return;
+                }
+
                 camera.transform.rotation = transform.Rotation;
 
                 playerCamera.Yaw += playerInput.Look.x * playerCamera.Sensitivity;
@@ -46,10 +51,11 @@ namespace Minecraft.Systems {
                         var voxelCoordinate = (int3)math.floor(hitInfo.point);
                         ChunkBufferingSystem.DestroyVoxel(chunkBufferingSystemData, blockSystemData, lightingSystemData, EntityManager, commandBuffer, voxelCoordinate);
                     }
-                } else if (playerInput.IsDefend) {
+                } else if (playerInput.IsDefend && Hotbar.Selected && Hotbar.Selected is BlockView blockView) {
                     if (PhysicsSystem.Raycast(blockSystemData, EntityManager, chunkBufferingSystemData, ray, 15.0f, out RaycastHit hitInfo)) {
                         var voxelCoordinate = (int3)math.floor(hitInfo.point + hitInfo.normal);
-                        ChunkBufferingSystem.PlaceVoxel(chunkBufferingSystemData, blockSystemData, lightingSystemData, EntityManager, commandBuffer, voxelCoordinate, BlockType.Stone);
+                        var blockType = blockView.BlockType;
+                        ChunkBufferingSystem.PlaceVoxel(chunkBufferingSystemData, blockSystemData, lightingSystemData, EntityManager, commandBuffer, voxelCoordinate, blockType);
                     }
                 }
             }).WithStructuralChanges().Run();

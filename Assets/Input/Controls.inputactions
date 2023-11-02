@@ -1,5 +1,5 @@
 {
-    "name": "InputActions",
+    "name": "Controls",
     "maps": [
         {
             "name": "Player",
@@ -210,6 +210,34 @@
                     "processors": "",
                     "groups": "KeyboardAndMouse",
                     "action": "Defend",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "UI",
+            "id": "7cd082ab-de14-4dae-8a3b-490bb075a11d",
+            "actions": [
+                {
+                    "name": "Inventory",
+                    "type": "Button",
+                    "id": "dfc0704d-de50-436d-a88a-2eaacd782377",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "a2463e2c-c888-4002-bd83-699d8121b3c3",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "KeyboardAndMouse",
+                    "action": "Inventory",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

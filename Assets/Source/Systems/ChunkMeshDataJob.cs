@@ -21,8 +21,6 @@ namespace Minecraft.Systems {
         [ReadOnly] 
         public NativeArray<Block> Blocks;
 
-
-
         public void Execute() {
             for (int x = 0; x < Chunk.Size; x++) {
                 for (int y = 0; y < Chunk.Size; y++) {

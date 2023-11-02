@@ -540,7 +540,7 @@ namespace Minecraft.Systems {
 
             var requestEntity = state.EntityManager.CreateEntity();
             state.EntityManager.AddComponentData(requestEntity, new ChunkBufferingRequest {
-                NewDrawDistance = 2,
+                NewDrawDistance = 8,
             });
         }
 
