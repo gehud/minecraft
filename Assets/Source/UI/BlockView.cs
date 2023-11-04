@@ -13,8 +13,8 @@ namespace Minecraft.UI {
                 var size = 16.0f / 256.0f;
                 var texturing = description.Texturing;
                 top.uvRect = new Rect((float2)texturing.Top * size, Vector2.one * size);
+                front.uvRect = new Rect((float2)texturing.Front * size, Vector2.one * size);
                 right.uvRect = new Rect((float2)texturing.Right * size, Vector2.one * size);
-                left.uvRect = new Rect((float2)texturing.Left * size, Vector2.one * size);
             }
         }
 
@@ -36,9 +36,9 @@ namespace Minecraft.UI {
         [SerializeField]
         private RawImage top;
         [SerializeField]
-        private RawImage right;
+        private RawImage front;
         [SerializeField]
-        private RawImage left;
+        private RawImage right;
         [SerializeField]
         private TMP_Text countText;
 

@@ -4,6 +4,7 @@
         Stone,
         Dirt,
         Grass,
-        Glass
+        Glass,
+        JackOLantern
     }
 }

@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 6170726503448158164}
   - component: {fileID: 2997720575690702951}
   m_Layer: 5
-  m_Name: left
+  m_Name: Right
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -124,8 +124,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   blockDatabase: {fileID: 11400000, guid: 42d59e4a3fee1624fab16297906faf9d, type: 2}
   top: {fileID: 1136176089339081295}
-  right: {fileID: 2736225806293692685}
-  left: {fileID: 2997720575690702951}
+  front: {fileID: 2736225806293692685}
+  right: {fileID: 2997720575690702951}
   countText: {fileID: 7623019314311834472}
 --- !u!1 &4792296184758377415
 GameObject:
@@ -249,7 +249,7 @@ GameObject:
   - component: {fileID: 8983073165612252114}
   - component: {fileID: 2736225806293692685}
   m_Layer: 5
-  m_Name: Right
+  m_Name: Front
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

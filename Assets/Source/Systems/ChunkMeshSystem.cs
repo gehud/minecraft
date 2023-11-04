@@ -11,7 +11,7 @@ using UnityEngine.Rendering;
 namespace Minecraft.Systems {
     [UpdateAfter(typeof(ChunkMeshDataSystem))]
     public partial class ChunkMeshSystem : SystemBase {
-        private const MeshUpdateFlags MESH_UPDATE_FLAGS
+        private const MeshUpdateFlags UpdateFlags
             = MeshUpdateFlags.DontRecalculateBounds
             | MeshUpdateFlags.DontResetBoneBounds
             | MeshUpdateFlags.DontNotifyMeshUsers
@@ -51,7 +51,7 @@ namespace Minecraft.Systems {
                 }
 
                 mesh.subMeshCount = 1;
-                mesh.SetSubMesh(0, new SubMeshDescriptor(0, MeshData.Indices.Length), MESH_UPDATE_FLAGS);
+                mesh.SetSubMesh(0, new SubMeshDescriptor(0, MeshData.Indices.Length), UpdateFlags);
             }
         }
 
@@ -66,7 +66,7 @@ namespace Minecraft.Systems {
 
             if (EntityManager.Exists(lastEntity)) {
                 var mesh = new Mesh();
-                Mesh.ApplyAndDisposeWritableMeshData(lastJob.MeshDataArray, mesh, MESH_UPDATE_FLAGS);
+                Mesh.ApplyAndDisposeWritableMeshData(lastJob.MeshDataArray, mesh, UpdateFlags);
                 
                 if (!EntityManager.HasComponent<RenderMeshArray>(lastEntity)) {
                     var materials = new Material[] {
@@ -140,7 +140,7 @@ namespace Minecraft.Systems {
                 job.Schedule().Complete();
 
                 var mesh = new Mesh();
-                Mesh.ApplyAndDisposeWritableMeshData(job.MeshDataArray, mesh, MESH_UPDATE_FLAGS);
+                Mesh.ApplyAndDisposeWritableMeshData(job.MeshDataArray, mesh, UpdateFlags);
                 EntityManager.GetSharedComponentManaged<RenderMeshArray>(entity).Meshes[0] = mesh;
                 EntityManager.RemoveComponent<ChunkMeshData>(entity);
                 EntityManager.RemoveComponent<ImmediateChunk>(entity);

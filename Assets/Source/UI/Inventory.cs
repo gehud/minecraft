@@ -66,6 +66,7 @@ namespace Minecraft.UI {
             PlaceItem(blockViewFactory.Create(BlockType.Dirt), new Vector2Int(1, 0));
             PlaceItem(blockViewFactory.Create(BlockType.Grass), new Vector2Int(2, 0));
             PlaceItem(blockViewFactory.Create(BlockType.Glass), new Vector2Int(3, 0));
+            PlaceItem(blockViewFactory.Create(BlockType.JackOLantern), new Vector2Int(4, 0));
 
             gameObject.SetActive(false);
         }

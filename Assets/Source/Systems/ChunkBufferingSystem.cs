@@ -6,6 +6,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace Minecraft.Systems {
     [BurstCompile]
@@ -109,7 +110,7 @@ namespace Minecraft.Systems {
         }
 
         [BurstCompile]
-        private static void MarkDirtyIfNeeded(in ChunkBufferingSystemData systemData, in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in int3 chunkCoordinate) {
+        private static void MarkDirtyIfExists(in ChunkBufferingSystemData systemData, in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in int3 chunkCoordinate) {
             GetEntity(systemData, chunkCoordinate, out Entity entity);
             if (entity == Entity.Null || !entityManager.HasComponent<Chunk>(entity) || entityManager.HasComponent<DirtyChunk>(entity)) {
                 return;
@@ -202,27 +203,27 @@ namespace Minecraft.Systems {
         [BurstCompile]
         public static void MarkDirtyIfNeeded(in ChunkBufferingSystemData systemData, in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in int3 chunkCoordinate, in int3 localVoxelCoordinate) {
             if (localVoxelCoordinate.x == 0) {
-                MarkDirtyIfNeeded(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(-1, 0, 0));
+                MarkDirtyIfExists(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(-1, 0, 0));
             }
 
             if (localVoxelCoordinate.y == 0) {
-                MarkDirtyIfNeeded(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(0, -1, 0));
+                MarkDirtyIfExists(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(0, -1, 0));
             }
 
             if (localVoxelCoordinate.z == 0) {
-                MarkDirtyIfNeeded(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(0, 0, -1));
+                MarkDirtyIfExists(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(0, 0, -1));
             }
 
             if (localVoxelCoordinate.x == Chunk.Size - 1) {
-                MarkDirtyIfNeeded(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(1, 0, 0));
+                MarkDirtyIfExists(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(1, 0, 0));
             }
 
             if (localVoxelCoordinate.y == Chunk.Size - 1) {
-                MarkDirtyIfNeeded(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(0, 1, 0));
+                MarkDirtyIfExists(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(0, 1, 0));
             }
 
             if (localVoxelCoordinate.z == Chunk.Size - 1) {
-                MarkDirtyIfNeeded(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(0, 0, 1));
+                MarkDirtyIfExists(systemData, entityManager, commandBuffer, chunkCoordinate + new int3(0, 0, 1));
             }
         }
 
@@ -238,7 +239,8 @@ namespace Minecraft.Systems {
             if (entity == Entity.Null 
                 || !entityManager.HasComponent<Chunk>(entity)
                 || entityManager.HasComponent<RawChunk>(entity) 
-                || !entityManager.HasComponent<Sunlight>(entity)) {
+                || !entityManager.HasComponent<Sunlight>(entity)
+                || entityManager.HasComponent<IncompleteLighting>(entity)) {
                 return;
             }
 
@@ -246,9 +248,12 @@ namespace Minecraft.Systems {
 
             var chunk = entityManager.GetComponentData<Chunk>(entity);
             var index = IndexUtility.ToIndex(localVoxelCoordinate, Chunk.Size, Chunk.Size);
-            chunk.Voxels[index] = new Voxel(BlockType.Air);
+            var voxel = chunk.Voxels[index];
+            voxel.Type = BlockType.Air;
+            chunk.Voxels[index] = voxel;
             entityManager.AddComponent<DirtyChunk>(entity);
             entityManager.AddComponent<ImmediateChunk>(entity);
+            MarkDirtyIfNeededImmediate(systemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
 
             LightingSystem.RemoveLight(lightingSystemData, systemData, entityManager, commandBuffer, voxelCoordinate, LightChanel.Red);
             LightingSystem.RemoveLight(lightingSystemData, systemData, entityManager, commandBuffer, voxelCoordinate, LightChanel.Green);
@@ -301,8 +306,6 @@ namespace Minecraft.Systems {
             LightingSystem.AddLight(lightingSystemData, systemData, entityManager, voxelCoordinate + new int3(0, 0, 1), LightChanel.Sun);
             LightingSystem.AddLight(lightingSystemData, systemData, entityManager, voxelCoordinate + new int3(0, 0, -1), LightChanel.Sun);
             LightingSystem.Calculate(lightingSystemData, blockSystemData, systemData, entityManager, commandBuffer, LightChanel.Sun);
-
-            MarkDirtyIfNeededImmediate(systemData, entityManager, chunkCoordinate, localVoxelCoordinate);
         }
 
         [BurstCompile]
@@ -313,7 +316,8 @@ namespace Minecraft.Systems {
             if (entity == Entity.Null 
                 || !entityManager.HasComponent<Chunk>(entity)
                 || entityManager.HasComponent<RawChunk>(entity)
-                || !entityManager.HasComponent<Sunlight>(entity)) {
+                || !entityManager.HasComponent<Sunlight>(entity)
+                || entityManager.HasComponent<IncompleteLighting>(entity)) {
                 return;
             }
 
@@ -326,6 +330,7 @@ namespace Minecraft.Systems {
             chunk.Voxels[index] = voxel;
             commandBuffer.AddComponent<DirtyChunk>(entity);
             commandBuffer.AddComponent<ImmediateChunk>(entity);
+            MarkDirtyIfNeededImmediate(systemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
 
             LightingSystem.RemoveLight(lightingSystemData, systemData, entityManager, commandBuffer, voxelCoordinate, LightChanel.Red);
             LightingSystem.RemoveLight(lightingSystemData, systemData, entityManager, commandBuffer, voxelCoordinate, LightChanel.Green);
@@ -363,8 +368,6 @@ namespace Minecraft.Systems {
                 LightingSystem.AddLight(lightingSystemData, systemData, entityManager, commandBuffer, voxelCoordinate, LightChanel.Blue, emission.Blue);
                 LightingSystem.Calculate(lightingSystemData, blockSystemData, systemData, entityManager, commandBuffer, LightChanel.Blue);
             }
-
-            MarkDirtyIfNeededImmediate(systemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
         }
 
         [BurstCompile]
