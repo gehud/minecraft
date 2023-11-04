@@ -32,9 +32,9 @@ namespace Minecraft {
                 Blocks = data,
             });
 
-            var chunkSystem = world.GetExistingSystem<ChunkSystem>();
-            world.EntityManager.AddComponentObject(chunkSystem, new ChunkSystemData {
-                TerrainMaterial = material
+            var chunkSystem = world.GetExistingSystem<ChunkMeshSystem>();
+            world.EntityManager.AddComponentObject(chunkSystem, new ChunkMeshSystemData {
+                Material = material
             });
         }
     }

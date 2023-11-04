@@ -9,7 +9,7 @@ using Unity.Transforms;
 
 namespace Minecraft.Systems {
     [BurstCompile]
-    [UpdateBefore(typeof(ChunkSystem))]
+    [UpdateBefore(typeof(ChunkInitializationSystem))]
     public partial struct ChunkBufferingSystem : ISystem {
         public const int BufferDistance = 1;
 
@@ -454,7 +454,11 @@ namespace Minecraft.Systems {
 
         [BurstCompile]
         private void GenerateLoadData(ref ChunkLoadData loadData, in ChunkBufferingSystemData systemData, in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in int2 column, int height, int distance) {
-            loadData.Data = new NativeList<ChunkLoadDescription>(Allocator.Temp);
+            if (loadData.Data.IsCreated) {
+                loadData.Data.Dispose();
+            }
+            
+            loadData.Data = new NativeList<ChunkLoadDescription>(Allocator.Persistent);
 
             int startX = column.x - distance - BufferDistance;
             int endX = column.x + distance + BufferDistance;
@@ -529,6 +533,7 @@ namespace Minecraft.Systems {
                 }
             }
 
+            loadData.Sequence = loadData.Data.Length - 1;
         }
 
         [BurstCompile]
@@ -548,10 +553,11 @@ namespace Minecraft.Systems {
         void ISystem.OnUpdate(ref SystemState state) {
             var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
 
+            var systemData = state.EntityManager.GetComponentDataRW<ChunkBufferingSystemData>(state.SystemHandle);
+
             foreach (var (request, entity) in SystemAPI
                 .Query<RefRO<ChunkBufferingRequest>>()
                 .WithEntityAccess()) {
-                var systemData = state.EntityManager.GetComponentDataRW<ChunkBufferingSystemData>(state.SystemHandle);
                 UpdateMetrics(ref systemData.ValueRW, request.ValueRO.NewDrawDistance);
                 commandBuffer.DestroyEntity(entity);
 
@@ -607,15 +613,21 @@ namespace Minecraft.Systems {
 
             commandBuffer = new EntityCommandBuffer(Allocator.Temp);
 
+            systemData = state.EntityManager.GetComponentDataRW<ChunkBufferingSystemData>(state.SystemHandle);
+            var chunkLoadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
+            
             foreach (var (request, entity) in SystemAPI.Query<ChunkLoadingRequest>().WithEntityAccess()) {
-                var systemData = state.EntityManager.GetComponentDataRW<ChunkBufferingSystemData>(state.SystemHandle);
-                var chunkLoadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
-
                 UpdateBuffer(ref systemData.ValueRW, request.NewCenter, commandBuffer);
-
                 GenerateLoadData(ref chunkLoadData.ValueRW, systemData.ValueRO, state.EntityManager, commandBuffer, request.NewCenter, systemData.ValueRO.Height, systemData.ValueRO.DrawDistance);
+                commandBuffer.DestroyEntity(entity);
+            }
 
-                foreach (var item in chunkLoadData.ValueRO.Data) {
+            systemData = state.EntityManager.GetComponentDataRW<ChunkBufferingSystemData>(state.SystemHandle);
+            chunkLoadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
+
+            if (chunkLoadData.ValueRO.Data.IsCreated) {
+                for (int i = chunkLoadData.ValueRO.Sequence; i >= 0; i--) {
+                    var item = chunkLoadData.ValueRO.Data[i];
                     GetEntity(systemData.ValueRO, item.Coordinate, out Entity chunkEntity);
                     if (chunkEntity != Entity.Null) {
                         if (item.IsRendered) {
@@ -635,12 +647,10 @@ namespace Minecraft.Systems {
                         });
                         var index = ToIndex(systemData.ValueRO, item.Coordinate);
                         systemData.ValueRW.Chunks[index] = newChunkEntity;
+                        chunkLoadData.ValueRW.Sequence = i;
+                        break;
                     }
                 }
-
-                chunkLoadData.ValueRW.Data.Dispose();
-
-                commandBuffer.DestroyEntity(entity);
             }
 
             commandBuffer.Playback(state.EntityManager);

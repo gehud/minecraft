@@ -3,6 +3,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
 using Unity.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -19,6 +20,8 @@ namespace Minecraft.Systems {
 #else
             ;
 #endif
+
+        private const float chunkSizeHalf = Chunk.Size / 2.0f;
 
         private MeshJob lastJob;
         private JobHandle lastJobHandle;
@@ -64,7 +67,43 @@ namespace Minecraft.Systems {
             if (EntityManager.Exists(lastEntity)) {
                 var mesh = new Mesh();
                 Mesh.ApplyAndDisposeWritableMeshData(lastJob.MeshDataArray, mesh, MESH_UPDATE_FLAGS);
-                EntityManager.GetSharedComponentManaged<RenderMeshArray>(lastEntity).Meshes[0] = mesh;
+                
+                if (!EntityManager.HasComponent<RenderMeshArray>(lastEntity)) {
+                    var materials = new Material[] {
+                        EntityManager.GetComponentObject<ChunkMeshSystemData>(SystemHandle).Material
+                    };
+
+                    var meshes = new Mesh[] {
+                        mesh
+                    };
+
+                    RenderMeshUtility.AddComponents(
+                        lastEntity,
+                        EntityManager,
+                        new RenderMeshDescription(ShadowCastingMode.Off),
+                        new RenderMeshArray(materials, meshes),
+                        MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0)
+                    );
+
+                    EntityManager.SetComponentData(lastEntity, new RenderBounds {
+                        Value = new AABB {
+                            Center = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf),
+                            Extents = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf)
+                        }
+                    });
+
+                    var position = EntityManager.GetComponentData<Chunk>(lastEntity).Coordinate * Chunk.Size;
+
+                    EntityManager.SetComponentData(lastEntity, new WorldRenderBounds {
+                        Value = new AABB {
+                            Center = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf) + position,
+                            Extents = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf)
+                        }
+                    });
+                } else {
+                    EntityManager.GetSharedComponentManaged<RenderMeshArray>(lastEntity).Meshes[0] = mesh;
+                }
+                
                 EntityManager.RemoveComponent<ChunkMeshData>(lastEntity);
             } else if (lastJob.MeshDataArray.Length != 0) {
                 lastJob.MeshDataArray.Dispose();
@@ -109,7 +148,6 @@ namespace Minecraft.Systems {
 
             var querry = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<ChunkMeshData>()
-                .WithAll<RenderMeshArray>()
                 .WithNone<ImmediateChunk>()
                 .Build(EntityManager);
 

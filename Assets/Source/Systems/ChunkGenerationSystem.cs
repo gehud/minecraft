@@ -6,7 +6,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace Minecraft.Systems {
-    [UpdateAfter(typeof(ChunkSystem))]
+    [UpdateAfter(typeof(ChunkInitializationSystem))]
     public partial class ChunkGenerationSystem : SystemBase {
         private ChunkGenerationJob lastJob;
         private JobHandle lastJobHandle;
