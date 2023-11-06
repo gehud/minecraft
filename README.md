@@ -1,2 +1,2 @@
-# minecraft
-A Minecraft clone.
+# Minecraft
+Minecraft clone written with Unity DOTS

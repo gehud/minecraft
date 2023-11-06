@@ -26,7 +26,7 @@ namespace Minecraft.Systems {
                     x = coordinate.x / 500.0f,
                     y = coordinate.z / 500.0f
                 };
-
+                
                 int height = (int)math.floor(noise.snoise(noiseCoordinate) * 32);
                 if (coordinate.y <= height) {
                     if (coordinate.y == height) {
