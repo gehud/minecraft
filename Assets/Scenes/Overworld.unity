@@ -1456,43 +1456,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c1e96c629221a8419803be17132b94c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  curve:
-    m_Curve:
-    - time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - time: 0.22803402
-      value: 0.70424575
-      inSlope: 1.4799514
-      outSlope: 1.4799514
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - time: 0.8046476
-      value: 0.65997994
-      inSlope: 14.82891
-      outSlope: 14.82891
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.06608362
-    - time: 1
-      value: 1
-      inSlope: -0.012021599
-      outSlope: -0.012021599
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.2541346
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
 --- !u!4 &533645315
 Transform:
   m_ObjectHideFlags: 0
@@ -2041,6 +2004,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   database: {fileID: 11400000, guid: 42d59e4a3fee1624fab16297906faf9d, type: 2}
   material: {fileID: 2100000, guid: a35d77d6668bd86479cff31b6bf5d4e3, type: 2}
+  HeightOffset: 16
+  continentalness: {fileID: 11400000, guid: 5042fb427afb8ae4486a40631d97b236, type: 2}
+  erosion: {fileID: 11400000, guid: 78bdb4dbb5c682743a112a773ae518a9, type: 2}
+  peaksAndValleys: {fileID: 11400000, guid: dc856a2b611215c44b6fc3b8a1ac05ab, type: 2}
 --- !u!4 &618032394
 Transform:
   m_ObjectHideFlags: 0

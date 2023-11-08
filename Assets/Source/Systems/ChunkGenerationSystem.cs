@@ -15,19 +15,28 @@ namespace Minecraft.Systems {
             [ReadOnly]
             public Entity Entity;
             [ReadOnly]
+            public int HeightOffset;
+            [ReadOnly]
             public int3 Coordinate;
+            [ReadOnly]
+            public Noise Continentalness;
+            [ReadOnly]
+            public Noise Erosion;
+            [ReadOnly]
+            public Noise PeaksAndValleys;
             [WriteOnly]
             public NativeArray<Voxel> Voxels;
 
             public void Execute(int index) {
                 var localCoordinate = IndexUtility.ToCoordinate(index, Chunk.Size, Chunk.Size);
                 var coordinate = Coordinate * Chunk.Size + localCoordinate;
-                var noiseCoordinate = new float2 {
-                    x = coordinate.x / 500.0f,
-                    y = coordinate.z / 500.0f
-                };
-                
-                int height = (int)math.floor(noise.snoise(noiseCoordinate) * 32);
+
+                var continentalness = Continentalness.Sample2D(coordinate.x, coordinate.z);
+                var erosion = Erosion.Sample2D(coordinate.x, coordinate.z);
+                var peaksAndValleys = PeaksAndValleys.Sample2D(coordinate.x, coordinate.z);
+                var result = continentalness * erosion * peaksAndValleys;
+
+                int height = (int)result + HeightOffset;
                 if (coordinate.y <= height) {
                     if (coordinate.y == height) {
                         Voxels[index] = new Voxel(BlockType.Grass);
@@ -62,6 +71,9 @@ namespace Minecraft.Systems {
 
             lastJob = default;
 
+            var chunkBufferingSystemData = SystemAPI.GetSingleton<ChunkBufferingSystemData>();
+            var systemData = EntityManager.GetComponentDataRW<ChunkGenerationSystemData>(SystemHandle);
+
             for (int i = 0; i < entities.Length; i++) {
                 var entity = entities[i];
 
@@ -72,7 +84,11 @@ namespace Minecraft.Systems {
                 var chunk = EntityManager.GetComponentData<Chunk>(entity);
                 lastJob = new ChunkGenerationJob {
                     Entity = entity,
+                    HeightOffset = systemData.ValueRO.HeightOffset,
                     Coordinate = chunk.Coordinate,
+                    Continentalness = systemData.ValueRO.Continentalness,
+                    Erosion = systemData.ValueRO.Erosion,
+                    PeaksAndValleys = systemData.ValueRO.PeaksAndValleys,
                     Voxels = new NativeArray<Voxel>(Chunk.Volume, Allocator.Persistent)
                 };
 

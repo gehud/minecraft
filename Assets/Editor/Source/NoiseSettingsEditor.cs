@@ -9,9 +9,9 @@ using UnityEngine;
 namespace Minecraft.Editor {
     [CustomEditor(typeof(NoiseSettings))]
     public class NoiseSettingsEditor : UnityEditor.Editor {
-        private Texture2D preview;
-
         private const int previewSize = 256;
+
+        private Texture2D preview;
 
         private void OnEnable() {
             UpdatePreview();
@@ -20,11 +20,11 @@ namespace Minecraft.Editor {
         public override void OnInspectorGUI() {
             EditorGUI.BeginChangeCheck();
             base.OnInspectorGUI();
+            GUILayout.Label("Preview");
             if (EditorGUI.EndChangeCheck()) {
                 UpdatePreview();
             }
 
-            GUILayout.Label("Preview");
             GUILayout.Box(preview);
         }
 
@@ -32,15 +32,13 @@ namespace Minecraft.Editor {
         private struct ImageJob : IJobFor, IDisposable {
             [ReadOnly]
             public Noise Noise;
-            [ReadOnly]
-            public float Zoom;
             [WriteOnly]
             public NativeArray<Color32> Colors;
 
             public void Execute(int index) {
                 int x = index % previewSize;
                 int y = index / previewSize;
-                float value = Noise.Sample2D(x * Zoom, y * Zoom);
+                float value = Noise.Sample2D(x, y);
 
                 var min = Noise.Modification.Keyframes.Length == 0 ? 0.0f : float.PositiveInfinity;
                 for (int i = 0; i < Noise.Modification.Keyframes.Length; i++) {
@@ -71,13 +69,12 @@ namespace Minecraft.Editor {
 
             var job = new ImageJob {
                 Noise = new Noise(settings, Allocator.TempJob),
-                Zoom = 1.0f,
                 Colors = new NativeArray<Color32>(previewSize * previewSize, Allocator.TempJob)
             };
 
             job.ScheduleParallel(previewSize * previewSize, previewSize, default).Complete();
 
-            preview = new Texture2D(previewSize, previewSize);
+            preview = new Texture2D(previewSize, previewSize, TextureFormat.RGB48, false, false);
             preview.SetPixels32(job.Colors.ToArray());
             preview.Apply();
 

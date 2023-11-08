@@ -11,6 +11,14 @@ namespace Minecraft {
         private BlockDatabase database;
         [SerializeField]
         private Material material;
+        [SerializeField, Min(0)]
+        private int HeightOffset = 32;
+        [SerializeField]
+        private NoiseSettings continentalness;
+        [SerializeField]
+        private NoiseSettings erosion;
+        [SerializeField]
+        private NoiseSettings peaksAndValleys;
 
         private void Awake() {
             var blockCount = Enum.GetValues(typeof(BlockType)).Length;
@@ -35,6 +43,14 @@ namespace Minecraft {
             var chunkSystem = world.GetExistingSystem<ChunkMeshSystem>();
             world.EntityManager.AddComponentObject(chunkSystem, new ChunkMeshSystemData {
                 Material = material
+            });
+
+            var chunkGenerationSystem = world.GetExistingSystem<ChunkGenerationSystem>();
+            world.EntityManager.AddComponentData(chunkGenerationSystem, new ChunkGenerationSystemData {
+                HeightOffset = HeightOffset,
+                Continentalness = new Noise(continentalness, Allocator.Persistent),
+                Erosion = new Noise(erosion, Allocator.Persistent),
+                PeaksAndValleys = new Noise(peaksAndValleys, Allocator.Persistent)
             });
         }
     }

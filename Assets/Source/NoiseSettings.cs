@@ -1,9 +1,10 @@
-﻿using UnityEngine;
+﻿using Unity.Mathematics;
+using UnityEngine;
 
 namespace Minecraft {
     [CreateAssetMenu]
     public class NoiseSettings : ScriptableObject {
-        public float Scale => scale;
+        public int3 Offset => offset;
 
         public int Octaves => octaves;
 
@@ -14,7 +15,7 @@ namespace Minecraft {
         public AnimationCurve Modification => modification;
 
         [SerializeField]
-        private float scale = 0.5f;
+        private int3 offset;
         [SerializeField, Min(1)] 
         private int octaves = 3;
         [SerializeField, Min(0.0f)] 
