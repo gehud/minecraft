@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Minecraft.Components {
     public class ChunkMeshSystemData : IComponentData {
-        public Material Material;
+        public Material OpaqueMaterial;
+        public Material TransparentMaterial;
     }
 }

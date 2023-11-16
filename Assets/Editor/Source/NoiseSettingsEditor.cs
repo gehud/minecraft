@@ -12,6 +12,7 @@ namespace Minecraft.Editor {
         private const int previewSize = 256;
 
         private Texture2D preview;
+        private float zoom = 1.0f;
 
         private void OnEnable() {
             UpdatePreview();
@@ -21,6 +22,8 @@ namespace Minecraft.Editor {
             EditorGUI.BeginChangeCheck();
             base.OnInspectorGUI();
             GUILayout.Label("Preview");
+            zoom = EditorGUILayout.FloatField("Zoom", zoom);
+            zoom = Mathf.Clamp(zoom, float.Epsilon, float.PositiveInfinity);
             if (EditorGUI.EndChangeCheck()) {
                 UpdatePreview();
             }
@@ -32,6 +35,8 @@ namespace Minecraft.Editor {
         private struct ImageJob : IJobFor, IDisposable {
             [ReadOnly]
             public Noise Noise;
+            [ReadOnly]
+            public float Zoom;
             [WriteOnly]
             public NativeArray<Color32> Colors;
 
@@ -55,6 +60,7 @@ namespace Minecraft.Editor {
                         max = keyframeValue;
                     }
                 }
+
                 value = value.Remap(min, max, 0.0f, 1.0f);
                 Colors[index] = new Color(value, value, value);
             }
@@ -67,14 +73,17 @@ namespace Minecraft.Editor {
         private void UpdatePreview() {
             var settings = (NoiseSettings)target;
 
+            var noise = new Noise(settings, Allocator.TempJob);
+            noise.Scale /= zoom;
+
             var job = new ImageJob {
-                Noise = new Noise(settings, Allocator.TempJob),
+                Noise = noise,
                 Colors = new NativeArray<Color32>(previewSize * previewSize, Allocator.TempJob)
             };
 
             job.ScheduleParallel(previewSize * previewSize, previewSize, default).Complete();
 
-            preview = new Texture2D(previewSize, previewSize, TextureFormat.RGB48, false, false);
+            preview = new Texture2D(previewSize, previewSize, TextureFormat.RGBA32, false, false);
             preview.SetPixels32(job.Colors.ToArray());
             preview.Apply();
 

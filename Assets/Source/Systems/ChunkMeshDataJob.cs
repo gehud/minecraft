@@ -11,7 +11,8 @@ namespace Minecraft.Systems {
     [BurstCompile]
     public struct ChunkMeshDataJob : IJob {
         public NativeList<Vertex> Vertices;
-        public NativeList<ushort> Indices;
+        public NativeList<ushort> OpaqueIndices;
+        public NativeList<ushort> TransparentIndices;
         [ReadOnly] 
         public Entity Entity;
         [ReadOnly] 
@@ -32,7 +33,10 @@ namespace Minecraft.Systems {
                             continue;
                         }
 
-                        var texturing = Blocks[(int)voxel.Type].Texturing;
+                        var block = Blocks[(int)voxel.Type];
+                        var texturing = block.Texturing;
+                        var isTransparent = block.IsTransparent;
+                        var indices = isTransparent ? TransparentIndices : OpaqueIndices;
 
                         // Right face
                         if (HasFace(localVoxelCoordinate + new int3(1, 0, 0), voxel.Type)) {
@@ -116,7 +120,7 @@ namespace Minecraft.Systems {
                             var aof3 = lr3 + lg3 + lb3 + ls3;
                             var aof4 = lr4 + lg4 + lb4 + ls4;
 
-                            AddFaceIndices(aof1, aof2, aof3, aof4);
+                            AddFaceIndices(indices, aof1, aof2, aof3, aof4);
                             Vertices.Add(Pack(x + 1, y + 0, z + 0, u1, v1, lr1, lg1, lb1, ls1));
                             Vertices.Add(Pack(x + 1, y + 1, z + 0, u2, v2, lr2, lg2, lb2, ls2));
                             Vertices.Add(Pack(x + 1, y + 1, z + 1, u3, v3, lr3, lg3, lb3, ls3));
@@ -206,7 +210,7 @@ namespace Minecraft.Systems {
                             var aof3 = lr3 + lg3 + lb3 + ls3;
                             var aof4 = lr4 + lg4 + lb4 + ls4;
 
-                            AddFaceIndices(aof1, aof2, aof3, aof4);
+                            AddFaceIndices(indices, aof1, aof2, aof3, aof4);
                             Vertices.Add(Pack(x + 0, y + 0, z + 1, u1, v1, lr1, lg1, lb1, ls1));
                             Vertices.Add(Pack(x + 0, y + 1, z + 1, u2, v2, lr2, lg2, lb2, ls2));
                             Vertices.Add(Pack(x + 0, y + 1, z + 0, u3, v3, lr3, lg3, lb3, ls3));
@@ -296,7 +300,7 @@ namespace Minecraft.Systems {
                             var aof3 = lr3 + lg3 + lb3 + ls3;
                             var aof4 = lr4 + lg4 + lb4 + ls4;
 
-                            AddFaceIndices(aof1, aof2, aof3, aof4);
+                            AddFaceIndices(indices, aof1, aof2, aof3, aof4);
                             Vertices.Add(Pack(x + 0, y + 1, z + 0, u1, v1, lr1, lg1, lb1, ls1));
                             Vertices.Add(Pack(x + 0, y + 1, z + 1, u2, v2, lr2, lg2, lb2, ls2));
                             Vertices.Add(Pack(x + 1, y + 1, z + 1, u3, v3, lr3, lg3, lb3, ls3));
@@ -386,7 +390,7 @@ namespace Minecraft.Systems {
                             var aof3 = lr3 + lg3 + lb3 + ls3;
                             var aof4 = lr4 + lg4 + lb4 + ls4;
 
-                            AddFaceIndices(aof1, aof2, aof3, aof4);
+                            AddFaceIndices(indices, aof1, aof2, aof3, aof4);
                             Vertices.Add(Pack(x + 1, y + 0, z + 0, u1, v1, lr1, lg1, lb1, ls1));
                             Vertices.Add(Pack(x + 1, y + 0, z + 1, u2, v2, lr2, lg2, lb2, ls2));
                             Vertices.Add(Pack(x + 0, y + 0, z + 1, u3, v3, lr3, lg3, lb3, ls3));
@@ -475,7 +479,7 @@ namespace Minecraft.Systems {
                             var aof3 = lr3 + lg3 + lb3 + ls3;
                             var aof4 = lr4 + lg4 + lb4 + ls4;
 
-                            AddFaceIndices(aof1, aof2, aof3, aof4);
+                            AddFaceIndices(indices, aof1, aof2, aof3, aof4);
                             Vertices.Add(Pack(x + 1, y + 0, z + 1, u1, v1, lr1, lg1, lb1, ls1));
                             Vertices.Add(Pack(x + 1, y + 1, z + 1, u2, v2, lr2, lg2, lb2, ls2));
                             Vertices.Add(Pack(x + 0, y + 1, z + 1, u3, v3, lr3, lg3, lb3, ls3));
@@ -564,7 +568,7 @@ namespace Minecraft.Systems {
                             var aof3 = lr3 + lg3 + lb3 + ls3;
                             var aof4 = lr4 + lg4 + lb4 + ls4;
 
-                            AddFaceIndices(aof1, aof2, aof3, aof4);
+                            AddFaceIndices(indices, aof1, aof2, aof3, aof4);
                             Vertices.Add(Pack(x + 0, y + 0, z + 0, u1, v1, lr1, lg1, lb1, ls1));
                             Vertices.Add(Pack(x + 0, y + 1, z + 0, u2, v2, lr2, lg2, lb2, ls2));
                             Vertices.Add(Pack(x + 1, y + 1, z + 0, u3, v3, lr3, lg3, lb3, ls3));
@@ -606,24 +610,24 @@ namespace Minecraft.Systems {
             };
         }
 
-        private void AddFaceIndices(int aof1, int aof2, int aof3, int aof4, bool force = false) {
+        private void AddFaceIndices(in NativeList<ushort> indices, int aof1, int aof2, int aof3, int aof4, bool force = false) {
             int vertexCount = Vertices.Length;
             if (force || aof1 + aof3 < aof2 + aof4) {
                 // Fliped quad.
-                Indices.Add((ushort)(0 + vertexCount));
-                Indices.Add((ushort)(1 + vertexCount));
-                Indices.Add((ushort)(3 + vertexCount));
-                Indices.Add((ushort)(3 + vertexCount));
-                Indices.Add((ushort)(1 + vertexCount));
-                Indices.Add((ushort)(2 + vertexCount));
+                indices.Add((ushort)(0 + vertexCount));
+                indices.Add((ushort)(1 + vertexCount));
+                indices.Add((ushort)(3 + vertexCount));
+                indices.Add((ushort)(3 + vertexCount));
+                indices.Add((ushort)(1 + vertexCount));
+                indices.Add((ushort)(2 + vertexCount));
             } else {
                 // Normal quad.
-                Indices.Add((ushort)(0 + vertexCount));
-                Indices.Add((ushort)(1 + vertexCount));
-                Indices.Add((ushort)(2 + vertexCount));
-                Indices.Add((ushort)(0 + vertexCount));
-                Indices.Add((ushort)(2 + vertexCount));
-                Indices.Add((ushort)(3 + vertexCount));
+                indices.Add((ushort)(0 + vertexCount));
+                indices.Add((ushort)(1 + vertexCount));
+                indices.Add((ushort)(2 + vertexCount));
+                indices.Add((ushort)(0 + vertexCount));
+                indices.Add((ushort)(2 + vertexCount));
+                indices.Add((ushort)(3 + vertexCount));
             }
         }
 
@@ -646,7 +650,7 @@ namespace Minecraft.Systems {
             voxel = voxels[sideLocalVoxelIndex];
         }
 
-        public byte GetLight(int x, int y, int z, LightChanel chanel) {
+        private byte GetLight(int x, int y, int z, LightChanel chanel) {
             GetVoxel(new int3(x, y, z), out var voxel);
             return voxel.Light.Get(chanel);
         }

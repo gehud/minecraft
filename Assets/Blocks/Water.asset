@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d1d955ae94832a4c8c0c7fd858a3d61, type: 3}
+  m_Name: Water
+  m_EditorClassIdentifier: 
+  texturing:
+    Right:
+      x: 13
+      y: 3
+    Left:
+      x: 13
+      y: 3
+    Top:
+      x: 13
+      y: 3
+    Bottom:
+      x: 13
+      y: 3
+    Front:
+      x: 13
+      y: 3
+    Back:
+      x: 13
+      y: 3
+  isSolid: 0
+  isTransparent: 1
+  absorption: 0
+  emission:
+    Red: 0
+    Green: 0
+    Blue: 0

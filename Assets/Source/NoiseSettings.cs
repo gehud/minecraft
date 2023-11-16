@@ -6,6 +6,8 @@ namespace Minecraft {
     public class NoiseSettings : ScriptableObject {
         public int3 Offset => offset;
 
+        public float3 Scale => scale;
+
         public int Octaves => octaves;
 
         public float Lacunarity => lacunarity;
@@ -16,6 +18,8 @@ namespace Minecraft {
 
         [SerializeField]
         private int3 offset;
+        [SerializeField]
+        private float3 scale = new(1.0f, 1.0f, 1.0f);
         [SerializeField, Min(1)] 
         private int octaves = 3;
         [SerializeField, Min(0.0f)] 

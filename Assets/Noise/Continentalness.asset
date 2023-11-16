@@ -12,67 +12,67 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9b580d6c74c9844986f2a17a5933ca4, type: 3}
   m_Name: Continentalness
   m_EditorClassIdentifier: 
-  scale:
-    x: 0.01
-    y: 0.01
-    z: 0.01
   offset:
     x: 0
-    y: 0.9851
-    z: 0.12444
-  octaves: 3
-  lacunarity: 2.5
+    y: 0
+    z: 0
+  scale:
+    x: 0.005
+    y: 0.005
+    z: 0.005
+  octaves: 5
+  lacunarity: 2
   persistance: 0.5
   modification:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 50
+      value: 60
       inSlope: 0
-      outSlope: 226.90273
+      outSlope: 18.856129
       tangentMode: 1
       weightedMode: 0
       inWeight: 0
-      outWeight: 0.23247552
+      outWeight: 0.43463698
     - serializedVersion: 3
-      time: 0.13161747
-      value: 66.945045
-      inSlope: 9.80395
+      time: 0.25805944
+      value: 67.99378
+      inSlope: 23.975092
       outSlope: 14.07682
       tangentMode: 1
       weightedMode: 0
-      inWeight: 0.6921482
+      inWeight: 0.30636087
       outWeight: 0.45922872
     - serializedVersion: 3
-      time: 0.42849737
-      value: 101.928604
+      time: 0.4730988
+      value: 102.35158
       inSlope: 346.21045
-      outSlope: 212.9106
+      outSlope: 191.17915
       tangentMode: 1
       weightedMode: 0
       inWeight: 0.122753836
-      outWeight: 0.33333334
+      outWeight: 0.2277465
     - serializedVersion: 3
-      time: 0.5839806
-      value: 116.42127
-      inSlope: 81.099014
-      outSlope: 287.17657
+      time: 0.6920887
+      value: 115.79418
+      inSlope: 45.415962
+      outSlope: 118.28815
       tangentMode: 1
       weightedMode: 0
-      inWeight: 0.29118264
-      outWeight: 0.15839383
+      inWeight: 0.34936163
+      outWeight: 0.2287521
     - serializedVersion: 3
-      time: 0.8870365
-      value: 148.4585
+      time: 0.8762333
+      value: 143.7553
       inSlope: 0.4595955
-      outSlope: 27.678543
+      outSlope: 7.9411993
       tangentMode: 1
       weightedMode: 0
       inWeight: 1
-      outWeight: 0
+      outWeight: 0.7925485
     - serializedVersion: 3
-      time: 0.9967956
+      time: 1
       value: 149.66998
       inSlope: -4.2091913
       outSlope: 0

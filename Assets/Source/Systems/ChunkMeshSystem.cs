@@ -5,6 +5,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Rendering;
+using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -39,19 +40,29 @@ namespace Minecraft.Systems {
                 descriptors[0] = new VertexAttributeDescriptor(VertexAttribute.TexCoord1, VertexAttributeFormat.UInt32, 2);
                 mesh.SetVertexBufferParams(MeshData.Vertices.Length, descriptors);
                 descriptors.Dispose();
+
                 var vertices = mesh.GetVertexData<Vertex>();
                 for (int i = 0; i < MeshData.Vertices.Length; i++) {
                     vertices[i] = MeshData.Vertices[i];
                 }
 
-                mesh.SetIndexBufferParams(MeshData.Indices.Length, IndexFormat.UInt16);
+                var opaqueIndicesCount = MeshData.OpaqueIndices.Length;
+                var transparentIndicesCount = MeshData.TransparentIndices.Length;
+                var indicesCount = opaqueIndicesCount + transparentIndicesCount;
+                mesh.SetIndexBufferParams(indicesCount, IndexFormat.UInt16);
                 var indices = mesh.GetIndexData<ushort>();
-                for (int i = 0; i < MeshData.Indices.Length; i++) {
-                    indices[i] = MeshData.Indices[i];
+
+                for (int i = 0; i < opaqueIndicesCount; i++) {
+                    indices[i] = MeshData.OpaqueIndices[i];
                 }
 
-                mesh.subMeshCount = 1;
-                mesh.SetSubMesh(0, new SubMeshDescriptor(0, MeshData.Indices.Length), UpdateFlags);
+                for (int i = 0; i < transparentIndicesCount; i++) {
+                    indices[i + opaqueIndicesCount] = MeshData.TransparentIndices[i];
+                }
+
+                mesh.subMeshCount = 2;
+                mesh.SetSubMesh(0, new SubMeshDescriptor(0, opaqueIndicesCount), UpdateFlags);
+                mesh.SetSubMesh(1, new SubMeshDescriptor(opaqueIndicesCount, transparentIndicesCount), UpdateFlags);
             }
         }
 
@@ -67,14 +78,15 @@ namespace Minecraft.Systems {
             if (EntityManager.Exists(lastEntity)) {
                 var mesh = new Mesh();
                 Mesh.ApplyAndDisposeWritableMeshData(lastJob.MeshDataArray, mesh, UpdateFlags);
-                
+
                 if (!EntityManager.HasComponent<RenderMeshArray>(lastEntity)) {
                     var materials = new Material[] {
-                        EntityManager.GetComponentObject<ChunkMeshSystemData>(SystemHandle).Material
+                        EntityManager.GetComponentObject<ChunkMeshSystemData>(SystemHandle).OpaqueMaterial,
+                        EntityManager.GetComponentObject<ChunkMeshSystemData>(SystemHandle).TransparentMaterial
                     };
 
                     var meshes = new Mesh[] {
-                        mesh
+                        mesh,
                     };
 
                     RenderMeshUtility.AddComponents(
@@ -82,7 +94,7 @@ namespace Minecraft.Systems {
                         EntityManager,
                         new RenderMeshDescription(ShadowCastingMode.Off),
                         new RenderMeshArray(materials, meshes),
-                        MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0)
+                        MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0, 0)
                     );
 
                     EntityManager.SetComponentData(lastEntity, new RenderBounds {
@@ -100,15 +112,49 @@ namespace Minecraft.Systems {
                             Extents = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf)
                         }
                     });
+
+                    var rendererEntity = EntityManager.CreateEntity();
+
+                    RenderMeshUtility.AddComponents(
+                        rendererEntity,
+                        EntityManager,
+                        new RenderMeshDescription(ShadowCastingMode.Off),
+                        EntityManager.GetSharedComponentManaged<RenderMeshArray>(lastEntity),
+                        MaterialMeshInfo.FromRenderMeshArrayIndices(1, 0, 1)
+                    );
+
+                    EntityManager.SetComponentData(rendererEntity, new RenderBounds {
+                        Value = new AABB {
+                            Center = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf),
+                            Extents = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf)
+                        }
+                    });
+
+                    EntityManager.SetComponentData(rendererEntity, new WorldRenderBounds {
+                        Value = new AABB {
+                            Center = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf) + position,
+                            Extents = new float3(chunkSizeHalf, chunkSizeHalf, chunkSizeHalf)
+                        }
+                    });
+
+                    EntityManager.AddComponentData(rendererEntity, new LocalToWorld {
+                        Value = float4x4.Translate(position)
+                    });
+
+                    var buffer = EntityManager.AddBuffer<LinkedEntityGroup>(lastEntity);
+                    var linkedEntityGroup = new LinkedEntityGroup {
+                        Value = rendererEntity
+                    };
+                    buffer.Add(linkedEntityGroup);
                 } else {
                     EntityManager.GetSharedComponentManaged<RenderMeshArray>(lastEntity).Meshes[0] = mesh;
                 }
-                
+
                 EntityManager.RemoveComponent<ChunkMeshData>(lastEntity);
             } else if (lastJob.MeshDataArray.Length != 0) {
                 lastJob.MeshDataArray.Dispose();
             }
-            
+
             lastJob = default;
 
             for (int i = 0; i < entities.Length; i++) {
@@ -141,6 +187,7 @@ namespace Minecraft.Systems {
 
                 var mesh = new Mesh();
                 Mesh.ApplyAndDisposeWritableMeshData(job.MeshDataArray, mesh, UpdateFlags);
+
                 EntityManager.GetSharedComponentManaged<RenderMeshArray>(entity).Meshes[0] = mesh;
                 EntityManager.RemoveComponent<ChunkMeshData>(entity);
                 EntityManager.RemoveComponent<ImmediateChunk>(entity);

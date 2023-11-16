@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.27748114, g: 0.3973334, b: 0.75870866, a: 1}
+  m_IndirectSpecularColor: {r: 0.25140327, g: 0.45514882, b: 0.915349, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -1309,7 +1309,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_RenderShadows: 0
+  m_RenderShadows: 1
   m_RequiresDepthTextureOption: 2
   m_RequiresOpaqueTextureOption: 2
   m_CameraType: 0
@@ -2003,8 +2003,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   database: {fileID: 11400000, guid: 42d59e4a3fee1624fab16297906faf9d, type: 2}
-  material: {fileID: 2100000, guid: a35d77d6668bd86479cff31b6bf5d4e3, type: 2}
-  HeightOffset: 16
+  opaqueMaterial: {fileID: 2100000, guid: a35d77d6668bd86479cff31b6bf5d4e3, type: 2}
+  transparentMaterial: {fileID: 2100000, guid: 56066045e4d0b3b43a21312b28b1e472, type: 2}
+  waterLevel: 75
   continentalness: {fileID: 11400000, guid: 5042fb427afb8ae4486a40631d97b236, type: 2}
   erosion: {fileID: 11400000, guid: 78bdb4dbb5c682743a112a773ae518a9, type: 2}
   peaksAndValleys: {fileID: 11400000, guid: dc856a2b611215c44b6fc3b8a1ac05ab, type: 2}

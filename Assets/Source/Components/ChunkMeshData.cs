@@ -5,11 +5,13 @@ using Unity.Entities;
 namespace Minecraft.Components {
     public struct ChunkMeshData : IComponentData, IDisposable {
         public NativeArray<Vertex> Vertices;
-        public NativeArray<ushort> Indices;
+        public NativeArray<ushort> OpaqueIndices;
+        public NativeArray<ushort> TransparentIndices;
 
         public void Dispose() {
             Vertices.Dispose();
-            Indices.Dispose();
+            OpaqueIndices.Dispose();
+            TransparentIndices.Dispose();
         }
     }
 }

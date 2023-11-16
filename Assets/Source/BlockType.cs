@@ -5,6 +5,7 @@
         Dirt,
         Grass,
         Glass,
-        JackOLantern
+        JackOLantern,
+        Water
     }
 }

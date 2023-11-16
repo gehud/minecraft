@@ -31,13 +31,15 @@ namespace Minecraft.Systems {
             if (state.EntityManager.Exists(lastEntity)) {
                 state.EntityManager.AddComponentData(lastEntity, new ChunkMeshData {
                     Vertices = lastJob.Vertices.AsArray(),
-                    Indices = lastJob.Indices.AsArray()
+                    OpaqueIndices = lastJob.OpaqueIndices.AsArray(),
+                    TransparentIndices = lastJob.TransparentIndices.AsArray()
                 });
 
                 state.EntityManager.RemoveComponent<DirtyChunk>(lastEntity);
             } else {
                 lastJob.Vertices.Dispose();
-                lastJob.Indices.Dispose();
+                lastJob.OpaqueIndices.Dispose();
+                lastJob.TransparentIndices.Dispose();
             }
 
             lastJob = default;
@@ -74,7 +76,8 @@ namespace Minecraft.Systems {
 
                 lastJob = new ChunkMeshDataJob {
                     Vertices = new NativeList<Vertex>(Allocator.Persistent),
-                    Indices = new NativeList<ushort>(Allocator.Persistent),
+                    OpaqueIndices = new NativeList<ushort>(Allocator.Persistent),
+                    TransparentIndices = new NativeList<ushort>(Allocator.Persistent),
                     ChunkCoordinate = chunkCoordinate,
                     Entity = entity,
                     Claster = claster,
@@ -118,8 +121,9 @@ namespace Minecraft.Systems {
                 var job = new ChunkMeshDataJob {
                     Blocks = SystemAPI.GetSingletonRW<BlockSystemData>().ValueRO.Blocks,
                     ChunkCoordinate = chunk.ValueRO.Coordinate,
-                    Indices = new NativeList<ushort>(Allocator.Persistent),
                     Vertices = new NativeList<Vertex>(Allocator.Persistent),
+                    OpaqueIndices = new NativeList<ushort>(Allocator.Persistent),
+                    TransparentIndices = new NativeList<ushort>(Allocator.Persistent),
                     Claster = claster,
                 };
 
@@ -129,7 +133,8 @@ namespace Minecraft.Systems {
 
                 commandBuffer.AddComponent(entity, new ChunkMeshData {
                     Vertices = job.Vertices.AsArray(),
-                    Indices = job.Indices.AsArray()
+                    OpaqueIndices = job.OpaqueIndices.AsArray(),
+                    TransparentIndices = job.TransparentIndices.AsArray()
                 });
 
                 commandBuffer.RemoveComponent<DirtyChunk>(entity);

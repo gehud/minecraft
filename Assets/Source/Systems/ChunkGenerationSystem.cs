@@ -15,8 +15,6 @@ namespace Minecraft.Systems {
             [ReadOnly]
             public Entity Entity;
             [ReadOnly]
-            public int HeightOffset;
-            [ReadOnly]
             public int3 Coordinate;
             [ReadOnly]
             public Noise Continentalness;
@@ -24,6 +22,8 @@ namespace Minecraft.Systems {
             public Noise Erosion;
             [ReadOnly]
             public Noise PeaksAndValleys;
+            [ReadOnly]
+            public int WaterLevel;
             [WriteOnly]
             public NativeArray<Voxel> Voxels;
 
@@ -36,7 +36,7 @@ namespace Minecraft.Systems {
                 var peaksAndValleys = PeaksAndValleys.Sample2D(coordinate.x, coordinate.z);
                 var result = continentalness * erosion * peaksAndValleys;
 
-                int height = (int)result + HeightOffset;
+                int height = (int)result;
                 if (coordinate.y <= height) {
                     if (coordinate.y == height) {
                         Voxels[index] = new Voxel(BlockType.Grass);
@@ -45,6 +45,8 @@ namespace Minecraft.Systems {
                     } else {
                         Voxels[index] = new Voxel(BlockType.Stone);
                     }
+                } else if (coordinate.y <= WaterLevel) {
+                    Voxels[index] = new Voxel(BlockType.Water);
                 }
             }
         }
@@ -71,7 +73,6 @@ namespace Minecraft.Systems {
 
             lastJob = default;
 
-            var chunkBufferingSystemData = SystemAPI.GetSingleton<ChunkBufferingSystemData>();
             var systemData = EntityManager.GetComponentDataRW<ChunkGenerationSystemData>(SystemHandle);
 
             for (int i = 0; i < entities.Length; i++) {
@@ -84,11 +85,11 @@ namespace Minecraft.Systems {
                 var chunk = EntityManager.GetComponentData<Chunk>(entity);
                 lastJob = new ChunkGenerationJob {
                     Entity = entity,
-                    HeightOffset = systemData.ValueRO.HeightOffset,
                     Coordinate = chunk.Coordinate,
                     Continentalness = systemData.ValueRO.Continentalness,
                     Erosion = systemData.ValueRO.Erosion,
                     PeaksAndValleys = systemData.ValueRO.PeaksAndValleys,
+                    WaterLevel = systemData.ValueRO.WaterLevel,
                     Voxels = new NativeArray<Voxel>(Chunk.Volume, Allocator.Persistent)
                 };
 

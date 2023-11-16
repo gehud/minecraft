@@ -10,9 +10,11 @@ namespace Minecraft {
         [SerializeField]
         private BlockDatabase database;
         [SerializeField]
-        private Material material;
+        private Material opaqueMaterial;
+        [SerializeField]
+        private Material transparentMaterial;
         [SerializeField, Min(0)]
-        private int HeightOffset = 32;
+        private int waterLevel = 45;
         [SerializeField]
         private NoiseSettings continentalness;
         [SerializeField]
@@ -42,15 +44,16 @@ namespace Minecraft {
 
             var chunkSystem = world.GetExistingSystem<ChunkMeshSystem>();
             world.EntityManager.AddComponentObject(chunkSystem, new ChunkMeshSystemData {
-                Material = material
+                OpaqueMaterial = opaqueMaterial,
+                TransparentMaterial = transparentMaterial,
             });
 
             var chunkGenerationSystem = world.GetExistingSystem<ChunkGenerationSystem>();
             world.EntityManager.AddComponentData(chunkGenerationSystem, new ChunkGenerationSystemData {
-                HeightOffset = HeightOffset,
                 Continentalness = new Noise(continentalness, Allocator.Persistent),
                 Erosion = new Noise(erosion, Allocator.Persistent),
-                PeaksAndValleys = new Noise(peaksAndValleys, Allocator.Persistent)
+                PeaksAndValleys = new Noise(peaksAndValleys, Allocator.Persistent),
+                WaterLevel = waterLevel
             });
         }
     }
