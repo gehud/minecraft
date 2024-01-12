@@ -425,7 +425,52 @@ namespace Minecraft {
         }
 
         [BurstCompile]
-        private static void UpdateBuffer(ref ChunkBufferingSystemData systemData, in int2 newCenter, in EntityCommandBuffer commandBuffer) {
+        public static void DestroyChunk(in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in Entity chunkEntity) {
+            commandBuffer.DestroyEntity(chunkEntity);
+            if (entityManager.HasBuffer<SubChunk>(chunkEntity)) {
+                var subchunks = entityManager.GetBuffer<SubChunk>(chunkEntity);
+                foreach (var subchunk in subchunks) {
+                    if (entityManager.Exists(subchunk.Value)) {
+                        commandBuffer.DestroyEntity(subchunk.Value);
+                    }
+                }
+            }
+        }
+
+        [BurstCompile]
+        public static void HideChunk(in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in Entity chunkEntity) {
+            if (!entityManager.HasComponent<DisableRendering>(chunkEntity)) {
+                commandBuffer.AddComponent<DisableRendering>(chunkEntity);
+
+                if (entityManager.HasBuffer<SubChunk>(chunkEntity)) {
+                    var subchunks = entityManager.GetBuffer<SubChunk>(chunkEntity);
+                    foreach (var subchunk in subchunks) {
+                        if (!entityManager.HasComponent<DisableRendering>(subchunk.Value)) {
+                            commandBuffer.AddComponent<DisableRendering>(subchunk.Value);
+                        }
+                    }
+                }
+            }
+        }
+
+        [BurstCompile]
+        public static void ShowChunk(in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in Entity chunkEntity) {
+            if (entityManager.HasComponent<DisableRendering>(chunkEntity)) {
+                commandBuffer.RemoveComponent<DisableRendering>(chunkEntity);
+
+                if (entityManager.HasBuffer<SubChunk>(chunkEntity)) {
+                    var subchunks = entityManager.GetBuffer<SubChunk>(chunkEntity);
+                    foreach (var subchunk in subchunks) {
+                        if (entityManager.HasComponent<DisableRendering>(subchunk.Value)) {
+                            commandBuffer.RemoveComponent<DisableRendering>(subchunk.Value);
+                        }
+                    }
+                }
+            }
+        }
+
+        [BurstCompile]
+        private static void UpdateBuffer(ref ChunkBufferingSystemData systemData, in EntityManager entityManager, in int2 newCenter, in EntityCommandBuffer commandBuffer) {
             for (int i = 0; i < systemData.ChunksBuffer.Length; i++) {
                 systemData.ChunksBuffer[i] = Entity.Null;
             }
@@ -444,7 +489,7 @@ namespace Minecraft {
                         int newX = x - centerDelta.x;
                         int newZ = z - centerDelta.y;
                         if (IsOutOfBuffer(newX, newZ, systemData.ChunksSize)) {
-                            commandBuffer.DestroyEntity(chunk);
+                            DestroyChunk(entityManager, commandBuffer, chunk);
                             continue;
                         }
 
@@ -624,7 +669,7 @@ namespace Minecraft {
             var chunkLoadData = state.EntityManager.GetComponentDataRW<ChunkLoadData>(state.SystemHandle);
 
             foreach (var (request, entity) in SystemAPI.Query<ChunkLoadingRequest>().WithEntityAccess()) {
-                UpdateBuffer(ref systemData.ValueRW, request.NewCenter, commandBuffer);
+                UpdateBuffer(ref systemData.ValueRW, state.EntityManager, request.NewCenter, commandBuffer);
                 GenerateLoadData(ref chunkLoadData.ValueRW, systemData.ValueRO, state.EntityManager, commandBuffer, request.NewCenter, systemData.ValueRO.Height, systemData.ValueRO.DrawDistance);
                 commandBuffer.DestroyEntity(entity);
             }
@@ -638,13 +683,9 @@ namespace Minecraft {
                     GetEntity(systemData.ValueRO, item.Coordinate, out var chunkEntity);
                     if (chunkEntity != Entity.Null) {
                         if (item.IsRendered) {
-                            if (state.EntityManager.HasComponent<DisableRendering>(chunkEntity)) {
-                                commandBuffer.RemoveComponent<DisableRendering>(chunkEntity);
-                            }
+                            ShowChunk(state.EntityManager, commandBuffer, chunkEntity);
                         } else {
-                            if (!state.EntityManager.HasComponent<DisableRendering>(chunkEntity)) {
-                                commandBuffer.AddComponent<DisableRendering>(chunkEntity);
-                            }
+                            HideChunk(state.EntityManager, commandBuffer, chunkEntity);
                         }
                     } else {
                         var newChunkEntity = state.EntityManager.CreateEntity();

@@ -145,11 +145,8 @@ namespace Minecraft {
                         Value = float4x4.Translate(position)
                     });
 
-                    var buffer = EntityManager.AddBuffer<LinkedEntityGroup>(entity);
-                    buffer.Add(new LinkedEntityGroup {
-                        Value = entity
-                    });
-                    buffer.Add(new LinkedEntityGroup {
+                    var buffer = EntityManager.AddBuffer<SubChunk>(entity);
+                    buffer.Add(new SubChunk {
                         Value = rendererEntity
                     });
                 } else {

@@ -7,6 +7,7 @@ using Unity.Transforms;
 
 namespace Minecraft {
     [BurstCompile]
+    [RequireMatchingQueriesForUpdate]
     public partial struct ChunkSpawnSystem : ISystem {
         public const int BatchSize = 16;
 
@@ -14,51 +15,53 @@ namespace Minecraft {
 
         [BurstCompile]
         void ISystem.OnCreate(ref SystemState state) {
-            querry = new EntityQueryBuilder(Allocator.Temp)
+            querry = SystemAPI.QueryBuilder()
                 .WithAll<ChunkSpawnRequest>()
-                .Build(ref state);
-
-            state.RequireForUpdate(querry);
+                .Build();
         }
 
         [BurstCompile]
-        void ISystem.OnUpdate(ref SystemState state) {
-            querry.ResetFilter();
-
-            var entities = querry.ToEntityArray(Allocator.Temp);
-
-            var count = math.min(entities.Length, BatchSize);
-            for (int i = 0; i < count; i++) {
-                InitializeChunk(ref state, entities[i]);
-            }
-
-            entities.Dispose();
-        }
-
-        [BurstCompile]
-        private void InitializeChunk(ref SystemState state, in Entity entity) {
+        private void Spawn(ref SystemState state, in EntityCommandBuffer commandBuffer, in Entity entity) {
             var request = state.EntityManager.GetComponentData<ChunkSpawnRequest>(entity);
 
             if (!request.HasRenderer) {
-                state.EntityManager.AddComponent<DisableRendering>(entity);
+                commandBuffer.AddComponent<DisableRendering>(entity);
             }
 
             var position = request.Coordinate * Chunk.Size;
 
-            state.EntityManager.AddComponentData(entity, new LocalToWorld {
+            commandBuffer.AddComponent(entity, new LocalToWorld {
                 Value = float4x4.Translate(position)
             });
 
             var voxels = new NativeArray<Voxel>(Chunk.Volume, Allocator.Persistent);
 
-            state.EntityManager.AddComponentData(entity, new Chunk {
+            commandBuffer.AddComponent(entity, new Chunk {
                 Coordinate = request.Coordinate,
                 Voxels = voxels
             });
 
-            state.EntityManager.SetName(entity, $"Chunk({request.Coordinate.x}, {request.Coordinate.y}, {request.Coordinate.z})");
-            state.EntityManager.AddComponent<RawChunk>(entity);
-            state.EntityManager.RemoveComponent<ChunkSpawnRequest>(entity);
+            commandBuffer.SetName(entity, $"Chunk({request.Coordinate.x}, {request.Coordinate.y}, {request.Coordinate.z})");
+            commandBuffer.AddComponent<RawChunk>(entity);
+
+            commandBuffer.RemoveComponent<ChunkSpawnRequest>(entity);
+        }
+
+        [BurstCompile]
+        void ISystem.OnUpdate(ref SystemState state) {
+            var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
+
+            var entities = querry.ToEntityArray(Allocator.Temp);
+
+            var count = math.min(entities.Length, BatchSize);
+            for (int i = 0; i < count; i++) {
+                Spawn(ref state, commandBuffer, entities[i]);
+            }
+
+            entities.Dispose();
+
+            commandBuffer.Playback(state.EntityManager);
+            commandBuffer.Dispose();
         }
     }
 }
