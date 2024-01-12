@@ -33,7 +33,7 @@ MonoBehaviour:
       y: 3
   isSolid: 0
   isTransparent: 1
-  absorption: 0
+  absorption: 1
   emission:
     Red: 0
     Green: 0
