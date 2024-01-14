@@ -4,6 +4,8 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEditor.PackageManager.Requests;
+using UnityEngine;
 
 namespace Minecraft.Lighting {
     [BurstCompile]
@@ -19,6 +21,13 @@ namespace Minecraft.Lighting {
             new( 1,  0,  0),
             new(-1,  0,  0),
         };
+
+        private struct ScheduledJob {
+            public SunlightCalculationJob Data;
+            public JobHandle Handle;
+        }
+
+        private NativeList<ScheduledJob> jobs;
 
         [BurstCompile]
         public static void AddLight(in LightingSystemData systemData, in ChunkBufferingSystemData chunkBufferingSystemData, in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in int3 voxelCoordinate, LightChanel chanel, byte level) {
@@ -114,6 +123,8 @@ namespace Minecraft.Lighting {
                 AddQueues = addQueues,
                 RemoveQueues = removeQueues
             });
+
+            jobs = new NativeList<ScheduledJob>(Allocator.Persistent);
         }
 
         [BurstCompile]
@@ -180,6 +191,99 @@ namespace Minecraft.Lighting {
         }
 
         [BurstCompile]
+        private bool TrySchedule(ref SystemState state, int columnClasterHeight, in SunlightRequest request, in RefRW<LightingSystemData> systemData, in RefRW<ChunkBufferingSystemData> chunkBufferingSystemData, in RefRW<BlockSystemData> blockSystemData) {
+            var claster = new NativeArray<NativeArray<Voxel>>(3 * 3 * columnClasterHeight, Allocator.Persistent);
+
+            var clasterEntities = new NativeArray<Entity>(3 * 3 * columnClasterHeight, Allocator.Temp);
+
+            var origin = new int3 {
+                x = request.Column.x - 1,
+                y = -1,
+                z = request.Column.y - 1
+            };
+
+            for (int i = 0; i < 3 * 3 * columnClasterHeight; i++) {
+                var coordinate = origin + IndexUtility.ToCoordinate(i, 3, columnClasterHeight);
+                ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out var clasterEntity);
+                bool isValidChunk = state.EntityManager.Exists(clasterEntity)
+                    && state.EntityManager.HasComponent<Chunk>(clasterEntity)
+                    && !state.EntityManager.IsComponentEnabled<DirtyChunk>(clasterEntity)
+                    && !state.EntityManager.HasComponent<RawChunk>(clasterEntity)
+                    && !state.EntityManager.IsComponentEnabled<ThreadedChunk>(clasterEntity);
+
+                if (isValidChunk) {
+                    claster[i] = state.EntityManager.GetComponentData<Chunk>(clasterEntity).Voxels;
+                    clasterEntities[i] = clasterEntity;
+                } else if (!isValidChunk
+                    && coordinate.y != -1
+                    && coordinate.y != chunkBufferingSystemData.ValueRO.Height) {
+                    claster.Dispose();
+                    clasterEntities.Dispose();
+                    return false;
+                }
+            }
+
+            foreach (var clasterEntity in clasterEntities) {
+                if (clasterEntity != Entity.Null) {
+                    state.EntityManager.SetComponentEnabled<ThreadedChunk>(clasterEntity, true);
+                }
+            }
+
+            clasterEntities.Dispose();
+
+            var job = new SunlightCalculationJob {
+                Blocks = blockSystemData.ValueRO.Blocks,
+                Column = request.Column,
+                BufferHeight = chunkBufferingSystemData.ValueRO.Height,
+                ClasterHeight = columnClasterHeight,
+                Claster = claster,
+
+                AddQueues = new NativeQueue<LightingEntry>(Allocator.Persistent),
+                RemoveQueues = new NativeQueue<LightingEntry>(Allocator.Persistent),
+            };
+
+            var handle = job.Schedule();
+
+            jobs.Add(new ScheduledJob {
+                Data = job,
+                Handle = handle
+            });
+
+            return true;
+        }
+
+        private bool TryCompleteJob(ref SystemState state, in ScheduledJob job, in RefRW<ChunkBufferingSystemData> chunkBufferingSystemData, in EntityCommandBuffer commandBuffer) {
+            if (!job.Handle.IsCompleted) {
+                return false;
+            }
+
+            job.Handle.Complete();
+
+            for (int y = 0; y < chunkBufferingSystemData.ValueRO.Height; y++) {
+                var chunkCoordinate = new int3(job.Data.Column.x, y, job.Data.Column.y);
+                ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, chunkCoordinate, out var chunkEntity);
+                commandBuffer.AddComponent<Sunlight>(chunkEntity);
+                commandBuffer.AddComponent<IncompleteLighting>(chunkEntity);
+            }
+
+            var origin = new int3 {
+                x = job.Data.Column.x - 1,
+                y = 0,
+                z = job.Data.Column.y - 1
+            };
+
+            for (int i = 0; i < 3 * 3 * chunkBufferingSystemData.ValueRO.Height; i++) {
+                var coordinate = origin + IndexUtility.ToCoordinate(i, 3, chunkBufferingSystemData.ValueRO.Height);
+                ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out var clasterEntity);
+                state.EntityManager.SetComponentEnabled<ThreadedChunk>(clasterEntity, false);
+            }
+
+            job.Data.Dispose();
+
+            return true;
+        }
+
+        [BurstCompile]
         void ISystem.OnUpdate(ref SystemState state) {
             var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
 
@@ -193,65 +297,18 @@ namespace Minecraft.Lighting {
                 .Query<SunlightRequest>()
                 .WithEntityAccess()) {
 
-                var claster = new NativeArray<NativeArray<Voxel>>(3 * 3 * columnClasterHeight, Allocator.TempJob);
-                var origin = new int3 {
-                    x = request.Column.x - 1,
-                    y = -1,
-                    z = request.Column.y - 1
-                };
-
-                bool isValidClaster = true;
-                for (int j = 0; j < 3 * 3 * columnClasterHeight; j++) {
-                    var coordinate = origin + IndexUtility.ToCoordinate(j, 3, columnClasterHeight);
-                    ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out var clasterEntity);
-                    bool isValidChunk = state.EntityManager.Exists(clasterEntity)
-                        && state.EntityManager.HasComponent<Chunk>(clasterEntity)
-                        && !state.EntityManager.IsComponentEnabled<DirtyChunk>(clasterEntity)
-                        && !state.EntityManager.HasComponent<RawChunk>(clasterEntity);
-
-                    if (isValidChunk) {
-                        claster[j] = state.EntityManager.GetComponentData<Chunk>(clasterEntity).Voxels;
-                    } else if (!isValidChunk 
-                        && coordinate.y != -1 
-                        && coordinate.y != chunkBufferingSystemData.ValueRO.Height) {
-                        isValidClaster = false;
-                        break;
-                    }
-                }
-
-                if (!isValidClaster) {
-                    claster.Dispose();
+                if (!TrySchedule(ref state, columnClasterHeight, request, systemData, chunkBufferingSystemData, blockSystemData)) {
                     continue;
                 }
 
-                var job = new SunlightCalculationJob {
-                    Blocks = blockSystemData.ValueRO.Blocks,
-                    Chanel = LightChanel.Sun,
-                    Column = request.Column,
-                    BufferHeight = chunkBufferingSystemData.ValueRO.Height,
-                    ClasterHeight = columnClasterHeight,
-                    Claster = claster,
-
-                    AddQueues = systemData.ValueRO.AddQueues,
-                    RemoveQueues = systemData.ValueRO.RemoveQueues,
-                };
-
-                job.Run();
-                job.Claster.Dispose();
-
                 commandBuffer.DestroyEntity(entity);
+            }
 
-                for (int y = 0; y < chunkBufferingSystemData.ValueRO.Height; y++) {
-                    var chunkCoordinate = new int3(job.Column.x, y, job.Column.y);
-                    ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, chunkCoordinate, out var chunkEntity);
-                    if (!state.EntityManager.Exists(chunkEntity)
-                        || !state.EntityManager.HasComponent<Chunk>(chunkEntity)
-                        || state.EntityManager.HasComponent<RawChunk>(chunkEntity)) {
-                        break;
-                    }
+            for (int i = 0; i < jobs.Length; i++) {
+                var job = jobs[i];
 
-                    commandBuffer.AddComponent<Sunlight>(chunkEntity);
-                    commandBuffer.AddComponent<IncompleteLighting>(chunkEntity);
+                if (TryCompleteJob(ref state, job, chunkBufferingSystemData, commandBuffer)) {
+                    jobs.RemoveAt(i);
                 }
             }
 
@@ -295,6 +352,16 @@ namespace Minecraft.Lighting {
 
             commandBuffer.Playback(state.EntityManager);
             commandBuffer.Dispose();
+        }
+
+        [BurstCompile]
+        void ISystem.OnDestroy(ref SystemState state) {
+            foreach (var job in jobs) {
+                job.Handle.Complete();
+                job.Data.Dispose();
+            }
+            
+            jobs.Dispose();
         }
     }
 }

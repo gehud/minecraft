@@ -6,6 +6,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Rendering;
+using UnityEngine;
 
 namespace Minecraft {
     [BurstCompile]
@@ -26,13 +27,14 @@ namespace Minecraft {
 
             for (int i = 0; i < 3 * 3 * 3; i++) {
                 var coordinate = origin + IndexUtility.ToCoordinate(i, 3, 3);
-                ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out Entity sideChunk);
-                bool isValidChunk = state.EntityManager.Exists(sideChunk)
-                    && state.EntityManager.HasComponent<Chunk>(sideChunk)
-                    && !state.EntityManager.HasComponent<RawChunk>(sideChunk);
+                ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out Entity clasterEntity);
+                bool isValidChunk = state.EntityManager.Exists(clasterEntity)
+                    && state.EntityManager.HasComponent<Chunk>(clasterEntity)
+                    && !state.EntityManager.HasComponent<RawChunk>(clasterEntity)
+                    && !state.EntityManager.IsComponentEnabled<ThreadedChunk>(clasterEntity);
 
                 if (isValidChunk) {
-                    claster[i] = state.EntityManager.GetComponentData<Chunk>(sideChunk).Voxels;
+                    claster[i] = state.EntityManager.GetComponentData<Chunk>(clasterEntity).Voxels;
                 } else if (!isValidChunk 
                     && coordinate.y != -1
                     && coordinate.y != chunkBufferingSystemData.ValueRO.Height) {
@@ -43,6 +45,7 @@ namespace Minecraft {
 
             var job = new ChunkMeshDataJob {
                 Entity = entity,
+                Coordinate = chunk.Coordinate,
                 Vertices = new NativeList<Vertex>(Allocator.Persistent),
                 OpaqueIndices = new NativeList<ushort>(Allocator.Persistent),
                 TransparentIndices = new NativeList<ushort>(Allocator.Persistent),
@@ -67,30 +70,43 @@ namespace Minecraft {
         }
 
         [BurstCompile]
-        private bool TrySchedule(ref SystemState state, in Chunk chunk, in Entity entity) {
+        private bool TrySchedule(ref SystemState state, in RefRW<ChunkBufferingSystemData> chunkBufferingSystemData, in Chunk chunk, in Entity entity) {
             var claster = new NativeArray<NativeArray<Voxel>>(3 * 3 * 3, Allocator.Persistent);
+            var clasterEntities = new NativeArray<Entity>(3 * 3 * 3, Allocator.Temp);
+            
             var origin = chunk.Coordinate - new int3(1, 1, 1);
-            var chunkBufferingSystemData = SystemAPI.GetSingletonRW<ChunkBufferingSystemData>();
 
             for (int i = 0; i < 3 * 3 * 3; i++) {
                 var coordinate = origin + IndexUtility.ToCoordinate(i, 3, 3);
-                ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out Entity sideChunk);
-                bool isValidChunk = state.EntityManager.Exists(sideChunk)
-                    && state.EntityManager.HasComponent<Chunk>(sideChunk)
-                    && !state.EntityManager.HasComponent<RawChunk>(sideChunk);
+                ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out Entity clasterEntity);
+                bool isValidClaster = state.EntityManager.Exists(clasterEntity)
+                    && state.EntityManager.HasComponent<Chunk>(clasterEntity)
+                    && !state.EntityManager.HasComponent<RawChunk>(clasterEntity)
+                    && !state.EntityManager.IsComponentEnabled<ThreadedChunk>(clasterEntity);
 
-                if (isValidChunk) {
-                    claster[i] = state.EntityManager.GetComponentData<Chunk>(sideChunk).Voxels;
-                } else if (!isValidChunk
+                if (isValidClaster) {
+                    clasterEntities[i] = clasterEntity;
+                    claster[i] = state.EntityManager.GetComponentData<Chunk>(clasterEntity).Voxels;
+                } else if (!isValidClaster
                     && coordinate.y != -1
                     && coordinate.y != chunkBufferingSystemData.ValueRO.Height) {
                     claster.Dispose();
+                    clasterEntities.Dispose();
                     return false;
                 }
             }
 
+            foreach (var clasterEntity in clasterEntities) {
+                if (clasterEntity != Entity.Null) {
+                    state.EntityManager.SetComponentEnabled<ThreadedChunk>(clasterEntity, true);
+                }
+            }
+
+            clasterEntities.Dispose();
+
             var job = new ChunkMeshDataJob {
                 Entity = entity,
+                Coordinate = chunk.Coordinate,
                 Vertices = new NativeList<Vertex>(Allocator.Persistent),
                 OpaqueIndices = new NativeList<ushort>(Allocator.Persistent),
                 TransparentIndices = new NativeList<ushort>(Allocator.Persistent),
@@ -106,20 +122,16 @@ namespace Minecraft {
                 Handle = handle
             });
 
-            state.EntityManager.SetComponentEnabled<ThreadedChunk>(entity, true);
-
             return true;
         }
 
         [BurstCompile]
-        private bool TryCompleteJob(ref SystemState state, in ScheduledJob job, in EntityCommandBuffer commandBuffer) {
+        private bool TryCompleteJob(in ScheduledJob job, in RefRW<ChunkBufferingSystemData> chunkBufferingSystemData, in EntityCommandBuffer commandBuffer) {
             if (!job.Handle.IsCompleted) {
                 return false;
             }
 
             job.Handle.Complete();
-            
-            job.Data.Dispose();
 
             commandBuffer.AddComponent(job.Data.Entity, new ChunkMeshData {
                 Vertices = job.Data.Vertices.AsArray(),
@@ -128,7 +140,17 @@ namespace Minecraft {
             });
 
             commandBuffer.SetComponentEnabled<DirtyChunk>(job.Data.Entity, false);
-            state.EntityManager.SetComponentEnabled<ThreadedChunk>(job.Data.Entity, false);
+
+            var origin = job.Data.Coordinate - new int3(1, 1, 1);
+            for (int i = 0; i < 3 * 3 * 3; i++) {
+                var coordinate = origin + IndexUtility.ToCoordinate(i, 3, 3);
+                ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out Entity clasterEntity);
+                if (clasterEntity != Entity.Null) {
+                    commandBuffer.SetComponentEnabled<ThreadedChunk>(clasterEntity, false);
+                }
+            }
+
+            job.Data.Dispose();
 
             return true;
         }
@@ -141,6 +163,8 @@ namespace Minecraft {
         [BurstCompile]
         void ISystem.OnUpdate(ref SystemState state) {
             var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
+
+            var chunkBufferingSystemData = SystemAPI.GetSingletonRW<ChunkBufferingSystemData>();
 
             foreach (var (chunk, entity) in SystemAPI
                 .Query<RefRO<Chunk>>()
@@ -159,7 +183,7 @@ namespace Minecraft {
                 .WithNone<DisableRendering, ImmediateChunk, ThreadedChunk>()
                 .WithEntityAccess()) {
 
-                if (!TrySchedule(ref state, chunk.ValueRO, entity)) {
+                if (!TrySchedule(ref state, chunkBufferingSystemData, chunk.ValueRO, entity)) {
                     continue;
                 }
             }
@@ -167,7 +191,7 @@ namespace Minecraft {
             for (int i = 0; i < jobs.Length; i++) {
                 var job = jobs[i];
 
-                if (TryCompleteJob(ref state, job, commandBuffer)) {
+                if (TryCompleteJob(job, chunkBufferingSystemData, commandBuffer)) {
                     jobs.RemoveAt(i);
                 }
             }

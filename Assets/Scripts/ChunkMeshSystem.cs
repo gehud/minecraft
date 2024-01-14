@@ -7,7 +7,6 @@ using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Rendering;
-using static UnityEngine.EventSystems.EventTrigger;
 
 namespace Minecraft {
     [BurstCompile]

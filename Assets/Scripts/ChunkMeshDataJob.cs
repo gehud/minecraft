@@ -13,6 +13,8 @@ namespace Minecraft {
     public struct ChunkMeshDataJob : IJob, IDisposable {
         [ReadOnly]
         public Entity Entity;
+        [ReadOnly]
+        public int3 Coordinate;
         public NativeList<Vertex> Vertices;
         public NativeList<ushort> OpaqueIndices;
         public NativeList<ushort> TransparentIndices;

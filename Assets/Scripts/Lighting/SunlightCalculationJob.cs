@@ -1,4 +1,5 @@
 ﻿using Minecraft.Utilities;
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -7,11 +8,9 @@ using Unity.Mathematics;
 
 namespace Minecraft.Lighting {
     [BurstCompile]
-    public struct SunlightCalculationJob : IJob {
+    public struct SunlightCalculationJob : IJob, IDisposable {
         [ReadOnly]
         public NativeArray<Block> Blocks;
-        [ReadOnly]
-        public LightChanel Chanel;
         [ReadOnly]
         public int2 Column;
         [ReadOnly]
@@ -21,10 +20,8 @@ namespace Minecraft.Lighting {
         [NativeDisableContainerSafetyRestriction]
         public NativeArray<NativeArray<Voxel>> Claster;
 
-        [NativeDisableContainerSafetyRestriction]
-        public NativeArray<NativeQueue<LightingEntry>> AddQueues;
-        [NativeDisableContainerSafetyRestriction]
-        public NativeArray<NativeQueue<LightingEntry>> RemoveQueues;
+        public NativeQueue<LightingEntry> AddQueues;
+        public NativeQueue<LightingEntry> RemoveQueues;
 
         private static readonly int3[] blockSides = {
             new( 0,  0,  1),
@@ -57,12 +54,12 @@ namespace Minecraft.Lighting {
                         voxel.Light.Set(LightChanel.Sun, Light.Max);
                         voxels[index] = voxel;
                         var entry = new LightingEntry(voxelCoordinate, Light.Max);
-                        AddQueues[(int)Chanel].Enqueue(entry);
+                        AddQueues.Enqueue(entry);
                     }
                 }
             }
 
-            while (RemoveQueues[(int)Chanel].TryDequeue(out var entry)) {
+            while (RemoveQueues.TryDequeue(out var entry)) {
                 for (int i = 0; i < blockSides.Length; i++) {
                     var voxelCoordinate = entry.Coordinate + blockSides[i];
                     var chunkCoordinate = CoordinateUtility.ToChunk(voxelCoordinate);
@@ -74,22 +71,22 @@ namespace Minecraft.Lighting {
                     var localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, voxelCoordinate);
                     var index = IndexUtility.ToIndex(localVoxelCoordinate, Chunk.Size, Chunk.Size);
                     var voxel = voxels[index];
-                    var level = voxel.Light.Get(Chanel);
+                    var level = voxel.Light.Get(LightChanel.Sun);
                     var blockType = voxels[index].Type;
                     var absorption = Blocks[(int)blockType].Absorption;
                     if (level != 0 && level == entry.Level - absorption - 1) {
                         var removeEntry = new LightingEntry(voxelCoordinate, level);
-                        RemoveQueues[(int)Chanel].Enqueue(removeEntry);
-                        voxel.Light.Set(Chanel, Light.Min);
+                        RemoveQueues.Enqueue(removeEntry);
+                        voxel.Light.Set(LightChanel.Sun, Light.Min);
                         voxels[index] = voxel;
                     } else if (level >= entry.Level) {
                         var addEntry = new LightingEntry(voxelCoordinate, level);
-                        AddQueues[(int)Chanel].Enqueue(addEntry);
+                        AddQueues.Enqueue(addEntry);
                     }
                 }
             }
 
-            while (AddQueues[(int)Chanel].TryDequeue(out var entry)) {
+            while (AddQueues.TryDequeue(out var entry)) {
                 if (entry.Level <= 1) {
                     continue;
                 }
@@ -105,15 +102,15 @@ namespace Minecraft.Lighting {
                     var localVoxelCoordinate = CoordinateUtility.ToLocal(chunkCoordinate, voxelCoordinate);
                     var index = IndexUtility.ToIndex(localVoxelCoordinate, Chunk.Size, Chunk.Size);
                     var voxel = voxels[index];
-                    var level = voxel.Light.Get(Chanel);
+                    var level = voxel.Light.Get(LightChanel.Sun);
                     var blockType = voxels[index].Type;
                     var absorption = Blocks[(int)blockType].Absorption;
                     if (Blocks[(int)blockType].IsTransparent && level + absorption + 1 < entry.Level) {
                         var newLevel = (byte)(entry.Level - absorption - 1);
-                        voxel.Light.Set(Chanel, newLevel);
+                        voxel.Light.Set(LightChanel.Sun, newLevel);
                         voxels[index] = voxel;
                         var addEntry = new LightingEntry(voxelCoordinate, newLevel);
-                        AddQueues[(int)Chanel].Enqueue(addEntry);
+                        AddQueues.Enqueue(addEntry);
                     }
                 }
             }
@@ -128,6 +125,12 @@ namespace Minecraft.Lighting {
 
             var clasterIndex = IndexUtility.ToIndex(clasterCoordinate, 3, ClasterHeight);
             voxels = Claster[clasterIndex];
+        }
+
+        public void Dispose() {
+            Claster.Dispose();
+            AddQueues.Dispose();
+            RemoveQueues.Dispose();
         }
     }
 }

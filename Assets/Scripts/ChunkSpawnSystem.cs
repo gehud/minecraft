@@ -9,7 +9,7 @@ namespace Minecraft {
     [BurstCompile]
     [RequireMatchingQueriesForUpdate]
     public partial struct ChunkSpawnSystem : ISystem {
-        public const int BatchSize = 16;
+        private const int batchSize = 16 * 9;
 
         private EntityQuery querry;
 
@@ -60,7 +60,7 @@ namespace Minecraft {
 
             var entities = querry.ToEntityArray(Allocator.Temp);
 
-            var count = math.min(entities.Length, BatchSize);
+            var count = math.min(entities.Length, batchSize);
             for (int i = 0; i < count; i++) {
                 Spawn(ref state, commandBuffer, entities[i]);
             }
