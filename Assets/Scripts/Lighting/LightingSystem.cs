@@ -40,13 +40,8 @@ namespace Minecraft.Lighting {
             voxel.Light.Set(chanel, level);
             voxels[index] = voxel;
 
-            if (!entityManager.HasComponent<DirtyChunk>(entity)) {
-                commandBuffer.AddComponent<DirtyChunk>(entity);
-            }
-
-            if (!entityManager.HasComponent<ImmediateChunk>(entity)) {
-                commandBuffer.AddComponent<ImmediateChunk>(entity);
-            }
+            commandBuffer.SetComponentEnabled<DirtyChunk>(entity, true);
+            commandBuffer.SetComponentEnabled<ImmediateChunk>(entity, true);
 
             ChunkBufferingSystem.MarkDirtyIfNeededImmediate(chunkBufferingSystemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
 
@@ -94,13 +89,8 @@ namespace Minecraft.Lighting {
             voxel.Light.Set(chanel, Light.Min);
             voxels[index] = voxel;
 
-            if (!entityManager.HasComponent<DirtyChunk>(entity)) {
-                commandBuffer.AddComponent<DirtyChunk>(entity);
-            }
-
-            if (!entityManager.HasComponent<ImmediateChunk>(entity)) {
-                commandBuffer.AddComponent<ImmediateChunk>(entity);
-            }
+            commandBuffer.SetComponentEnabled<DirtyChunk>(entity, true);
+            commandBuffer.SetComponentEnabled<ImmediateChunk>(entity, true);
 
             ChunkBufferingSystem.MarkDirtyIfNeededImmediate(chunkBufferingSystemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
 
@@ -146,12 +136,8 @@ namespace Minecraft.Lighting {
                             systemData.RemoveQueues[(int)chanel].Enqueue(removeEntry);
                             voxel.Light.Set(chanel, Light.Min);
                             voxels[index] = voxel;
-                            if (!entityManager.HasComponent<DirtyChunk>(entity)) {
-                                commandBuffer.AddComponent<DirtyChunk>(entity);
-                            }
-                            if (!entityManager.HasComponent<ImmediateChunk>(entity)) {
-                                commandBuffer.AddComponent<ImmediateChunk>(entity);
-                            }
+                            commandBuffer.SetComponentEnabled<DirtyChunk>(entity, true);
+                            commandBuffer.SetComponentEnabled<ImmediateChunk>(entity, true);
                             ChunkBufferingSystem.MarkDirtyIfNeededImmediate(chunkBufferingSystemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
                         } else if (level >= entry.Level) {
                             var addEntry = new LightingEntry(voxelCoordinate, level);
@@ -184,12 +170,8 @@ namespace Minecraft.Lighting {
                             voxels[index] = voxel;
                             var addEntry = new LightingEntry(voxelCoordinate, newLevel);
                             systemData.AddQueues[(int)chanel].Enqueue(addEntry);
-                            if (!entityManager.HasComponent<DirtyChunk>(entity)) {
-                                commandBuffer.AddComponent<DirtyChunk>(entity);
-                            }
-                            if (!entityManager.HasComponent<ImmediateChunk>(entity)) {
-                                commandBuffer.AddComponent<ImmediateChunk>(entity);
-                            }
+                            commandBuffer.SetComponentEnabled<DirtyChunk>(entity, true);
+                            commandBuffer.SetComponentEnabled<ImmediateChunk>(entity, true);
                             ChunkBufferingSystem.MarkDirtyIfNeededImmediate(chunkBufferingSystemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
                         }
                     }
@@ -199,19 +181,19 @@ namespace Minecraft.Lighting {
 
         [BurstCompile]
         void ISystem.OnUpdate(ref SystemState state) {
-            var chunkBufferingSystemData = SystemAPI.GetSingletonRW<ChunkBufferingSystemData>();
-
             var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
 
+            var systemData = state.EntityManager.GetComponentDataRW<LightingSystemData>(state.SystemHandle);
+            var blockSystemData = SystemAPI.GetSingletonRW<BlockSystemData>();
+            var chunkBufferingSystemData = SystemAPI.GetSingletonRW<ChunkBufferingSystemData>();
+            
+            var columnClasterHeight = chunkBufferingSystemData.ValueRO.Height + 2;
+            
             foreach (var (request, entity) in SystemAPI
                 .Query<SunlightRequest>()
                 .WithEntityAccess()) {
 
-                var systemData = state.EntityManager.GetComponentData<LightingSystemData>(state.SystemHandle);
-                var blockSystemData = SystemAPI.GetSingleton<BlockSystemData>();
-
-                var clasterHeight = chunkBufferingSystemData.ValueRO.Height + 2;
-                var claster = new NativeArray<NativeArray<Voxel>>(3 * 3 * clasterHeight, Allocator.TempJob);
+                var claster = new NativeArray<NativeArray<Voxel>>(3 * 3 * columnClasterHeight, Allocator.TempJob);
                 var origin = new int3 {
                     x = request.Column.x - 1,
                     y = -1,
@@ -219,12 +201,12 @@ namespace Minecraft.Lighting {
                 };
 
                 bool isValidClaster = true;
-                for (int j = 0; j < 3 * 3 * clasterHeight; j++) {
-                    var coordinate = origin + IndexUtility.ToCoordinate(j, 3, clasterHeight);
+                for (int j = 0; j < 3 * 3 * columnClasterHeight; j++) {
+                    var coordinate = origin + IndexUtility.ToCoordinate(j, 3, columnClasterHeight);
                     ChunkBufferingSystem.GetEntity(chunkBufferingSystemData.ValueRO, coordinate, out var clasterEntity);
                     bool isValidChunk = state.EntityManager.Exists(clasterEntity)
                         && state.EntityManager.HasComponent<Chunk>(clasterEntity)
-                        && !state.EntityManager.HasComponent<DirtyChunk>(clasterEntity)
+                        && !state.EntityManager.IsComponentEnabled<DirtyChunk>(clasterEntity)
                         && !state.EntityManager.HasComponent<RawChunk>(clasterEntity);
 
                     if (isValidChunk) {
@@ -243,18 +225,18 @@ namespace Minecraft.Lighting {
                 }
 
                 var job = new SunlightCalculationJob {
-                    Blocks = blockSystemData.Blocks,
+                    Blocks = blockSystemData.ValueRO.Blocks,
                     Chanel = LightChanel.Sun,
                     Column = request.Column,
                     BufferHeight = chunkBufferingSystemData.ValueRO.Height,
-                    ClasterHeight = clasterHeight,
+                    ClasterHeight = columnClasterHeight,
                     Claster = claster,
 
-                    AddQueues = systemData.AddQueues,
-                    RemoveQueues = systemData.RemoveQueues,
+                    AddQueues = systemData.ValueRO.AddQueues,
+                    RemoveQueues = systemData.ValueRO.RemoveQueues,
                 };
 
-                job.Schedule().Complete();
+                job.Run();
                 job.Claster.Dispose();
 
                 commandBuffer.DestroyEntity(entity);
@@ -306,7 +288,7 @@ namespace Minecraft.Lighting {
                 }
 
                 if (isValidClaster) {
-                    commandBuffer.AddComponent<DirtyChunk>(entity);
+                    commandBuffer.SetComponentEnabled<DirtyChunk>(entity, true);
                     commandBuffer.RemoveComponent<IncompleteLighting>(entity);
                 }
             }

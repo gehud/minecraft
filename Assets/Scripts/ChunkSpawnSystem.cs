@@ -44,6 +44,13 @@ namespace Minecraft {
             commandBuffer.SetName(entity, $"Chunk({request.Coordinate.x}, {request.Coordinate.y}, {request.Coordinate.z})");
             commandBuffer.AddComponent<RawChunk>(entity);
 
+            commandBuffer.AddComponent<ThreadedChunk>(entity);
+            commandBuffer.SetComponentEnabled<ThreadedChunk>(entity, false);
+            commandBuffer.AddComponent<DirtyChunk>(entity);
+            commandBuffer.SetComponentEnabled<DirtyChunk>(entity, false);
+            commandBuffer.AddComponent<ImmediateChunk>(entity);
+            commandBuffer.SetComponentEnabled<ImmediateChunk>(entity, false);
+
             commandBuffer.RemoveComponent<ChunkSpawnRequest>(entity);
         }
 

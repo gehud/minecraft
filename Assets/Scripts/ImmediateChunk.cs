@@ -1,5 +1,5 @@
 ﻿using Unity.Entities;
 
 namespace Minecraft {
-    public struct ImmediateChunk : IComponentData { }
+    public struct ImmediateChunk : IComponentData, IEnableableComponent { }
 }

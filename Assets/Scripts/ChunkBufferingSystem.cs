@@ -69,6 +69,7 @@ namespace Minecraft {
             GetEntity(systemData, chunkCoordinate, out var entity);
             if (entity == Entity.Null
                 || !entityManager.HasComponent<Chunk>(entity)
+                || entityManager.IsComponentEnabled<ThreadedChunk>(entity)
                 || entityManager.HasComponent<RawChunk>(entity)) {
                 voxel = default;
                 return;
@@ -86,8 +87,8 @@ namespace Minecraft {
                 return;
             }
 
-            entityManager.AddComponent<DirtyChunk>(entity);
-            entityManager.AddComponent<ImmediateChunk>(entity);
+            entityManager.SetComponentEnabled<DirtyChunk>(entity, true);
+            entityManager.SetComponentEnabled<ImmediateChunk>(entity, true);
         }
 
         [BurstCompile]
@@ -97,8 +98,8 @@ namespace Minecraft {
                 return;
             }
 
-            commandBuffer.AddComponent<DirtyChunk>(entity);
-            commandBuffer.AddComponent<ImmediateChunk>(entity);
+            commandBuffer.SetComponentEnabled<DirtyChunk>(entity, true);
+            commandBuffer.SetComponentEnabled<ImmediateChunk>(entity, true);
         }
 
         [BurstCompile]
@@ -108,17 +109,17 @@ namespace Minecraft {
                 return;
             }
 
-            entityManager.AddComponent<DirtyChunk>(entity);
+            entityManager.SetComponentEnabled<DirtyChunk>(entity, true);
         }
 
         [BurstCompile]
         private static void MarkDirtyIfExists(in ChunkBufferingSystemData systemData, in EntityManager entityManager, in EntityCommandBuffer commandBuffer, in int3 chunkCoordinate) {
             GetEntity(systemData, chunkCoordinate, out var entity);
-            if (entity == Entity.Null || !entityManager.HasComponent<Chunk>(entity) || entityManager.HasComponent<DirtyChunk>(entity)) {
+            if (entity == Entity.Null || !entityManager.HasComponent<Chunk>(entity) || entityManager.IsComponentEnabled<DirtyChunk>(entity)) {
                 return;
             }
 
-            commandBuffer.AddComponent<DirtyChunk>(entity);
+            commandBuffer.SetComponentEnabled<DirtyChunk>(entity, true);
         }
 
         [BurstCompile]
@@ -240,6 +241,7 @@ namespace Minecraft {
             GetEntity(systemData, chunkCoordinate, out var entity);
             if (entity == Entity.Null
                 || !entityManager.HasComponent<Chunk>(entity)
+                || entityManager.IsComponentEnabled<ThreadedChunk>(entity)
                 || entityManager.HasComponent<RawChunk>(entity)
                 || !entityManager.HasComponent<Sunlight>(entity)
                 || entityManager.HasComponent<IncompleteLighting>(entity)
@@ -254,8 +256,8 @@ namespace Minecraft {
             var voxel = chunk.Voxels[index];
             voxel.Type = BlockType.Air;
             chunk.Voxels[index] = voxel;
-            entityManager.AddComponent<DirtyChunk>(entity);
-            entityManager.AddComponent<ImmediateChunk>(entity);
+            entityManager.SetComponentEnabled<DirtyChunk>(entity, true);
+            entityManager.SetComponentEnabled<ImmediateChunk>(entity, true);
             MarkDirtyIfNeededImmediate(systemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
 
             LightingSystem.RemoveLight(lightingSystemData, systemData, entityManager, commandBuffer, voxelCoordinate, LightChanel.Red);
@@ -318,9 +320,10 @@ namespace Minecraft {
             GetEntity(systemData, chunkCoordinate, out var entity);
             if (entity == Entity.Null
                 || !entityManager.HasComponent<Chunk>(entity)
+                || entityManager.IsComponentEnabled<ThreadedChunk>(entity)
                 || entityManager.HasComponent<RawChunk>(entity)
-                //|| !entityManager.HasComponent<Sunlight>(entity)
-                //|| entityManager.HasComponent<IncompleteLighting>(entity)
+                || !entityManager.HasComponent<Sunlight>(entity)
+                || entityManager.HasComponent<IncompleteLighting>(entity)
                 || entityManager.HasComponent<RawChunk>(entity)) {
                 return;
             }
@@ -332,8 +335,8 @@ namespace Minecraft {
             var voxel = chunk.Voxels[index];
             voxel.Type = blockType;
             chunk.Voxels[index] = voxel;
-            commandBuffer.AddComponent<DirtyChunk>(entity);
-            commandBuffer.AddComponent<ImmediateChunk>(entity);
+            commandBuffer.SetComponentEnabled<DirtyChunk>(entity, true);
+            commandBuffer.SetComponentEnabled<ImmediateChunk>(entity, true);
             MarkDirtyIfNeededImmediate(systemData, entityManager, commandBuffer, chunkCoordinate, localVoxelCoordinate);
 
             LightingSystem.RemoveLight(lightingSystemData, systemData, entityManager, commandBuffer, voxelCoordinate, LightChanel.Red);
@@ -489,7 +492,7 @@ namespace Minecraft {
                         int newX = x - centerDelta.x;
                         int newZ = z - centerDelta.y;
                         if (IsOutOfBuffer(newX, newZ, systemData.ChunksSize)) {
-                            DestroyChunk(entityManager, commandBuffer, chunk);
+                            commandBuffer.AddComponent<ChunkToDestroy>(chunk);
                             continue;
                         }
 

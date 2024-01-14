@@ -1,14 +1,18 @@
 ﻿using Minecraft.Lighting;
 using Minecraft.Utilities;
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace Minecraft {
     [BurstCompile]
-    public struct ChunkMeshDataJob : IJob {
+    public struct ChunkMeshDataJob : IJob, IDisposable {
+        [ReadOnly]
+        public Entity Entity;
         public NativeList<Vertex> Vertices;
         public NativeList<ushort> OpaqueIndices;
         public NativeList<ushort> TransparentIndices;
@@ -18,8 +22,6 @@ namespace Minecraft {
         public int3 ChunkCoordinate;
         [ReadOnly]
         public NativeArray<Block> Blocks;
-        [ReadOnly]
-        public ChunkBufferingSystemData ChunkBufferingSystemData;
 
         public void Execute() {
             for (int x = 0; x < Chunk.Size; x++) {
@@ -662,6 +664,10 @@ namespace Minecraft {
         private bool HasFace(in int3 localVoxelCoordinate, BlockType blockType) {
             GetVoxel(localVoxelCoordinate, out var voxel);
             return Blocks[(int)voxel.Type].IsTransparent && voxel.Type != blockType;
+        }
+
+        public void Dispose() {
+            Claster.Dispose();
         }
     }
 }

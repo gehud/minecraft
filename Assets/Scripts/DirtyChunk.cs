@@ -1,5 +1,5 @@
 ﻿using Unity.Entities;
 
 namespace Minecraft {
-    public struct DirtyChunk : IComponentData { }
+    public struct DirtyChunk : IComponentData, IEnableableComponent { }
 }
