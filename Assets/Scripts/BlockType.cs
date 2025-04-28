@@ -1,6 +1,6 @@
 ﻿namespace Minecraft
 {
-    public enum BlockType : byte
+    public enum BlockType : ushort
     {
         Air,
         Stone,
